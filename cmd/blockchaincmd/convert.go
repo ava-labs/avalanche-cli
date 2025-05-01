@@ -122,7 +122,7 @@ func StartLocalMachine(
 	stakingPorts []uint,
 ) (bool, error) {
 	var err error
-	if network.Kind == models.Local {
+	if network.Kind == models.Local && !generateNodeID {
 		useLocalMachine = true
 	}
 	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")

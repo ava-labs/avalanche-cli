@@ -387,16 +387,14 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) erro
 		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
 		}
+		if generateNodeID {
+			return fmt.Errorf("cannot set --generate-node-id=true on local network")
+		}
 		// generateNodeID = useLocalMachine false
 		// generateNodeID = convertOnly true need to print sync message
 		// generateNodeID = numBootstrap validators need to be specified
-		if generateNodeID {
-
-		}
-		if cmd.Flags().Changed("use-local-machine") && useLocalMachine && generateNodeID && cmd.Flags().Changed("convert-only") && !convertOnly {
-			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
-		}
 	}
+
 	return nil
 }
 
@@ -492,7 +490,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
+	if generateNodeID {
+		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
+			return fmt.Errorf("cannot use local machine as bootstrap validator if --generate-node-id=true")
+		}
+		if cmd.Flags().Changed("convert-only") && !convertOnly {
+			return fmt.Errorf("cannot set --convert-only=false if --generate-node-id=true")
+		}
+	}
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
@@ -842,12 +847,21 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
-			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+			ux.Logger.PrintToUser("Next, we need to:")
+			if generateNodeID {
+				ux.Logger.PrintToUser("- Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			}
+			ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
+			ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
 			ux.Logger.PrintToUser("==================================================")
-			ux.Logger.PrintToUser("To enable the nodes to track the L1, set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
-			ux.Logger.PrintToUser("Ensure that the P2P port is exposed and 'public-ip' config value is set")
-			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
+			if generateNodeID {
+				ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
+				ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+				ux.Logger.PrintToUser("")
+			}
+			ux.Logger.PrintToUser("To enable the nodes to track the L1:")
+			ux.Logger.PrintToUser("- Set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
+			ux.Logger.PrintToUser("- Ensure that the P2P port is exposed and 'public-ip' config value is set")
 			return nil
 		}
 
