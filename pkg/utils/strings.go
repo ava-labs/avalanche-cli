@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package utils
 
@@ -8,16 +8,18 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 )
 
 // SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.
 func SplitComaSeparatedString(s string) []string {
-	return Map(strings.Split(s, ","), strings.TrimSpace)
+	return utils.Map(strings.Split(s, ","), strings.TrimSpace)
 }
 
 // SplitComaSeparatedInt splits a comma-separated string into a slice of integers.
 func SplitComaSeparatedInt(s string) []int {
-	return Map(SplitComaSeparatedString(s), func(item string) int {
+	return utils.Map(SplitComaSeparatedString(s), func(item string) int {
 		num, _ := strconv.Atoi(item)
 		return num
 	})
@@ -36,7 +38,7 @@ func SplitStringWithQuotes(str string, r rune) []string {
 
 // AddSingleQuotes adds single quotes to each string in the given slice.
 func AddSingleQuotes(s []string) []string {
-	return Map(s, func(item string) string {
+	return utils.Map(s, func(item string) string {
 		if item == "" {
 			return "''"
 		}
@@ -60,7 +62,7 @@ func CleanupString(s string) string {
 
 // CleanupStrings cleans up a slice of strings by trimming \r and \n characters.
 func CleanupStrings(s []string) []string {
-	return Map(s, CleanupString)
+	return utils.Map(s, CleanupString)
 }
 
 // Formats an amount of base units as a string representing the amount in the given denomination.

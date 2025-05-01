@@ -1,4 +1,4 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package contractcmd
 
@@ -155,7 +155,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogLevel,
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package application
 
@@ -361,10 +361,6 @@ func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
 
 func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
-}
-
-func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
-	return constants.AvalancheGoCompatibilityURL
 }
 
 func (app *Avalanche) ReadUpgradeFile(blockchainName string) ([]byte, error) {
