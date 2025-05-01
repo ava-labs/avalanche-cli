@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/pflag"
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
