@@ -13,7 +13,6 @@ import (
 
 var _ = ginkgo.Describe("[Local Network] Status", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		_ = commands.StopNetwork()
 		_, _ = commands.CleanNetwork()
 	})
 

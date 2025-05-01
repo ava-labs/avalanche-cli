@@ -13,8 +13,6 @@ import (
 
 var _ = ginkgo.Describe("[Local Network] Start", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		err := commands.StopNetwork()
-		gomega.Expect(err).Should(gomega.BeNil())
 		_, _ = commands.CleanNetwork()
 	})
 
