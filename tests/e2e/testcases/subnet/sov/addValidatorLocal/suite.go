@@ -30,7 +30,9 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 		)
 	})
 	ginkgo.It("Can deploy blockchain to localhost and upsize it", func() {
-		output := commands.StartNetworkWithVersion(avagoVersion)
+		output := commands.StartNetworkWithParams(map[string]string{
+			"version": avagoVersion,
+		})
 		fmt.Println(output)
 		output, err := commands.DeployEtnaBlockchain(
 			utils.BlockchainName,
