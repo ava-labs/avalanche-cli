@@ -32,7 +32,7 @@ func CleanNetwork() (string, error) {
 }
 
 /* #nosec G204 */
-func CleanNetworkHard() {
+func CleanNetworkHard() (string, error) {
 	output, err := utils.TestCommand(
 		utils.NetworkCmd,
 		"clean",
@@ -47,7 +47,7 @@ func CleanNetworkHard() {
 		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
+	return output, err
 }
 
 /* #nosec G204 */
