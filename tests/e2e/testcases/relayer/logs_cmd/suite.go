@@ -25,7 +25,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		_, err := commands.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(subnetName)

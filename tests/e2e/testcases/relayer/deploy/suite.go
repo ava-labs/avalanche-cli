@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		_, err := commands.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.DeleteKey(key2Name)
@@ -388,7 +388,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 			})
 
 			ginkgo.AfterEach(func() {
-				commands.CleanNetwork()
+				_, _ = commands.CleanNetwork()
 				err := utils.DeleteConfigs(subnetName)
 				gomega.Expect(err).Should(gomega.BeNil())
 				utils.DeleteCustomBinary(subnetName)

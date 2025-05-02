@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.BeforeEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 	})
 
 	ginkgo.AfterEach(func() {

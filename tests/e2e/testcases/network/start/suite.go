@@ -5,6 +5,7 @@ package network
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -34,7 +35,9 @@ var _ = ginkgo.Describe("[Local Network] Start", ginkgo.Ordered, func() {
 
 	ginkgo.It("can start network with given number of nodes", func() {
 		numOfNodes := uint(3)
-		out := commands.StartNetworkWithNodeNumber(numOfNodes)
+		out := commands.StartNetworkWithParams(map[string]string{
+			"number-of-nodes": strconv.FormatUint(uint64(numOfNodes), 10),
+		})
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
 		// check network status
