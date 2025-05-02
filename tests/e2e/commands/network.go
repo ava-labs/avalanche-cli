@@ -6,7 +6,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -16,7 +15,7 @@ import (
 /* #nosec G204 */
 func CleanNetwork() (string, error) {
 	output, err := utils.TestCommand(
-		utils.NetworkCmd,
+		NetworkCmd,
 		"clean",
 		[]string{
 			"--" + constants.SkipUpdateFlag,
@@ -32,43 +31,13 @@ func CleanNetwork() (string, error) {
 }
 
 /* #nosec G204 */
-func CleanNetworkHard() {
-	output, err := utils.TestCommand(
-		utils.NetworkCmd,
-		"clean",
-		[]string{
-			"--hard",
-			"--" + constants.SkipUpdateFlag,
-		},
-		utils.GlobalFlags{},
-		utils.TestFlags{},
-	)
-	if err != nil {
-		fmt.Println(output)
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-}
-
-/* #nosec G204 */
 func StartNetwork() string {
-	return StartNetworkWithVersion("")
-}
-
-func StartNetworkWithNodeNumber(numOfNodes uint) string {
-	return startNetworkWithParams(map[string]string{
-		"number-of-nodes": strconv.FormatUint(uint64(numOfNodes), 10),
+	return StartNetworkWithParams(map[string]string{
+		"version": "",
 	})
 }
 
-/* #nosec G204 */
-func StartNetworkWithVersion(version string) string {
-	return startNetworkWithParams(map[string]string{
-		"version": version,
-	})
-}
-
-func startNetworkWithParams(paramMap map[string]string) string {
+func StartNetworkWithParams(paramMap map[string]string) string {
 	cmdArgs := utils.GlobalFlags{}
 
 	for k, v := range paramMap {
@@ -88,7 +57,7 @@ func startNetworkWithParams(paramMap map[string]string) string {
 		cmdArgs["avalanchego-path"] = debugAvalanchegoPath
 	}
 	output, err := utils.TestCommand(
-		utils.NetworkCmd,
+		NetworkCmd,
 		"start",
 		[]string{
 			"--" + constants.SkipUpdateFlag,
@@ -107,7 +76,7 @@ func startNetworkWithParams(paramMap map[string]string) string {
 /* #nosec G204 */
 func StopNetwork(stopCmdFlags ...string) error {
 	output, err := utils.TestCommand(
-		utils.NetworkCmd,
+		NetworkCmd,
 		"stop",
 		append([]string{
 			"--" + constants.SkipUpdateFlag,
@@ -124,7 +93,7 @@ func StopNetwork(stopCmdFlags ...string) error {
 
 func GetNetworkStatus() (string, error) {
 	output, err := utils.TestCommand(
-		utils.NetworkCmd,
+		NetworkCmd,
 		"status",
 		[]string{
 			"--" + constants.SkipUpdateFlag,

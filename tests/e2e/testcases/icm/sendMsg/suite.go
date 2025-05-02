@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
