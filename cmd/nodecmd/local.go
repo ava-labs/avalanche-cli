@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -249,7 +251,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
 	}
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 		UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
 		UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
@@ -537,7 +539,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		localValidateFlags.SigAggFlags.AggregatorLogLevel,
 		localValidateFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package utils
@@ -10,11 +10,12 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/mod/semver"
 )
@@ -53,7 +54,7 @@ type VersionMapper interface {
 	GetCompatURL(vmType models.VMType) string
 	GetAvagoURL() string
 	GetApp() *application.Avalanche
-	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
+	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int) (string, error)
 	GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error)
 	FilterAvailableVersions(versions []string) []string
 }
@@ -78,8 +79,8 @@ type versionMapper struct {
 // GetLatestAvagoByProtoVersion returns the latest Avalanchego version which
 // runs with the specified rpcVersion, or an error if it can't be found
 // (or other errors occurred)
-func (*versionMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
-	return vm.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion, url)
+func (*versionMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int) (string, error) {
+	return dependencies.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion)
 }
 
 // GetApp returns the Avalanche application instance
@@ -254,7 +255,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		// we should be able to safely assume that for a given subnet-evm RPC version,
 		// there exists at least one compatible Avalanchego.
 		// This means we can in any case use this to set the **latest** compatibility
-		soloAvago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), subnetEVMmapping[first], mapper.GetAvagoURL())
+		soloAvago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), subnetEVMmapping[first])
 		if err != nil {
 			return nil, err
 		}

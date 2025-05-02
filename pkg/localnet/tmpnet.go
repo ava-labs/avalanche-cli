@@ -755,7 +755,7 @@ func TmpNetUpdateBlockchainConfig(
 			return err
 		}
 	}
-	nodeIDs := utils.Map(network.Nodes, func(node *tmpnet.Node) ids.NodeID { return node.NodeID })
+	nodeIDs := sdkutils.Map(network.Nodes, func(node *tmpnet.Node) ids.NodeID { return node.NodeID })
 	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
 		if !sdkutils.Belongs(nodeIDs, nodeID) {
 			continue
@@ -887,7 +887,7 @@ func GetNewTmpNetNodes(
 			node.Flags[config.StakingPortKey] = 0
 		}
 		if len(trackedSubnets) > 0 {
-			trackedSubnetsStr := utils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
+			trackedSubnetsStr := sdkutils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
 			node.Flags[config.TrackSubnetsKey] = strings.Join(trackedSubnetsStr, ",")
 		}
 		if err := node.EnsureKeys(); err != nil {
@@ -1129,7 +1129,7 @@ func GetTmpNetNodeURIsWithFix(
 	if err != nil {
 		return nil, err
 	}
-	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
+	return sdkutils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
 // Get paths for most important avalanchego logs that are present on the network nodes

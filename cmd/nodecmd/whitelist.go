@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -52,7 +52,7 @@ func newWhitelistCmd() *cobra.Command {
 	return cmd
 }
 
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 type regionSecurityGroup struct {
 	cloud         string

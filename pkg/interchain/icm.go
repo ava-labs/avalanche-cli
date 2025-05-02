@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package interchain
 
@@ -291,7 +291,7 @@ func (t *ICMDeployer) DeployMessenger(
 	if messengerDeployerBalance.Cmp(messengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).
 			Sub(messengerDeployerRequiredBalance, messengerDeployerBalance)
-		if err := client.FundAddress(
+		if _, err := client.FundAddress(
 			privateKey,
 			t.messengerDeployerAddress,
 			toFund,

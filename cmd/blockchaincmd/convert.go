@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -26,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -187,18 +188,15 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		avagoVersionSettings := node.AvalancheGoVersionSettings{}
+		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
 		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
-			// nothing given: get avago version from RPC compat
-			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-				app,
-				sidecar.RPCVersion,
-				constants.AvalancheGoCompatibilityURL,
-			)
+			// nothing given: get avago version from RPC compat using latest.json defined in
+			// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
+			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
-				if err != vm.ErrNoAvagoVersion {
+				if err != dependencies.ErrNoAvagoVersion {
 					return false, err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag
@@ -371,7 +369,7 @@ func InitializeValidatorManager(
 		RPC:                 rpcURL,
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		signatureAggregatorFlags.AggregatorLogLevel,
 		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -14,27 +14,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
-
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -311,13 +310,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	avalancheGoVersion, err := dependencies.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}
@@ -1010,7 +1009,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 
 func provideStakingCertAndKey(host *models.Host) error {
 	keyPath := app.GetNodeStakingDir(host.IP)
-	if sdkUtils.DirExists(keyPath) && !overrideExisting {
+	if sdkutils.DirExists(keyPath) && !overrideExisting {
 		yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Directory %s alreday exists. Do you want to override it?", keyPath))
 		if err != nil {
 			return err
@@ -1043,19 +1042,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		}
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
-}
-
-func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
-	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
-	if err == vm.ErrNoAvagoVersion {
-		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
-		return latestPreReleaseVersion, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return desiredAvagoVersion, nil
 }
 
 func setCloudService() (string, error) {
@@ -1349,11 +1335,11 @@ func getRegionsNodeNum(cloudName string) (
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
 		var currentInput []string
 		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
-			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+			currentInput = sdkutils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
 			})
 		} else {
-			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+			currentInput = sdkutils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
 			})
 		}
@@ -1376,7 +1362,7 @@ func setSSHIdentity() (string, error) {
 		return "", err
 	}
 	yubikeyRegexp := regexp.MustCompile(yubikeyPattern)
-	sshIdentities = utils.Map(sshIdentities, func(id string) string {
+	sshIdentities = sdkutils.Map(sshIdentities, func(id string) string {
 		if len(yubikeyRegexp.FindStringSubmatch(id)) > 0 {
 			return fmt.Sprintf("%s%s", id, yubikeyMark)
 		}
