@@ -14,7 +14,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
 
@@ -206,6 +208,25 @@ func NodeImport(filename string, clusterName string) string {
 	)
 	return runCmd(cmd, ExpectSuccess)
 }
+
+func NodeLocalStart(clusterName string) (string, error) {
+	return utils.TestCommand(
+		cmd.NodeCmd,
+		"local",
+		[]string{
+			"start",
+			clusterName,
+			"--local",
+		},
+		utils.GlobalFlags{},
+		utils.TestFlags{},
+	)
+}
+
+// TODO:
+// func NodeLocalStop()
+// func NodeLocalStatus()
+// func NodeLocalDestroy(clusterName string)
 
 type StaticConfig struct {
 	Targets []string `yaml:"targets"`

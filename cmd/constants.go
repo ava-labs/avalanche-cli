@@ -10,4 +10,5 @@ const (
 	ValidatorCmd  CommandGroup = "validator"
 	ICMCmd        CommandGroup = "icm"
 	InterchainCmd CommandGroup = "interchain"
+	NodeCmd       CommandGroup = "node"
 )
