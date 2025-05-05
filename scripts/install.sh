@@ -21,9 +21,8 @@ EOF
 RUN_COMPLETIONS=true
 
 parse_args() {
-  #BINDIR is ./bin unless set be ENV
-  # over-ridden by flag below
-
+  # BINDIR is ~/bin unless set be overridden by the -b flag (trailing slash is removed) 
+  BINDIR=${BINDIR%/}
   BINDIR=${BINDIR:-~/bin}
   while getopts "b:ndh?x" arg; do
     case "$arg" in
