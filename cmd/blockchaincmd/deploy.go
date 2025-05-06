@@ -66,7 +66,6 @@ var (
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
-	numLocalNodes                   int
 	httpPorts                       []uint
 	stakingPorts                    []uint
 	partialSync                     bool
@@ -193,7 +192,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
-	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
 	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
@@ -384,15 +382,9 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 
 func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
 	if network.Kind == models.Local {
-		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" && !generateNodeID {
 			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
 		}
-		if generateNodeID {
-			return fmt.Errorf("cannot set --generate-node-id=true on local network")
-		}
-		// generateNodeID = useLocalMachine false
-		// generateNodeID = convertOnly true need to print sync message
-		// generateNodeID = numBootstrap validators need to be specified
 	}
 
 	return nil
@@ -423,6 +415,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		numBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -490,13 +483,24 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if generateNodeID {
+	if generateNodeID || bootstrapValidatorsJSONFilePath != "" || bootstrapEndpoints != nil {
+		flagName := ""
+		switch {
+		case generateNodeID:
+			flagName = "--generate-node-id=true"
+		case bootstrapValidatorsJSONFilePath != "":
+			flagName = "--bootstrap-filepath is not empty"
+		case bootstrapEndpoints != nil:
+			flagName = "--bootstrap-endpoints is not empty"
+		}
+
 		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
-			return fmt.Errorf("cannot use local machine as bootstrap validator if --generate-node-id=true")
+			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
 		}
 		if cmd.Flags().Changed("convert-only") && !convertOnly {
-			return fmt.Errorf("cannot set --convert-only=false if --generate-node-id=true")
+			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
 		}
+		convertOnly = true
 	}
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
@@ -614,7 +618,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 			}
 		}
-		if !generateNodeID {
+		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 			if cancel, err := StartLocalMachine(
 				network,
 				sidecar,
@@ -623,6 +627,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				numBootstrapValidators,
 			); err != nil {
 				return err
 			} else if cancel {
@@ -665,15 +670,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(
-				network,
-				changeOwnerAddress,
-				numBootstrapValidators,
-				deployBalance,
-				availableBalance,
-			)
-			if err != nil {
-				return err
+			if bootstrapValidators == nil {
+				bootstrapValidators, err = promptBootstrapValidators(
+					network,
+					changeOwnerAddress,
+					numBootstrapValidators,
+					deployBalance,
+					availableBalance,
+				)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	} else if network.Kind == models.Local {
@@ -784,6 +791,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			chainGenesis,
 		)
 		if err != nil {
+			fmt.Printf("we have err here 3 %s \n", err)
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))

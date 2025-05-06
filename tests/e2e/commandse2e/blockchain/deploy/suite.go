@@ -36,12 +36,13 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		"skip-icm-deploy":   true,
 		"skip-update-check": true,
 	}
-	//ginkgo.It("HAPPY PATH: local deploy default", func() {
-	//	testFlags := utils.TestFlags{}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//})
+	ginkgo.It("HAPPY PATH: local deploy default", func() {
+		testFlags := utils.TestFlags{}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("HAPPY PATH: local deploy with avalanchego path set", func() {
 		avalanchegoPath := "tests/e2e/assets/mac/avalanchego"
 		if runtime.GOOS == "linux" {
@@ -68,6 +69,30 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
+	ginkgo.It("HAPPY PATH: generate node id ends in convert only", func() {
+		testFlags := utils.TestFlags{
+			"generate-node-id": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("HAPPY PATH: bootstrap-filepath ends in convert only", func() {
+		testFlags := utils.TestFlags{
+			"generate-node-id": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("HAPPY PATH: local deploy with bootstrap validator balance", func() {
 		testFlags := utils.TestFlags{
 			"balance": 0.2,
@@ -75,24 +100,45 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 		gomega.Expect(err).Should(gomega.BeNil())
-	})
 
-	//ginkgo.It("HAPPY PATH: local deploy with bootstrap endpoints", func() {
-	//	testFlags := utils.TestFlags{
-	//		"bootstrap-endpoints": []string{"http://localhost:9650", "http://localhost:9651"},
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//})
+		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		testFlags = utils.TestFlags{
+			"--local":         true,
+			"--validation-id": sc.Networks["Local Network"].BootstrapValidators[0].ValidationID,
+		}
+		output, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, nil, testFlags)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.20000 AVAX"))
+	})
 
 	ginkgo.It("HAPPY PATH: local deploy with bootstrap filepath", func() {
 		testFlags := utils.TestFlags{
-			"bootstrap-filepath": "tests/e2e/assets/bootstrap.json",
+			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		for i := 0; i < 2; i++ {
+			testFlags := utils.TestFlags{
+				"--local":         true,
+				"--validation-id": sc.Networks["Local Network"].BootstrapValidators[i].ValidationID,
+			}
+			output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, nil, testFlags)
+			gomega.Expect(err).Should(gomega.BeNil(), "Error for validator %d", i)
+			if i == 0 {
+				// we set first validator to have 0.2 AVAX balance in test_bootstrap_validator2.json
+				gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.20000 AVAX"))
+			} else {
+				// we set second validator to have 0.3 AVAX balance in test_bootstrap_validator2.json
+				gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.30000 AVAX"))
+			}
+		}
 	})
 
 	ginkgo.It("HAPPY PATH: local deploy with change owner address", func() {
@@ -104,24 +150,28 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
-	// TODO: uncomment below when num-bootstrap-validators fix PR is merged
-	//ginkgo.It("HAPPY PATH: local deploy set num bootstrap validators", func() {
-	//	testFlags := utils.TestFlags{
-	//		"num-bootstrap-validators": 2,
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//})
+	ginkgo.It("HAPPY PATH: local deploy set num bootstrap validators", func() {
+		testFlags := utils.TestFlags{
+			"num-bootstrap-validators": 2,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	//ginkgo.It("ERROR PATH: invalid_version", func() {
-	//	testFlags := utils.TestFlags{
-	//		"avalanchego-version": "invalid_version",
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
-	//})
+		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+		numValidators := len(sc.Networks["Local Network"].BootstrapValidators)
+		gomega.Expect(numValidators).Should(gomega.BeEquivalentTo(2))
+	})
+
+	ginkgo.It("ERROR PATH: invalid_version", func() {
+		testFlags := utils.TestFlags{
+			"avalanchego-version": "invalid_version",
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
+	})
 	ginkgo.It("ERROR PATH: invalid_avalanchego_path", func() {
 		avalancheGoPath := "invalid_avalanchego_path"
 		testFlags := utils.TestFlags{
@@ -141,15 +191,6 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("balance must be positive"))
 	})
 
-	//ginkgo.It("ERROR PATH: invalid bootstrap endpoints", func() {
-	//	testFlags := utils.TestFlags{
-	//		"bootstrap-endpoints": []string{"invalid-url"},
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("invalid bootstrap endpoint"))
-	//})
-
 	ginkgo.It("ERROR PATH: invalid bootstrap filepath", func() {
 		testFlags := utils.TestFlags{
 			"bootstrap-filepath": "nonexistent.json",
@@ -168,21 +209,59 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("invalid change owner address"))
 	})
 
-	ginkgo.It("ERROR PATH: generate node id is not applicable for local network", func() {
+	ginkgo.It("ERROR PATH: generate node id is not applicable if convert only is false", func() {
 		testFlags := utils.TestFlags{
 			"generate-node-id": true,
+			"convert-only":     false,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("number of bootstrap validators must be positive"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --generate-node-id=true"))
+	})
+	ginkgo.It("ERROR PATH: generate node id is not applicable if use local machine is false", func() {
+		testFlags := utils.TestFlags{
+			"generate-node-id":  true,
+			"use-local-machine": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --generate-node-id=true"))
 	})
 
-	ginkgo.It("ERROR PATH: generate node id is not applicable for local network", func() {
+	ginkgo.It("ERROR PATH: bootstrap filepath is not applicable if convert only is false", func() {
 		testFlags := utils.TestFlags{
-			"generate-node-id": true,
+			"bootstrap-filepath": utils.BootstrapValidatorPath,
+			"convert-only":       false,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("number of bootstrap validators must be positive"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-filepath is not empty"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap filepath is not applicable if use local machine is false", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-filepath": utils.BootstrapValidatorPath,
+			"use-local-machine":  true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --bootstrap-filepath is not empty"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if convert only is false", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-endpoints": "127.0.0.1:9650",
+			"convert-only":        false,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-endpoints is not empty"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if use local machine is false", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-endpoints": "127.0.0.1:9650",
+			"use-local-machine":   true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --bootstrap-endpoints is not empty"))
 	})
 })

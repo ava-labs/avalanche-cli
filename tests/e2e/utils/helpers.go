@@ -912,7 +912,7 @@ func GetPluginBinaries() ([]string, error) {
 	return pluginFiles, nil
 }
 
-func getSideCar(subnetName string) (models.Sidecar, error) {
+func GetSideCar(subnetName string) (models.Sidecar, error) {
 	exists, err := sidecarExists(subnetName)
 	if err != nil {
 		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
@@ -937,7 +937,7 @@ func getSideCar(subnetName string) (models.Sidecar, error) {
 }
 
 func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return 0, err
 	}
@@ -945,7 +945,7 @@ func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
 }
 
 func IsCustomVM(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
@@ -953,7 +953,7 @@ func IsCustomVM(subnetName string) (bool, error) {
 }
 
 func GetValidators(subnetName string) ([]string, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return nil, err
 	}
@@ -974,7 +974,7 @@ func GetValidators(subnetName string) ([]string, error) {
 }
 
 func GetCurrentSupply(subnetName string) error {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return err
 	}
@@ -983,7 +983,7 @@ func GetCurrentSupply(subnetName string) error {
 }
 
 func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
@@ -992,7 +992,7 @@ func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
 }
 
 func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
