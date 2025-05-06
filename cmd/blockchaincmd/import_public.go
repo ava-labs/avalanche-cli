@@ -49,7 +49,7 @@ func newImportPublicCmd() *cobra.Command {
 
 By default, an imported Blockchain
 doesn't overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
-plag.`,
+flag.`,
 	}
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
