@@ -2,6 +2,11 @@
 
 set -e
 
+if ! [[ "$0" =~ scripts/run.e2e.sh ]]; then
+  echo "script must be run from repository root"
+  exit 1
+fi
+
 description_filter=""
 if [ "$1" = "--filter" ]
 then
@@ -60,7 +65,7 @@ ACK_GINKGO_RC=true ~/go/bin/ginkgo build $extra_build_args ./tests/e2e
 
 if [ "${COVERAGE_MODE:-}" == true ]
 then
-    export GOCOVERDIR=coverage/e2e
+    export GOCOVERDIR=$(PWD)/coverage/e2e
 	echo 'Coverage mode enabled - re-creating coverage dir $GOCOVERDIR'
 	echo 'It requires the CLI binary to be built by build.sh with COVERAGE_MODE=true too'
 	rm -rf ${GOCOVERDIR}
@@ -76,11 +81,4 @@ if [[ ${EXIT_CODE} -gt 0 ]]; then
   exit ${EXIT_CODE}
 else
   echo "ALL SUCCESS!"
-
-  if [ "${COVERAGE_MODE:-}" == true ]
-  then
-    echo "Generating coverage report: ${GOCOVERDIR}/profile.txt"
-    go tool covdata textfmt -i=${GOCOVERDIR} -o ${GOCOVERDIR}/profile.txt
-    # go tool cover -func ${GOCOVERDIR}/profile.txt
-  fi
 fi

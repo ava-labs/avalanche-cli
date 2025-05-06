@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package aws
@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -248,7 +249,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 	case 0:
 		return nil, fmt.Errorf("no instances created")
 	case count:
-		instanceIDs := utils.Map(runResult.Instances, func(instance types.Instance) string {
+		instanceIDs := sdkutils.Map(runResult.Instances, func(instance types.Instance) string {
 			return *instance.InstanceId
 		})
 		return instanceIDs, nil

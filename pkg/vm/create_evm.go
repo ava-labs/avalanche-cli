@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package vm
 
@@ -158,7 +158,7 @@ func CreateEVMGenesis(
 	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
-	relayerAddress, _, err := relayer.GetRelayerKeyInfo(app)
+	_, relayerAddress, _, err := relayer.GetDefaultRelayerKeyInfo(app)
 	if err != nil {
 		return nil, err
 	}
