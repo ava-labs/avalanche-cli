@@ -124,7 +124,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
