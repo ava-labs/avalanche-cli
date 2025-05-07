@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"local":         true,
 			"validation-id": sc.Networks["Local Network"].BootstrapValidators[0].ValidationID,
 		}
-		output, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, nil, testFlags)
+		output, err = utils.TestCommand(utils.ValidatorCmd, "getBalance", nil, nil, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.20000 AVAX"))
 	})
@@ -135,8 +135,8 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 				"local":         true,
 				"validation-id": sc.Networks["Local Network"].BootstrapValidators[i].ValidationID,
 			}
-			output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, nil, testFlags)
-			gomega.Expect(err).Should(gomega.BeNil(), "Error for validator %d", i)
+			output, err = utils.TestCommand(utils.ValidatorCmd, "getBalance", nil, nil, testFlags)
+			gomega.Expect(err).Should(gomega.BeNil())
 			if i == 0 {
 				sc.Networks["Local Network"].BootstrapValidators[i].NodeID = "NodeID-144PM69m93kSFyfTHMwULTmoGZSWzQ4C1"
 				sc.Networks["Local Network"].BootstrapValidators[i].Weight = 20
