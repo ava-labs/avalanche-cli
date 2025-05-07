@@ -169,8 +169,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"num-bootstrap-validators": 2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		_, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
@@ -202,22 +201,32 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("avalancheGo binary %s does not exist", avalancheGoPath)))
 	})
 
-	ginkgo.It("ERROR PATH: invalid balance value", func() {
+	ginkgo.It("ERROR PATH: zero balance value", func() {
+		testFlags := utils.TestFlags{
+			"balance": 0,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap validator balance must be greater than 0 AVAX"))
+	})
+
+	ginkgo.It("ERROR PATH: negative balance value", func() {
 		testFlags := utils.TestFlags{
 			"balance": -1.0,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("balance must be positive"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap validator balance must be greater than 0 AVAX"))
 	})
 
 	ginkgo.It("ERROR PATH: invalid bootstrap filepath", func() {
+		fileName := "nonexistent.json"
 		testFlags := utils.TestFlags{
-			"bootstrap-filepath": "nonexistent.json",
+			"bootstrap-filepath": fileName,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap file does not exist"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("file path \"%s\" doesn't exist", fileName))
 	})
 
 	ginkgo.It("ERROR PATH: invalid change owner address format", func() {

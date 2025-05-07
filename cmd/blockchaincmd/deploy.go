@@ -606,7 +606,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	if deployBalanceAVAX <= 0 {
+		return fmt.Errorf("bootstrap validator balance must be greater than 0 AVAX")
+	}
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
