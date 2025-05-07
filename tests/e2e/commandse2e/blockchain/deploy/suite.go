@@ -81,20 +81,19 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 
 	ginkgo.It("HAPPY PATH: generate node id ends in convert only", func() {
 		testFlags := utils.TestFlags{
-			"generate-node-id": true,
+			"generate-node-id":         true,
+			"num-bootstrap-validators": 1,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		checkConvertOnlyOutput(output, true)
 		gomega.Expect(err).Should(gomega.BeNil())
-	})
-
-	ginkgo.It("HAPPY PATH: bootstrap-filepath ends in convert only", func() {
-		testFlags := utils.TestFlags{
-			"generate-node-id": true,
-		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		checkConvertOnlyOutput(output, false)
+		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
+		numValidators := len(sc.Networks["Local Network"].BootstrapValidators)
+		gomega.Expect(numValidators).Should(gomega.BeEquivalentTo(1))
+		gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].NodeID).ShouldNot(gomega.BeNil())
+		gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].BLSProofOfPossession).ShouldNot(gomega.BeNil())
+		gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].BLSPublicKey).ShouldNot(gomega.BeNil())
 	})
 
 	ginkgo.It("HAPPY PATH: local deploy with bootstrap validator balance", func() {
@@ -166,6 +165,10 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		numValidators := len(sc.Networks["Local Network"].BootstrapValidators)
 		gomega.Expect(numValidators).Should(gomega.BeEquivalentTo(2))
+
+		//TODO: add local uri check
+
+		//TODO: add poa type check
 	})
 
 	ginkgo.It("ERROR PATH: invalid_version", func() {

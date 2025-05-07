@@ -189,7 +189,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Float64Var(
 		&deployBalanceAVAX,
 		"balance",
