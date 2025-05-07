@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package gcp
@@ -11,17 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/rand"
-
-	"golang.org/x/exp/slices"
-	"golang.org/x/sync/errgroup"
-
-	"google.golang.org/api/compute/v1"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+
+	"golang.org/x/exp/rand"
+	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/api/compute/v1"
 )
 
 const (
@@ -606,7 +604,7 @@ func (c *GcpCloud) IsInstanceTypeSupported(machineType string, zone string) (boo
 	if err != nil {
 		return false, err
 	}
-	supportedMachineTypes := utils.Map(machineTypes.Items, func(mt *compute.MachineType) string {
+	supportedMachineTypes := sdkutils.Map(machineTypes.Items, func(mt *compute.MachineType) string {
 		return mt.Name
 	})
 	return slices.Contains(supportedMachineTypes, machineType), nil

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package node
 
@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -26,13 +28,14 @@ import (
 func setupAvalancheGo(
 	app *application.Avalanche,
 	avalancheGoBinaryPath string,
-	avaGoVersionSetting AvalancheGoVersionSettings,
+	avaGoVersionSetting dependencies.AvalancheGoVersionSettings,
+	network models.Network,
 	printFunc func(msg string, args ...interface{}),
 ) (string, error) {
 	var err error
 	avalancheGoVersion := ""
 	if avalancheGoBinaryPath == "" {
-		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
+		avalancheGoVersion, err = dependencies.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 		if err != nil {
 			return "", err
 		}
@@ -54,7 +57,7 @@ func StartLocalNode(
 	defaultFlags map[string]interface{},
 	connectionSettings localnet.ConnectionSettings,
 	nodeSettings []localnet.NodeSetting,
-	avaGoVersionSetting AvalancheGoVersionSettings,
+	avaGoVersionSetting dependencies.AvalancheGoVersionSettings,
 	network models.Network,
 ) error {
 	// initializes directories
@@ -78,6 +81,7 @@ func StartLocalNode(
 			app,
 			avalancheGoBinaryPath,
 			avaGoVersionSetting,
+			network,
 			ux.Logger.PrintToUser,
 		)
 		if err != nil {

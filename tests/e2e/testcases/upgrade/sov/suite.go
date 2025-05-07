@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package apm
@@ -283,7 +283,8 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion1))
 
 		// stop network
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// upgrade
 		commands.UpgradeVMLocal(subnetName, subnetEVMVersion2)
@@ -326,7 +327,8 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion1))
 
 		// stop network
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// upgrade
 		commands.UpgradeCustomVMLocal(subnetName, customVMPath2)
@@ -423,7 +425,8 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 		}
 
 		// stop network
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		for _, nodeInfo := range nodeInfos {
 			_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey2], nodeInfo.PluginDir)

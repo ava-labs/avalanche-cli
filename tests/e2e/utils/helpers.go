@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package utils
@@ -77,6 +77,14 @@ func GetAPMDir() string {
 		panic(err)
 	}
 	return path.Join(usr.HomeDir, constants.APMDir)
+}
+
+func GetSnapshotsDir() string {
+	return filepath.Join(GetBaseDir(), constants.SnapshotsDirName)
+}
+
+func GetSnapshotPath(snapshotName string) string {
+	return filepath.Join(GetSnapshotsDir(), snapshotName)
 }
 
 func ChainConfigExists(subnetName string) (bool, error) {
@@ -309,6 +317,13 @@ func DeleteAPMBin(vmid string) {
 	_ = os.RemoveAll(vmPath)
 }
 
+func DeleteSnapshot(snapshotName string) {
+	snapshotPath := path.Join(GetSnapshotsDir(), snapshotName)
+
+	// ignore error, file may not exist
+	_ = os.RemoveAll(snapshotPath)
+}
+
 func stdoutParser(output string, queue string, capture string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
@@ -369,27 +384,42 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	return rpcs, nil
 }
 
-func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, uint64, error) {
+func ParseAddrBalanceFromKeyListOutput(output string, keyName string, subnet string) (string, uint64, error) {
 	lines := strings.Split(output, "\n")
+	keyFound := false
 	for _, line := range lines {
-		if !strings.Contains(line, keyName) {
-			continue
+		if strings.Contains(line, keyName) {
+			keyFound = true
 		}
-		components := strings.Split(line, "|")
-		if len(components) != expectedKeyListLineComponents {
-			return "", 0, fmt.Errorf("unexpected number of components in key list line %q: expected %d got %d",
-				line,
-				expectedKeyListLineComponents,
-				len(components),
-			)
+
+		if keyFound && strings.Contains(line, subnet) {
+			components := strings.Split(line, "|")
+			if len(components) != expectedKeyListLineComponents {
+				return "", 0, fmt.Errorf("unexpected number of components in key list line %q: expected %d got %d",
+					line,
+					expectedKeyListLineComponents,
+					len(components),
+				)
+			}
+			addr := strings.TrimSpace(components[4])
+			balanceStr := strings.TrimSpace(components[6])
+
+			var balance uint64
+			if strings.Contains(balanceStr, ".") {
+				balanceFloat, err := strconv.ParseFloat(balanceStr, 64)
+				if err != nil {
+					return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+				}
+				return addr, uint64(balanceFloat), nil
+			}
+
+			balance, err := strconv.ParseUint(balanceStr, 0, 64)
+			if err != nil {
+				return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+			}
+
+			return addr, balance, nil
 		}
-		addr := strings.TrimSpace(components[4])
-		balanceStr := strings.TrimSpace(components[6])
-		balance, err := strconv.ParseUint(balanceStr, 0, 64)
-		if err != nil {
-			return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
-		}
-		return addr, balance, nil
 	}
 	return "", 0, fmt.Errorf("keyName %s not found in key list", keyName)
 }
@@ -599,6 +629,12 @@ func CheckSubnetEVMExists(version string) bool {
 func CheckAvalancheGoExists(version string) bool {
 	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir, "avalanchego-"+version)
 	_, err := os.Stat(avagoPath)
+	return err == nil
+}
+
+func CheckSnapshotExists(snapshotName string) bool {
+	snapshotPath := filepath.Join(GetSnapshotsDir(), snapshotName)
+	_, err := os.Stat(snapshotPath)
 	return err == nil
 }
 
@@ -855,7 +891,10 @@ func FundLedgerAddress(amount uint64) error {
 	if err := ledgerDev.Disconnect(); err != nil {
 		return err
 	}
+	return FundAddress(ledgerAddr, amount)
+}
 
+func FundAddress(addr ids.ShortID, amount uint64) error {
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
 	if err != nil {
@@ -872,11 +911,10 @@ func FundLedgerAddress(amount uint64) error {
 	if err != nil {
 		return err
 	}
-
-	// transfer from P-Chain genesis addr to P-Chain ledger addr
+	// transfer from P-Chain genesis addr to addr
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{ledgerAddr},
+		Addrs:     []ids.ShortID{addr},
 	}
 	output := &avax.TransferableOutput{
 		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
@@ -889,7 +927,6 @@ func FundLedgerAddress(amount uint64) error {
 	if _, err := wallet.P().IssueBaseTx(outputs); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -1075,15 +1112,16 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 	return stdout + string(stderr)
 }
 
-func GetKeyTransferFee(output string) (uint64, error) {
+func GetKeyTransferFee(output string, network string) (uint64, error) {
+	substr := fmt.Sprintf("%s Paid fee", network)
 	feeNAvax := uint64(1)
 	for _, line := range strings.Split(output, "\n") {
-		if strings.Contains(line, "Paid fee") {
+		if strings.Contains(line, substr) {
 			lineFields := strings.Fields(line)
 			if len(lineFields) < 3 {
 				return 0, fmt.Errorf("incorrect format for fee output of key transfer: %s", line)
 			}
-			feeAvaxStr := lineFields[2]
+			feeAvaxStr := lineFields[3]
 			feeAvax, err := strconv.ParseFloat(feeAvaxStr, 64)
 			if err != nil {
 				return 0, err
@@ -1110,4 +1148,56 @@ func GetE2EHostInstanceID() (string, error) {
 	}
 	_, cloudHostID, _ := models.HostAnsibleIDToCloudID(hosts[0].NodeID)
 	return cloudHostID, nil
+}
+
+func GetERC20TokenAddress(output string) (string, error) {
+	substr := "Token Address: "
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			tokenAddress := lineFields[2]
+			return tokenAddress, nil
+		}
+	}
+
+	return "", fmt.Errorf("token address not found in output")
+}
+
+func GetTokenTransferrerAddresses(output string) (string, string, error) {
+	substr := "Home Address: "
+	var homeAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			homeAddress = lineFields[2]
+		}
+	}
+
+	if homeAddress == "" {
+		return "", "", fmt.Errorf("home address not found in output")
+	}
+
+	substr = "Remote Address: "
+	var remoteAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			remoteAddress = lineFields[2]
+		}
+	}
+
+	if remoteAddress == "" {
+		return "", "", fmt.Errorf("remote address not found in output")
+	}
+
+	return homeAddress, remoteAddress, nil
 }

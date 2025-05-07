@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package blockchaincmd
 
@@ -317,7 +317,7 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		removeValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		removeValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

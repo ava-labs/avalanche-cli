@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package constants
 
@@ -17,8 +17,9 @@ const (
 
 	UbuntuVersionLTS = "24.04"
 
-	BaseDirName = ".avalanche-cli"
-	LogDir      = "logs"
+	BaseDirName    = ".avalanche-cli"
+	E2EBaseDirName = ".avalanche-cli/e2e"
+	LogDir         = "logs"
 
 	LocalNetworkMetaFile = "localNetworks.json"
 
@@ -295,6 +296,7 @@ const (
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
+	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/versions/latest.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"

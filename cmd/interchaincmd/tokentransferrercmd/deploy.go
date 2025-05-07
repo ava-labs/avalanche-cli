@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package tokentransferrercmd
 
@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -226,7 +227,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		popularTokensDesc := utils.Map(
+		popularTokensDesc := sdkutils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
 				return i.Desc()
@@ -757,7 +758,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		// Send a single token unit to report that the remote is collateralized.
-		err = ictt.Send(
+		_, _, err = ictt.Send(
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,

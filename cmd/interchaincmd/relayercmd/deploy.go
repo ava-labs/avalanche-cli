@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package relayercmd
 
@@ -415,7 +415,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 				amount, _ := amountBigFlt.Int(nil)
-				if err := client.FundAddress(privateKey, addr.Hex(), amount); err != nil {
+				if _, err := client.FundAddress(privateKey, addr.Hex(), amount); err != nil {
 					return err
 				}
 			}

@@ -172,6 +172,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
 	})
+
 	ginkgo.It("ERROR PATH: invalid_avalanchego_path", func() {
 		avalancheGoPath := "invalid_avalanchego_path"
 		testFlags := utils.TestFlags{

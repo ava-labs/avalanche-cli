@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package networkcmd
 
@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -274,7 +276,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			nil,
 			localnet.ConnectionSettings{},
 			nil,
-			node.AvalancheGoVersionSettings{},
+			dependencies.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
 		); err != nil {
 			return err

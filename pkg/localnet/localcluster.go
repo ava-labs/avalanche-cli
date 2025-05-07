@@ -11,7 +11,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -327,7 +326,7 @@ func GetFilteredLocalClusters(
 				if err != nil {
 					return nil, err
 				}
-				blockchainNames := utils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
+				blockchainNames := sdkutils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
 				if !sdkutils.Belongs(blockchainNames, blockchainName) {
 					continue
 				}

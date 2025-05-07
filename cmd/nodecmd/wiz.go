@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -569,7 +569,7 @@ func chooseICMRelayerHost(clusterName string) (*models.Host, error) {
 }
 
 func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
-	relayerKey, err := app.GetKey(constants.ICMRelayerKeyName, network, true)
+	_, relayerAddress, _, err := relayer.GetDefaultRelayerKeyInfo(app)
 	if err != nil {
 		return err
 	}
@@ -580,7 +580,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err := relayer.FundRelayer(
 		network.BlockchainEndpoint(blockchainID.String()),
 		icmKey.PrivKeyHex(),
-		relayerKey.C(),
+		relayerAddress,
 	); err != nil {
 		return nil
 	}
@@ -591,7 +591,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	return relayer.FundRelayer(
 		network.BlockchainEndpoint("C"),
 		ewoqKey.PrivKeyHex(),
-		relayerKey.C(),
+		relayerAddress,
 	)
 }
 
@@ -968,7 +968,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 }
 
 func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
-	relayerAddress, relayerPrivateKey, err := relayer.GetRelayerKeyInfo(app)
+	_, relayerAddress, relayerPrivateKey, err := relayer.GetDefaultRelayerKeyInfo(app)
 	if err != nil {
 		return err
 	}
