@@ -19,6 +19,19 @@ const (
 
 const ewoqEVMAddress = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 
+func checkConvertOnlyOutput(output string, generateNodeID bool) {
+	gomega.Expect(output).Should(gomega.ContainSubstring("Converted blockchain successfully generated"))
+	gomega.Expect(output).Should(gomega.ContainSubstring("Have the Avalanche node(s) track the blockchain"))
+	gomega.Expect(output).Should(gomega.ContainSubstring("Call `avalanche contract initValidatorManager testSubnet`"))
+	gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
+	gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+	if generateNodeID {
+		gomega.Expect(output).Should(gomega.ContainSubstring("Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
+	} else {
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
+	}
+}
+
 var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeEach(func() {
 		// Create test subnet config
@@ -62,10 +75,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"convert-only": true,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"))
-		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -74,10 +84,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"generate-node-id": true,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"))
-		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		checkConvertOnlyOutput(output, true)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -86,10 +93,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"generate-node-id": true,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"))
-		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 

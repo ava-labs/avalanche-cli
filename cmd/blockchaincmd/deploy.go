@@ -790,7 +790,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			chainGenesis,
 		)
 		if err != nil {
-			fmt.Printf("we have err here 3 %s \n", err)
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
@@ -852,7 +851,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if savePartialTx {
 			return nil
 		}
-		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
+		if convertOnly || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("Next, we need to:")
 			if generateNodeID {
