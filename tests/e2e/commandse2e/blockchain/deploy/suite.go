@@ -5,12 +5,11 @@ package deploy
 
 import (
 	"fmt"
-	"runtime"
-
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"runtime"
 )
 
 const (
@@ -159,7 +158,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 
 	ginkgo.It("HAPPY PATH: local deploy with change owner address", func() {
 		testFlags := utils.TestFlags{
-			"change-owner-address": ewoqEVMAddress,
+			"change-owner-address": "P-custom1y5ku603lh583xs9v50p8kk0awcqzgeq0mezkqr",
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
@@ -221,13 +220,13 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap file does not exist"))
 	})
 
-	ginkgo.It("ERROR PATH: invalid change owner address", func() {
+	ginkgo.It("ERROR PATH: invalid change owner address format", func() {
 		testFlags := utils.TestFlags{
-			"change-owner-address": "invalid-address",
+			"change-owner-address": ewoqEVMAddress,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("invalid change owner address"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("failure parsing change owner address: no separator found in address"))
 	})
 
 	ginkgo.It("ERROR PATH: generate node id is not applicable if convert only is false", func() {
