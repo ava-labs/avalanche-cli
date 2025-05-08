@@ -4,6 +4,7 @@ package cobrautils
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"strings"
 
@@ -30,11 +31,11 @@ func NewUsageError(cmd *cobra.Command, err error) UsageError {
 
 func ExactArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		err := cobra.ExactArgs(n)(cmd, args)
-		if err != nil {
-			err = NewUsageError(cmd, err)
+		if len(args) != n {
+			_ = cmd.Help() // show full help with flag grouping
+			return utils.ErrWrongArgCount(n, len(args))
 		}
-		return err
+		return nil
 	}
 }
 
