@@ -5,8 +5,6 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
-
 	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -31,12 +29,11 @@ func CheckVersionIsOverMin(app *application.Avalanche, dependencyName string, ne
 		// version has to be at least higher than minimum version specified for the dependency
 		minVersion := parsedDependency.AvalancheGo[network.Name()].MinimumVersion
 		versionComparison := semver.Compare(version, minVersion)
-		fmt.Printf("versionComparison %s, %s, result %s \n", version, minVersion, strconv.Itoa(versionComparison))
 		if versionComparison == -1 {
-			return fmt.Errorf("minimum version of %s that is supported by CLI is %s", dependencyName, minVersion)
+			return fmt.Errorf("minimum version of %s that is supported by CLI is %s, current version provided is %s", dependencyName, minVersion, version)
 		}
 		return nil
 	default:
-		return fmt.Errorf("can't check minimum version for dependency: %s", dependencyName)
+		return fmt.Errorf("minimum version check is unsupported %s dependency", dependencyName)
 	}
 }
