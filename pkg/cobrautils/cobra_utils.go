@@ -32,6 +32,7 @@ func ExactArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := cobra.ExactArgs(n)(cmd, args)
 		if err != nil {
+			_ = cmd.Help()
 			err = NewUsageError(cmd, err)
 		}
 		return err
@@ -42,6 +43,7 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := cobra.MaximumNArgs(n)(cmd, args)
 		if err != nil {
+			_ = cmd.Help()
 			err = NewUsageError(cmd, err)
 		}
 		return err
@@ -52,6 +54,7 @@ func MinimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := cobra.MinimumNArgs(n)(cmd, args)
 		if err != nil {
+			_ = cmd.Help()
 			err = NewUsageError(cmd, err)
 		}
 		return err
@@ -62,6 +65,7 @@ func RangeArgs(min int, max int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		err := cobra.RangeArgs(min, max)(cmd, args)
 		if err != nil {
+			_ = cmd.Help()
 			err = NewUsageError(cmd, err)
 		}
 		return err

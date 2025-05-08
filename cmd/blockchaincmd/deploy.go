@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"os"
 	"path/filepath"
 
@@ -126,17 +127,10 @@ redeploy the chain with fresh state. You can deploy the same Blockchain to multi
 so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			requiredArgCount := 1
-			if len(args) != requiredArgCount {
-				_ = cmd.Help() // show full help with flag grouping
-				return utils.ErrWrongArgCount(requiredArgCount, len(args))
-			}
-			return nil
-		},
+		PreRunE:           cobrautils.ExactArgs(1),
 	}
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
@@ -231,7 +225,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup, sigAggGroup}))
 	return cmd
 }
 
