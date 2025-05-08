@@ -5,6 +5,7 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
+
 	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
