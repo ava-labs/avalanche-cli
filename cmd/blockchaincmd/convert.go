@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
@@ -126,8 +125,7 @@ func StartLocalMachine(
 	if network.Kind == models.Local {
 		useLocalMachine = true
 	}
-	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
-	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
+	clusterName := localnet.LocalClusterName(network, blockchainName)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -209,12 +207,6 @@ func StartLocalMachine(
 			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
-		if app.AvagoNodeConfigExists(blockchainName) {
-			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-			if err != nil {
-				return false, err
-			}
-		}
 		if partialSync {
 			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 		}
