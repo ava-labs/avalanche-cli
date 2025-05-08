@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package blockchaincmd
 
@@ -461,6 +461,9 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
+		if availableBalance == 0 {
+			return fmt.Errorf("chosen key has zero balance")
+		}
 		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
 		if err != nil {
 			return err
@@ -511,7 +514,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterNameFlagValue),

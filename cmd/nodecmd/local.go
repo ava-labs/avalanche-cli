@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -92,8 +94,9 @@ func newLocalCmd() *cobra.Command {
 func newLocalStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start [clusterName]",
-		Short: "Create new Avalanche nodes on local machine",
-		Long: `The node local start command creates Avalanche nodes on the local machine.
+		Short: "Create or restart Avalanche nodes on local machine",
+		Long: `The node local start command creates Avalanche nodes on the local machine,
+or restarts previously created ones.
 Once this command is completed, you will have to wait for the Avalanche node
 to finish bootstrapping on the primary network before running further
 commands on it, e.g. validating a Subnet. 
@@ -126,9 +129,9 @@ You can check the bootstrapping status by running avalanche node status local.
 
 func newLocalStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop",
-		Short: "Stop local node",
-		Long:  `Stop local node.`,
+		Use:   "stop [clusterName]",
+		Short: "Stop local nodes",
+		Long:  `Stop local nodes.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStopNode,
 	}
@@ -248,7 +251,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
 	}
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 		UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
 		UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
@@ -280,6 +283,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 func localStopNode(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		clusterName := args[0]
+
 		// want to be able to stop clusters even if they are only partially operative
 		if running, err := localnet.LocalClusterIsPartiallyRunning(app, clusterName); err != nil {
 			return err
@@ -535,7 +539,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		localValidateFlags.SigAggFlags.AggregatorLogLevel,
 		localValidateFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

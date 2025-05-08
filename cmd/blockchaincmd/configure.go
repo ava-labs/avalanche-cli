@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package blockchaincmd
 
@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -117,6 +118,8 @@ func configure(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	upgradecmd.PrintHowToApplyConfChangesMessage(blockchainName)
 
 	return nil
 }

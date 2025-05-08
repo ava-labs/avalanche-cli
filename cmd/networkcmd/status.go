@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package networkcmd
 
@@ -38,7 +38,7 @@ func networkStatus(*cobra.Command, []string) error {
 		}
 		nodesCount += len(network.Nodes)
 	}
-	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+	blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 	if err != nil {
 		return err
 	}

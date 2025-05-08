@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -27,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -125,8 +125,7 @@ func StartLocalMachine(
 	if network.Kind == models.Local {
 		useLocalMachine = true
 	}
-	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
-	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
+	clusterName := localnet.LocalClusterName(network, blockchainName)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -189,18 +188,15 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		avagoVersionSettings := node.AvalancheGoVersionSettings{}
+		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
 		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
-			// nothing given: get avago version from RPC compat
-			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-				app,
-				sidecar.RPCVersion,
-				constants.AvalancheGoCompatibilityURL,
-			)
+			// nothing given: get avago version from RPC compat using latest.json defined in
+			// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
+			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
-				if err != vm.ErrNoAvagoVersion {
+				if err != dependencies.ErrNoAvagoVersion {
 					return false, err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag
@@ -211,12 +207,6 @@ func StartLocalMachine(
 			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
-		if app.AvagoNodeConfigExists(blockchainName) {
-			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-			if err != nil {
-				return false, err
-			}
-		}
 		if partialSync {
 			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 		}
@@ -379,7 +369,7 @@ func InitializeValidatorManager(
 		RPC:                 rpcURL,
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		signatureAggregatorFlags.AggregatorLogLevel,
 		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

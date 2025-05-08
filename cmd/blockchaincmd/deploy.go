@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -19,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -30,6 +32,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -486,14 +489,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		avagoVersion := userProvidedAvagoVersion
 
 		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
-			// nothing given: get avago version from RPC compat
-			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-				app,
-				sidecar.RPCVersion,
-				constants.AvalancheGoCompatibilityURL,
-			)
+			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
-				if err != vm.ErrNoAvagoVersion {
+				if err != dependencies.ErrNoAvagoVersion {
 					return err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag
@@ -939,14 +937,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
 				}
 				if network.Kind == models.Local {
-					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 					if err != nil {
 						return err
 					}
-					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(sdkutils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
-					deployRelayerFlags.Key = constants.ICMRelayerKeyName
+					relayerKeyName, _, _, err := relayer.GetDefaultRelayerKeyInfo(app)
+					if err != nil {
+						return err
+					}
+					deployRelayerFlags.Key = relayerKeyName
 					deployRelayerFlags.Amount = constants.DefaultRelayerAmount
 					deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 				}
@@ -1237,7 +1239,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeIDs := utils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
+	nodeIDs := sdkutils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
 		return peer.Info.ID
 	})
 	nodeIDsSet := set.Of(nodeIDs...)

@@ -1,10 +1,16 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package utils
 
+import (
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+)
+
 const (
-	baseDir      = ".avalanche-cli"
+	baseDir      = constants.E2EBaseDirName
 	hardhatDir   = "./tests/e2e/hardhat"
 	confFilePath = hardhatDir + "/dynamic_conf.json"
 	greeterFile  = hardhatDir + "/greeter.json"
@@ -38,6 +44,7 @@ const (
 	SubnetIDParseType     = "SubnetID"
 	BlockchainIDParseType = "BlockchainID"
 
-	SubnetName        = "e2eSubnetTest"
-	TestLocalNodeName = "e2eSubnetTest-local-node-local-network"
+	SubnetName = "e2eSubnetTest"
 )
+
+var TestLocalNodeName = localnet.LocalClusterName(models.NewLocalNetwork(), SubnetName)

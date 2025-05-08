@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -327,7 +327,7 @@ func GetFilteredLocalClusters(
 				if err != nil {
 					return nil, err
 				}
-				blockchainNames := utils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
+				blockchainNames := sdkutils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
 				if !sdkutils.Belongs(blockchainNames, blockchainName) {
 					continue
 				}
@@ -440,7 +440,7 @@ func LocalClusterHealth(
 	if err != nil {
 		return false, false, err
 	}
-	blockchains, err := GetLocalClusterBlockchainInfo(app, clusterName)
+	blockchains, err := GetLocalClusterBlockchainsInfo(app, clusterName)
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}
@@ -460,7 +460,7 @@ func LocalClusterHealth(
 }
 
 // Returns blockchain info for all non standard blockchains deployed into the network
-func GetLocalClusterBlockchainInfo(
+func GetLocalClusterBlockchainsInfo(
 	app *application.Avalanche,
 	clusterName string,
 ) ([]BlockchainInfo, error) {
@@ -468,7 +468,19 @@ func GetLocalClusterBlockchainInfo(
 	if err != nil {
 		return nil, err
 	}
-	return GetBlockchainInfo(endpoint)
+	return GetBlockchainsInfo(endpoint)
+}
+
+// Returns blockchain info for all blockchains deployed into the network, that are managed by CLI
+func GetLocalClusterManagedBlockchainsInfo(
+	app *application.Avalanche,
+	clusterName string,
+) ([]BlockchainInfo, error) {
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	return GetManagedBlockchainsInfo(app, networkModel)
 }
 
 // Returns the endpoint associated to the cluster
@@ -497,6 +509,18 @@ func IsLocalClusterTrackingSubnet(
 	return IsTmpNetNodeTrackingSubnet(network.Nodes, subnetID)
 }
 
+// Returns the subnets tracked by [clusterName]
+func GetLocalClusterTrackedSubnets(
+	app *application.Avalanche,
+	clusterName string,
+) ([]ids.ID, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	return GetTmpNetTrackedSubnets(network.Nodes)
+}
+
 // Get local cluster URIs
 func GetLocalClusterURIs(
 	app *application.Avalanche,
@@ -511,7 +535,27 @@ func GetLocalClusterTrackedBlockchains(
 	app *application.Avalanche,
 	clusterName string,
 ) ([]BlockchainInfo, error) {
-	blockchains, err := GetLocalClusterBlockchainInfo(app, clusterName)
+	blockchains, err := GetLocalClusterBlockchainsInfo(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	trackedBlockchains := []BlockchainInfo{}
+	for _, blockchain := range blockchains {
+		if isTracking, err := IsLocalClusterTrackingSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+			return nil, err
+		} else if isTracking {
+			trackedBlockchains = append(trackedBlockchains, blockchain)
+		}
+	}
+	return trackedBlockchains, nil
+}
+
+// Return a list of managed blockchains that are tracked at least by one node in the cluster
+func GetLocalClusterManagedTrackedBlockchains(
+	app *application.Avalanche,
+	clusterName string,
+) ([]BlockchainInfo, error) {
+	blockchains, err := GetLocalClusterManagedBlockchainsInfo(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -549,6 +593,7 @@ func LocalClusterTrackSubnet(
 // Loads an already existing cluster [clusterName]
 // Waits for all blockchains validated by the cluster to be bootstrapped
 // Sets default aliases for all blockchains validated by the cluster
+// If [blockchainName] is given, updates the blockchain configuration for it
 func LoadLocalCluster(
 	app *application.Avalanche,
 	clusterName string,
@@ -558,6 +603,20 @@ func LoadLocalCluster(
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	blockchains, err := GetLocalClusterManagedTrackedBlockchains(app, clusterName)
+	if err != nil {
+		return err
+	}
+	blockchainNames := sdkutils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
+	for _, blockchainName := range blockchainNames {
+		if err := UpdateBlockchainConfig(
+			app,
+			networkDir,
+			blockchainName,
+		); err != nil {
+			return err
+		}
+	}
 	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
@@ -567,7 +626,7 @@ func LoadLocalCluster(
 	if _, err := TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinaryPath); err != nil {
 		return err
 	}
-	blockchains, err := GetLocalClusterTrackedBlockchains(app, clusterName)
+	blockchains, err = GetLocalClusterTrackedBlockchains(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -597,4 +656,11 @@ func RefreshLocalClusterAliases(
 	defer cancel()
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return TmpNetSetDefaultAliases(ctx, networkDir)
+}
+
+// Returns stardard cluster name as generated from [network] and [blockchainName]
+func LocalClusterName(network models.Network, blockchainName string) string {
+	blockchainNameComponent := strings.ReplaceAll(blockchainName, " ", "-")
+	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
+	return fmt.Sprintf("%s-local-node-%s", blockchainNameComponent, networkNameComponent)
 }

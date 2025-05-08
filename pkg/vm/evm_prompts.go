@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package vm
 
@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -877,33 +879,27 @@ func promptPermissioning(
 	return params, nil
 }
 
-func PromptVMVersion(
+func PromptSubnetEVMVersion(
 	app *application.Avalanche,
-	repoName string,
-	vmVersion string,
+	subnetEVMVersion string,
 ) (string, error) {
-	switch vmVersion {
+	switch subnetEVMVersion {
 	case latest:
-		return app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-			"",
-		)
+		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
-			repoName,
+			constants.SubnetEVMRepoName,
 			"",
 		)
 	case "":
-		return promptUserForVMVersion(app, repoName)
+		return promptUserForSubnetEVMVersion(app)
 	}
-	return vmVersion, nil
+	return subnetEVMVersion, nil
 }
 
-func promptUserForVMVersion(
+func promptUserForSubnetEVMVersion(
 	app *application.Avalanche,
-	repoName string,
 ) (string, error) {
 	var (
 		latestReleaseVersion    string
@@ -911,17 +907,13 @@ func promptUserForVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-			"",
-		)
+		latestReleaseVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 		if err != nil {
 			return "", err
 		}
 		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
-			repoName,
+			constants.SubnetEVMRepoName,
 			"",
 		)
 		if err != nil {

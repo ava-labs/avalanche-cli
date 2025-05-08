@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 )
@@ -30,7 +31,7 @@ func PrintEndpoints(
 		if err != nil {
 			return err
 		}
-		blockchains, err := GetLocalNetworkBlockchainInfo(app)
+		blockchains, err := GetLocalNetworkBlockchainsInfo(app)
 		if err != nil {
 			return err
 		}
@@ -153,7 +154,7 @@ func PrintL1Endpoints(
 		if err != nil {
 			return err
 		}
-		trackedBlockchains := utils.Map(trackedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
+		trackedBlockchains := sdkutils.Map(trackedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
 		networkDir := GetLocalClusterDir(app, clusterName)
 		network, err := GetTmpNetNetworkWithURIFix(networkDir)
 		if err != nil {

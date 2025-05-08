@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package keycmd
 
@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/chain/p/builder"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
@@ -423,6 +424,8 @@ func intraEvmSend(
 		if err != nil {
 			return err
 		}
+	} else if amountFlt < 0 {
+		return fmt.Errorf("amount must be positive")
 	}
 	amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 	amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
@@ -441,7 +444,19 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	return client.FundAddress(privateKey, destinationAddrStr, amount)
+
+	receipt, err := client.FundAddress(privateKey, destinationAddrStr, amount)
+	if err != nil {
+		return err
+	}
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+		chainName,
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+	return err
 }
 
 func interEvmSend(
@@ -563,7 +578,7 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
-	return ictt.Send(
+	receipt, receipt2, err := ictt.Send(
 		senderURL,
 		goethereumcommon.HexToAddress(originTransferrerAddress),
 		privateKey,
@@ -572,6 +587,29 @@ func interEvmSend(
 		destinationAddr,
 		amountInt,
 	)
+	if err != nil {
+		return err
+	}
+
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+		chainName,
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+
+	if receipt2 != nil {
+		chainName, err := contract.GetBlockchainDesc(receiverChain)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+			chainName,
+			calculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+	}
+
+	return nil
 }
 
 func pToPSend(
@@ -601,7 +639,7 @@ func pToPSend(
 		Addrs:     []ids.ShortID{destinationAddr},
 	}
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -636,13 +674,13 @@ func pToPSend(
 		}
 		return err
 	}
-	pContext := wallet.P().Builder().Context()
+	pContext := getBuilderContext(wallet)
 	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Paid fee: %.9f", float64(txFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -696,7 +734,7 @@ func exportFromP(
 	usingLedger bool,
 ) error {
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -732,6 +770,13 @@ func exportFromP(
 		}
 		return err
 	}
+	pContext := getBuilderContext(wallet)
+	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -771,6 +816,7 @@ func importIntoX(
 		}
 		return err
 	}
+	ux.Logger.PrintToUser("X-Chain Paid fee: %.9f AVAX", float64(wallet.X().Builder().Context().BaseTxFee)/float64(units.Avax))
 	return nil
 }
 
@@ -832,6 +878,10 @@ func importIntoC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 	}
+	amt, err := wallet.C().Builder().GetImportableBalance(blockchainID)
+	if err != nil {
+		return fmt.Errorf("error getting importable balance: %w", err)
+	}
 	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
@@ -866,6 +916,11 @@ func importIntoC(
 		}
 		return err
 	}
+
+	if len(unsignedTx.Outs) == 0 {
+		return fmt.Errorf("no outputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(amt-unsignedTx.Outs[0].Amount)/float64(units.Avax))
 	return nil
 }
 
@@ -975,6 +1030,11 @@ func exportFromC(
 		}
 		return err
 	}
+	if len(unsignedTx.Ins) == 0 {
+		return fmt.Errorf("no inputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(unsignedTx.Ins[0].Amount-amount)/float64(units.Avax))
+
 	return nil
 }
 
@@ -1014,5 +1074,30 @@ func importIntoP(
 		}
 		return err
 	}
+	pContext := getBuilderContext(wallet)
+	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
+
 	return nil
+}
+
+func getBuilderContext(wallet *primary.Wallet) *builder.Context {
+	if wallet == nil {
+		return nil
+	}
+	return wallet.P().Builder().Context()
+}
+
+func calculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
+	gasUsedBig := new(big.Int).SetUint64(gasUsed)
+	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
+
+	totalCostInNanoAvax := utils.ConvertToNanoAvax(totalCost)
+
+	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
+	return result / float64(units.Avax)
 }

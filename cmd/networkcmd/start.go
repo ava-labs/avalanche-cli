@@ -1,14 +1,15 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package networkcmd
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -20,7 +21,6 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 const dirTimestampFormat = "20060102_150405"
@@ -131,21 +131,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 
-		// local network
-		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
-		defer cancel()
-		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
-			_ = localnet.TmpNetStop(networkDir)
-			return err
-		}
-		// save network directory
-		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
+		if err := localnet.LoadLocalNetwork(app, networkDir, avalancheGoBinPath); err != nil {
 			return err
 		}
 		if err := startLocalClusters(avalancheGoBinPath); err != nil {
-			return err
-		}
-		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
 			return err
 		}
 		if b, relayerConfigPath, err := localnet.GetLocalNetworkRelayerConfigPath(app, networkDir); err != nil {
@@ -189,49 +178,16 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			}
 		}
 
-		// get default network conf for NumNodes
-		networkID, unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
-		if err != nil {
-			return err
-		}
-		// add node flags on CLI config info default network flags
-		flagsFromCLIConfigJSON, err := app.Conf.LoadNodeConfig()
-		if err != nil {
-			return err
-		}
-		var flagsFromCLIConfig map[string]interface{}
-		if err := json.Unmarshal([]byte(flagsFromCLIConfigJSON), &flagsFromCLIConfig); err != nil {
-			return fmt.Errorf("invalid common node config JSON: %w", err)
-		}
-		maps.Copy(defaultFlags, flagsFromCLIConfig)
-		// get plugins dir
-		pluginDir := app.GetPluginsDir()
 		// create local network
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-		// create network
-		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
-		defer cancel()
-		if _, err := localnet.TmpNetCreate(
-			ctx,
-			app.Log,
+		if err := localnet.CreateLocalNetwork(
+			app,
 			networkDir,
+			flags.NumNodes,
+			app.GetPluginsDir(),
 			avalancheGoBinPath,
-			pluginDir,
-			networkID,
-			nil,
-			nil,
-			unparsedGenesis,
-			upgradeBytes,
-			defaultFlags,
-			nodes,
-			true,
 		); err != nil {
-			_ = localnet.TmpNetStop(networkDir)
-			return err
-		}
-		// save network directory
-		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
 	}
@@ -256,13 +212,13 @@ func Start(flags StartFlags, printEndpoints bool) error {
 }
 
 func startLocalClusters(avalancheGoBinPath string) error {
-	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+	blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 	if err != nil {
 		return err
 	}
 	for _, blockchain := range blockchains {
 		blockchainName := blockchain.Name
-		clusterName := blockchainName + "-local-node-local-network"
+		clusterName := localnet.LocalClusterName(models.NewLocalNetwork(), blockchainName)
 		if !localnet.LocalClusterExists(app, clusterName) {
 			continue
 		}
@@ -274,7 +230,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			nil,
 			localnet.ConnectionSettings{},
 			nil,
-			node.AvalancheGoVersionSettings{},
+			dependencies.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
 		); err != nil {
 			return err

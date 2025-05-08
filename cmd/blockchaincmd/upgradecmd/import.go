@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package upgradecmd
 
@@ -52,10 +52,10 @@ func upgradeImportCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fileBytes, err := os.ReadFile(upgradeBytesFilePath)
+	upgradeBytes, err := os.ReadFile(upgradeBytesFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
 
-	return app.WriteUpgradeFile(blockchainName, fileBytes)
+	return writeUpgrade(blockchainName, upgradeBytes)
 }
