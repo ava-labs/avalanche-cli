@@ -183,7 +183,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(len(matches)).Should(gomega.BeEquivalentTo(2))
 
 		// no local machine validators should have been created
-		localClusterUris, err := utils.GetLocalClusterUris()
+		_, err = utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.MatchError("expected 1 local network cluster running, found 0"))
 
 		subnetID := matches[1]
@@ -202,7 +202,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(sc.Networks["Local Network"].SubnetID.String()).Should(gomega.BeEquivalentTo(subnetID))
 
 		// no local machine validators should have been created
-		localClusterUris, err = utils.GetLocalClusterUris()
+		localClusterUris, err := utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
 	})
