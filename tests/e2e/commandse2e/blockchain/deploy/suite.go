@@ -5,6 +5,7 @@ package deploy
 
 import (
 	"fmt"
+	"regexp"
 	"runtime"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -164,6 +165,46 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("HAPPY PATH: local deploy subnet-only subnet-id flags", func() {
+		testFlags := utils.TestFlags{
+			"subnet-only": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("CreateChainTx fee"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("CreateSubnetTx fee"))
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// get the subnet id through reg-ex
+		re := regexp.MustCompile(`Blockchain has been created with ID: (\S+)`)
+		matches := re.FindStringSubmatch(output)
+		gomega.Expect(len(matches)).Should(gomega.BeEquivalentTo(2))
+
+		// no local machine validators should have been created
+		localClusterUris, err := utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.MatchError("expected 1 local network cluster running, found 0"))
+
+		subnetID := matches[1]
+		testFlags = utils.TestFlags{
+			"subnet-id": subnetID,
+		}
+
+		output, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("CreateChainTx fee"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("CreateSubnetTx fee"))
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(sc.Networks["Local Network"].SubnetID.String()).Should(gomega.BeEquivalentTo(subnetID))
+
+		// no local machine validators should have been created
+		localClusterUris, err = utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
 	})
 
 	ginkgo.It("HAPPY PATH: local deploy set num bootstrap validators", func() {
