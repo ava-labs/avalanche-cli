@@ -956,7 +956,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
 				}
 				if network.Kind == models.Local {
-					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 					if err != nil {
 						return err
 					}
