@@ -113,12 +113,24 @@ func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [blockchainName]",
 		Short: "Deploys a blockchain configuration",
-		Long: `The blockchain deploy command deploys your Blockchain configuration locally, to Fuji Testnet, or to Mainnet.
+		Long: `The blockchain deploy command deploys your Blockchain configuration to Local Network, to Fuji Testnet, DevNet or to Mainnet.
 
-At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
+At the end of the call, the command prints the RPC URL you can use to interact with the L1 / Subnet.
+
+When deploying an L1, Avalanche-CLI lets you use your local machine as a bootstrap validator, so you don't need to run separate Avalanche nodes. 
+This is controlled by the --use-local-machine flag (enabled by default on Local Network).
+
+If --use-local-machine is set to true: 
+- Avalanche-CLI will call CreateSubnetTx, CreateChainTx, ConvertSubnetToL1Tx, followed by syncing the local machine bootstrap validator to the L1 and initialize 
+Validator Manager Contract on the L1
+
+If using your own Avalanche Nodes as bootstrap validators: 
+- Avalanche-CLI will call CreateSubnetTx, CreateChainTx, ConvertSubnetToL1Tx 
+- You will have to sync your bootstrap validators to the L1 
+- Next, Initialize Validator Manager contract on the L1 using avalanche contract initValidatorManager <L1_Name>
 
 Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
-attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet) aren't
+attempts to deploy the same Blockchain to the same network (Local Network, Fuji, Mainnet) aren't
 allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
@@ -187,7 +199,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
-	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and validator manager setup (command stops after ConvertSubnetToL1Tx)")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Float64Var(
