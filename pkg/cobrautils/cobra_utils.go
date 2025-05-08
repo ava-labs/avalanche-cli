@@ -4,9 +4,10 @@ package cobrautils
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
