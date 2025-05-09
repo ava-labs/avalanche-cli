@@ -120,6 +120,17 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
 	})
 
+	ginkgo.It("invalid per node blockchain conf path", func() {
+		output, err := commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"per-node-chain-config": "invalidPath",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
+	})
+
 	ginkgo.It("check default blockchain config", func() {
 		output, err := utils.TestCommand(
 			utils.BlockchainCmd,
@@ -230,7 +241,6 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(output)
 		blockchainID, err := utils.ParseBlockchainIDFromOutput(output)
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodesInfo, err := utils.GetLocalClusterNodesInfo()
