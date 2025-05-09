@@ -30,7 +30,7 @@ const (
 	node2ID            = "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"
 )
 
-func checkRPCTxFeeCap(
+func checkBlockchainConfig(
 	nodesInfo map[string]utils.NodeInfo,
 	blockchainID string,
 	expectedRPCTxFeeCap int,
@@ -54,15 +54,11 @@ func checkRPCTxFeeCap(
 	}
 }
 
-func cleanupLogs(nodesInfo map[string]utils.NodeInfo, blockchainID string) {
-	for _, nodeInfo := range nodesInfo {
-		logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
-		err := os.Remove(logFile)
-		gomega.Expect(err).Should(gomega.BeNil())
-	}
+func getBlockchainConfig(rpcTxFeeCap int) string {
+	return fmt.Sprintf("{\"rpc-tx-fee-cap\": %d}", rpcTxFeeCap)
 }
 
-func generatePerNodeChainConfig(nodesRPCTxFeeCap map[string]int) string {
+func getPerNodeChainConfig(nodesRPCTxFeeCap map[string]int) string {
 	perNodeChainConfig := "{\n"
 	commaStr := ","
 	i := 0
@@ -75,6 +71,45 @@ func generatePerNodeChainConfig(nodesRPCTxFeeCap map[string]int) string {
 	}
 	perNodeChainConfig += "}\n"
 	return perNodeChainConfig
+}
+
+func subnetConfigLog(nodeID string) string {
+	if nodeID == "" {
+		return "\"validatorOnly\":false,\"allowedNodes\":[]"
+	}
+	return fmt.Sprintf("\"validatorOnly\":true,\"allowedNodes\":[\"%s\"]", nodeID)
+}
+
+func checkSubnetConfig(
+	nodesInfo map[string]utils.NodeInfo,
+	expectedNodeID string,
+) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		fileBytes, err := os.ReadFile(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(fileBytes).Should(gomega.ContainSubstring(subnetConfigLog(expectedNodeID)))
+		for _, unexpectedNodeID := range []string{node1ID, node2ID} {
+			if unexpectedNodeID != expectedNodeID {
+				gomega.Expect(fileBytes).ShouldNot(gomega.ContainSubstring(subnetConfigLog(unexpectedNodeID)))
+			}
+		}
+	}
+}
+
+func getSubnetConfig(nodeID string) string {
+	return fmt.Sprintf("{\"validatorOnly\": true, \"allowedNodes\": [\"%s\"]}", nodeID)
+}
+
+func cleanupLogs(nodesInfo map[string]utils.NodeInfo, blockchainID string) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		err := os.Remove(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		logFile = path.Join(nodeInfo.LogDir, blockchainID+".log")
+		err = os.Remove(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+	}
 }
 
 var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
@@ -131,7 +166,29 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
 	})
 
-	ginkgo.It("check default blockchain config", func() {
+	ginkgo.It("invalid subnet conf path", func() {
+		output, err := commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"subnet-config": "invalidPath",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
+	})
+
+	ginkgo.It("invalid node conf path", func() {
+		output, err := commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"node-config": "invalidPath",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
+	})
+
+	ginkgo.It("check default configs", func() {
 		output, err := utils.TestCommand(
 			utils.BlockchainCmd,
 			"deploy",
@@ -149,12 +206,13 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodesInfo, err := utils.GetLocalClusterNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		checkRPCTxFeeCap(nodesInfo, blockchainID, defaultRPCTxFeeCap, nil)
+		checkBlockchainConfig(nodesInfo, blockchainID, defaultRPCTxFeeCap, nil)
+		checkSubnetConfig(nodesInfo, "")
 	})
 
 	ginkgo.It("set blockchain config", func() {
 		// set blockchain config before deploy
-		chainConfig := fmt.Sprintf("{\"rpc-tx-fee-cap\": %d}", newRPCTxFeeCap1)
+		chainConfig := getBlockchainConfig(newRPCTxFeeCap1)
 		chainConfigPath, err := utils.CreateTmpFile(constants.ChainConfigFileName, []byte(chainConfig))
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.BlockchainConfigure(
@@ -183,14 +241,14 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		nodesInfo, err := utils.GetLocalClusterNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		// check
-		checkRPCTxFeeCap(nodesInfo, blockchainID, newRPCTxFeeCap1, nil)
+		checkBlockchainConfig(nodesInfo, blockchainID, newRPCTxFeeCap1, nil)
 		// stop
 		err = commands.StopNetwork()
 		gomega.Expect(err).Should(gomega.BeNil())
 		// cleanup logs
 		cleanupLogs(nodesInfo, blockchainID)
 		// change blockchain config
-		chainConfig = fmt.Sprintf("{\"rpc-tx-fee-cap\": %d}", newRPCTxFeeCap2)
+		chainConfig = getBlockchainConfig(newRPCTxFeeCap2)
 		chainConfigPath, err = utils.CreateTmpFile(constants.ChainConfigFileName, []byte(chainConfig))
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.BlockchainConfigure(
@@ -204,7 +262,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		out := commands.StartNetwork()
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 		// check
-		checkRPCTxFeeCap(nodesInfo, blockchainID, newRPCTxFeeCap2, nil)
+		checkBlockchainConfig(nodesInfo, blockchainID, newRPCTxFeeCap2, nil)
 	})
 
 	ginkgo.It("set per node blockchain config", func() {
@@ -213,7 +271,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			node1ID: newRPCTxFeeCap1,
 			node2ID: newRPCTxFeeCap2,
 		}
-		perNodeChainConfig := generatePerNodeChainConfig(nodesRPCTxFeeCap)
+		perNodeChainConfig := getPerNodeChainConfig(nodesRPCTxFeeCap)
 		perNodeChainConfigPath, err := utils.CreateTmpFile(constants.PerNodeChainConfigFileName, []byte(perNodeChainConfig))
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.BlockchainConfigure(
@@ -246,7 +304,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		nodesInfo, err := utils.GetLocalClusterNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		// check
-		checkRPCTxFeeCap(nodesInfo, blockchainID, defaultRPCTxFeeCap, nodesRPCTxFeeCap)
+		checkBlockchainConfig(nodesInfo, blockchainID, defaultRPCTxFeeCap, nodesRPCTxFeeCap)
 		// stop
 		err = commands.StopNetwork()
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -257,7 +315,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			node1ID: newRPCTxFeeCap2,
 			node2ID: newRPCTxFeeCap1,
 		}
-		perNodeChainConfig = generatePerNodeChainConfig(nodesRPCTxFeeCap)
+		perNodeChainConfig = getPerNodeChainConfig(nodesRPCTxFeeCap)
 		perNodeChainConfigPath, err = utils.CreateTmpFile(constants.PerNodeChainConfigFileName, []byte(perNodeChainConfig))
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.BlockchainConfigure(
@@ -271,6 +329,61 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		out := commands.StartNetwork()
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 		// check
-		checkRPCTxFeeCap(nodesInfo, blockchainID, defaultRPCTxFeeCap, nodesRPCTxFeeCap)
+		checkBlockchainConfig(nodesInfo, blockchainID, defaultRPCTxFeeCap, nodesRPCTxFeeCap)
+	})
+
+	ginkgo.It("set subnet config", func() {
+		// set subnet config before deploy
+		subnetConfig := getSubnetConfig(node1ID)
+		subnetConfigPath, err := utils.CreateTmpFile(constants.SubnetConfigFileName, []byte(subnetConfig))
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"subnet-config": subnetConfigPath,
+			},
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// deploy l1
+		output, err := utils.TestCommand(
+			utils.BlockchainCmd,
+			"deploy",
+			[]string{utils.BlockchainName},
+			utils.GlobalFlags{},
+			utils.TestFlags{
+				"local":             true,
+				"skip-icm-deploy":   true,
+				"skip-update-check": true,
+			},
+		)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		blockchainID, err := utils.ParseBlockchainIDFromOutput(output)
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesInfo, err := utils.GetLocalClusterNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		// check
+		checkSubnetConfig(nodesInfo, node1ID)
+		// stop
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
+		// cleanup logs
+		cleanupLogs(nodesInfo, blockchainID)
+		// change subnet config
+		subnetConfig = getSubnetConfig(node2ID)
+		subnetConfigPath, err = utils.CreateTmpFile(constants.SubnetConfigFileName, []byte(subnetConfig))
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"subnet-config": subnetConfigPath,
+			},
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// start
+		out := commands.StartNetwork()
+		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
+		// check
+		checkSubnetConfig(nodesInfo, node2ID)
 	})
 })
