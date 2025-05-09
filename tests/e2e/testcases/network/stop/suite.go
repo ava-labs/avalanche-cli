@@ -14,9 +14,9 @@ import (
 	"github.com/onsi/gomega"
 )
 
-var _ = ginkgo.Describe("[Local Network]", ginkgo.Ordered, func() {
+var _ = ginkgo.Describe("[Local Network] Stop", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 	})
 
 	ginkgo.It("can stop a started network", func() {
