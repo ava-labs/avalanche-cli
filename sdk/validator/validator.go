@@ -92,7 +92,7 @@ func GetValidationID(
 	return contract.GetSmartContractCallResult[[32]byte]("registeredValidators", out)
 }
 
-func IsSovereignValidator(
+func GetValidatorKind(
 	network network.Network,
 	subnetID ids.ID,
 	nodeID ids.NodeID,

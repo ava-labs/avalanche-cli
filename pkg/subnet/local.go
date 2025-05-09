@@ -188,15 +188,6 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 	return tx.ID(), err
 }
 
-func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
-	api := constants.LocalAPIEndpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	return pClient.GetCurrentValidators(ctx, subnetID, nil)
-}
-
 func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)

@@ -32,7 +32,7 @@ func newImportFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "file [blockchainPath]",
 		Short: "Import an existing blockchain config",
-		RunE:  importBlockchain,
+		RunE:  importFile,
 		Args:  cobrautils.MaximumNArgs(1),
 		Long: `The blockchain import command will import a blockchain configuration from a file or a git repository.
 
@@ -70,7 +70,7 @@ flag.`,
 	return cmd
 }
 
-func importBlockchain(_ *cobra.Command, args []string) error {
+func importFile(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		importPath := args[0]
 		return importFromFile(importPath)
