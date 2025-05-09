@@ -157,7 +157,7 @@ func SizeInKB(path string) (int64, error) {
 	return size, err
 }
 
-// RemoteComposeFile returns the path to the remote docker-compose file
+// GetRemoteComposeFile returns the path to the remote docker-compose file
 func GetRemoteComposeFile() string {
 	return filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", "docker-compose.yml")
 }

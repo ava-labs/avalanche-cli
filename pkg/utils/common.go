@@ -503,7 +503,7 @@ func AppendSlices[T any](slices ...[]T) []T {
 	return result
 }
 
-// ExtractValueFromBytes extracts a value from a byte array using a regular expression.
+// ExtractPlaceholderValue extracts a value from a byte array using a regular expression.
 func ExtractPlaceholderValue(pattern, text string) (string, error) {
 	re := regexp.MustCompile(pattern)
 	matches := re.FindStringSubmatch(text)
