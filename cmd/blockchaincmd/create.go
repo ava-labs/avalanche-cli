@@ -422,6 +422,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// clean up everything
+	_ = CallDeleteBlockchain(blockchainName)
+
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
