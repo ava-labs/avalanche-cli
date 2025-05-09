@@ -1,0 +1,32 @@
+{
+  "command": {
+    "use": "addValidator [blockchainName]",
+    "short": "Add a validator to an L1",
+    "long": "The blockchain addValidator command adds a node as a validator to an L1 of the user provided deployed network. If the network is proof of authority, the owner of the validator manager contract must sign the transaction. If the network is proof of stake, the node must stake the L1's staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.\nThis command currently only works on Blockchains deployed to either the Fuji Testnet or Mainnet."
+  },
+  "flags": [
+    {
+      "var": "keyName",
+      "type": "string",
+      "name": "key",
+      "shorthand": "k",
+      "default": "",
+      "usage": "select the key to use [fuji/devnet only]"
+    },
+    {
+      "var": "useEwoq",
+      "type": "bool",
+      "name": "ewoq",
+      "shorthand": "e",
+      "default": false,
+      "usage": "use ewoq key [fuji/devnet only]"
+    },
+    {
+      "var": "httpPort",
+      "type": "uint32",
+      "name": "http-port",
+      "default": 0,
+      "usage": "http port for node"
+    }
+  ]
+}
