@@ -54,6 +54,39 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(utils.BlockchainName)
 	})
 
+	ginkgo.It("invalid blockchain name", func() {
+		output, err := commands.BlockchainConfigure(
+			"invalidBlockchainName",
+			utils.TestFlags{
+				"chain-config": "doesNotMatter",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("Invalid blockchain invalidBlockchainName"))
+	})
+
+	ginkgo.It("invalid flag", func() {
+		output, err := commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"invalid-flag": "doesNotMatter",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("unknown flag: --invalid-flag"))
+	})
+
+	ginkgo.It("invalid blockchain conf path", func() {
+		output, err := commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"chain-config": "invalidPath",
+			},
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
+	})
+
 	ginkgo.It("check default blockchain config", func() {
 		output, err := utils.TestCommand(
 			utils.BlockchainCmd,
@@ -128,44 +161,5 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 		// check
 		checkRPCTxFeeCap(nodesInfo, blockchainID, newRPCTxFeeCap2)
-	})
-
-	ginkgo.It("invalid blockchain name", func() {
-		chainConfig := fmt.Sprintf("{\"rpc-tx-fee-cap\": %d}", newRPCTxFeeCap1)
-		chainConfigPath, err := utils.CreateTmpFile(constants.ChainConfigFileName, []byte(chainConfig))
-		gomega.Expect(err).Should(gomega.BeNil())
-		output, err := commands.BlockchainConfigure(
-			"invalidBlockchainName",
-			utils.TestFlags{
-				"chain-config": chainConfigPath,
-			},
-		)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("Invalid blockchain invalidBlockchainName"))
-	})
-
-	ginkgo.It("invalid flag", func() {
-		chainConfig := fmt.Sprintf("{\"rpc-tx-fee-cap\": %d}", newRPCTxFeeCap1)
-		chainConfigPath, err := utils.CreateTmpFile(constants.ChainConfigFileName, []byte(chainConfig))
-		gomega.Expect(err).Should(gomega.BeNil())
-		output, err := commands.BlockchainConfigure(
-			utils.BlockchainName,
-			utils.TestFlags{
-				"invalid-flag": chainConfigPath,
-			},
-		)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("unknown flag: --invalid-flag"))
-	})
-
-	ginkgo.It("invalid blockchain conf path", func() {
-		output, err := commands.BlockchainConfigure(
-			utils.BlockchainName,
-			utils.TestFlags{
-				"chain-config": "invalidPath",
-			},
-		)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-		gomega.Expect(output).Should(gomega.ContainSubstring("open invalidPath: no such file or directory"))
 	})
 })
