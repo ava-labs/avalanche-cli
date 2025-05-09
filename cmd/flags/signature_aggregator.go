@@ -4,6 +4,7 @@ package flags
 
 import (
 	"fmt"
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -38,24 +39,25 @@ func validateSignatureAggregatorFlags(sigAggFlags SignatureAggregatorFlags) erro
 	return nil
 }
 
-func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, sigAggFlags *SignatureAggregatorFlags) {
-	cmd.Flags().StringVar(&sigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	sigAggPreRun := func(_ *cobra.Command, _ []string) error {
-		if err := validateSignatureAggregatorFlags(*sigAggFlags); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	existingPreRunE := cmd.PreRunE
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if existingPreRunE != nil {
-			if err := existingPreRunE(cmd, args); err != nil {
+func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, sigAggFlags *SignatureAggregatorFlags) GroupedFlags {
+	return RegisterFlagGroup(cmd, "Signature Aggregator Flags", "show-signature-aggregator-flags", false, func(set *pflag.FlagSet) {
+		set.StringVar(&sigAggFlags.AggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+		sigAggPreRun := func(_ *cobra.Command, _ []string) error {
+			if err := validateSignatureAggregatorFlags(*sigAggFlags); err != nil {
 				return err
 			}
+			return nil
 		}
-		return sigAggPreRun(cmd, args)
-	}
 
-	cmd.Flags().BoolVar(&sigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
+		existingPreRunE := cmd.PreRunE
+		cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+			if existingPreRunE != nil {
+				if err := existingPreRunE(cmd, args); err != nil {
+					return err
+				}
+			}
+			return sigAggPreRun(cmd, args)
+		}
+		set.BoolVar(&sigAggFlags.AggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
+	})
 }

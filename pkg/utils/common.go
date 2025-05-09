@@ -41,10 +41,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func ErrWrongArgCount(expected, got int) error {
-	return fmt.Errorf("requires %d arg(s), got %d", expected, got)
-}
-
 func SetupRealtimeCLIOutput(
 	cmd *exec.Cmd,
 	redirectStdout bool,

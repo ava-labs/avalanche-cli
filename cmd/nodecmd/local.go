@@ -363,11 +363,11 @@ func newLocalValidateCmd() *cobra.Command {
 RPC URL of the L1. 
 
 This command can only be used to validate Proof of Stake L1.`,
-		Args: cobra.ExactArgs(1),
-		RunE: localValidate,
+		RunE:    localValidate,
+		PreRunE: cobra.ExactArgs(1),
 	}
 	flags.AddRPCFlagToCmd(cmd, app, &localValidateFlags.RPC)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
@@ -378,7 +378,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
-
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
 
