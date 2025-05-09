@@ -71,6 +71,9 @@ var (
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
 	numLocalNodes                   int
+	stakingTLSKeyPaths              []string
+	stakingCertKeyPaths             []string
+	stakingSignerKeyPaths           []string
 	httpPorts                       []uint
 	stakingPorts                    []uint
 	partialSync                     bool
@@ -198,6 +201,9 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
+	cmd.Flags().StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking tls key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
 	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
 	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
@@ -596,6 +602,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				stakingTLSKeyPaths,
+				stakingCertKeyPaths,
+				stakingSignerKeyPaths,
 			); err != nil {
 				return err
 			} else if cancel {
