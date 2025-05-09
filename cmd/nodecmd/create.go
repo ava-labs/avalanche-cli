@@ -135,8 +135,13 @@ will apply to all nodes in the cluster`,
 // override postrun function from root.go, so that we don't double send metrics for the same command
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
-func preCreateChecks(clusterName string) error {
+func preCreateChecks(clusterName string, network models.Network) error {
 	if useCustomAvalanchegoVersion != "" || useAvalanchegoVersionFromSubnet != "" {
+		if useCustomAvalanchegoVersion != "" {
+			if err := dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, useCustomAvalanchegoVersion); err != nil {
+				return err
+			}
+		}
 		useLatestAvalanchegoReleaseVersion = false
 		useLatestAvalanchegoPreReleaseVersion = false
 	}
@@ -305,7 +310,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		"",
 	)
 	setGlobalNetworkFlags(network)
-	if err := preCreateChecks(clusterName); err != nil {
+	if err := preCreateChecks(clusterName, network); err != nil {
 		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
