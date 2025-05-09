@@ -618,7 +618,9 @@ func RunHardhatScript(script string) (string, string, error) {
 func PrintStdErr(err error) {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		fmt.Println(string(exitErr.Stderr))
+		if string(exitErr.Stderr) != "" {
+			fmt.Println(string(exitErr.Stderr))
+		}
 	}
 }
 
