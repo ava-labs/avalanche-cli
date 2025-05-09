@@ -1493,6 +1493,8 @@ avalanche interchain messenger [subcommand] [flags]
 
 Deploys ICM Messenger and Registry into a given L1.
 
+For Local Networks, it also deploys into C-Chain.
+
 **Usage:**
 ```bash
 avalanche interchain messenger deploy [subcommand] [flags]
@@ -3373,7 +3375,10 @@ avalanche teleporter [subcommand] [flags]
 
 Deploys ICM Messenger and Registry into a given L1.
 
+For Local Networks, it also deploys into C-Chain.
+
 **Usage:**
+
 ```bash
 avalanche teleporter deploy [subcommand] [flags]
 ```
