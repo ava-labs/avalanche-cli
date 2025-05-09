@@ -21,6 +21,7 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network/stop"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/create"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/devnet"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/local/start"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/monitoring"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/packageman"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/root"
