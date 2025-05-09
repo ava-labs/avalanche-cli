@@ -131,6 +131,16 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
+func BlockchainConfigure(blockchainName string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(
+		utils.BlockchainCmd,
+		"configure",
+		[]string{blockchainName},
+		utils.GlobalFlags{},
+		testFlags,
+	)
+}
+
 /* #nosec G204 */
 func ConfigureChainConfig(subnetName string, genesisPath string) {
 	// run configure

@@ -39,7 +39,7 @@ func deploySubnetToFujiSOV() (string, map[string]utils.NodeInfo) {
 	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
-	nodeInfos, err := utils.GetNodesInfo()
+	nodeInfos, err := utils.GetLocalNetworkNodesInfo()
 	gomega.Expect(err).Should(gomega.BeNil())
 	for _, nodeInfo := range nodeInfos {
 		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
@@ -112,7 +112,7 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
-		nodeInfos, err := utils.GetNodesInfo()
+		nodeInfos, err := utils.GetLocalNetworkNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeIdx := 1
 		for _, nodeInfo := range nodeInfos {

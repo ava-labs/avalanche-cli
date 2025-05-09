@@ -253,7 +253,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 		blockchainID := rpcParts[5]
 
 		// verify that plugin logs reflect per node configuration
-		nodesInfo, err := utils.GetNodesInfo()
+		nodesInfo, err := utils.GetLocalNetworkNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		for nodeID, nodeInfo := range nodesInfo {
 			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
