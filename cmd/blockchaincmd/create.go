@@ -223,6 +223,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reward basis points cannot be zero")
 	}
 
+	// clean up all blockchain info to start over
+	if forceCreate {
+		_ = CallDeleteBlockchain(blockchainName)
+	}
+
 	// get vm kind
 	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
 	if err != nil {
@@ -420,11 +425,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-	}
-
-	// clean up all blockchain info to start over
-	if forceCreate {
-		_ = CallDeleteBlockchain(blockchainName)
 	}
 
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
