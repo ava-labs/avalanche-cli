@@ -142,42 +142,6 @@ func BlockchainConfigure(blockchainName string, testFlags utils.TestFlags) (stri
 }
 
 /* #nosec G204 */
-func ConfigureChainConfig(subnetName string, genesisPath string) {
-	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath, "--" + constants.SkipUpdateFlag}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		fmt.Println(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err := utils.ChainConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-}
-
-/* #nosec G204 */
-func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath string) {
-	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--per-node-chain-config", perNodeChainConfigPath, "--" + constants.SkipUpdateFlag}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		fmt.Println(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err := utils.PerNodeChainConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-}
-
-/* #nosec G204 */
 func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)

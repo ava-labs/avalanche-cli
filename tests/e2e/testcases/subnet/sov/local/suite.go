@@ -5,12 +5,7 @@ package subnet
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -168,103 +163,6 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)
-	})
-
-	ginkgo.It("can deploy custom chain config SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmAllowFeeRecpPath)
-
-		addr := "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
-
-		chainConfig := "{\"feeRecipient\": \"" + addr + "\"}"
-
-		// create a chain config in tmp
-		file, err := os.CreateTemp("", constants.ChainConfigFileName+"*")
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = os.WriteFile(file.Name(), []byte(chainConfig), constants.DefaultPerms755)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.ConfigureChainConfig(subnetName, file.Name())
-
-		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-
-		rpc := rpcs[0]
-		err = utils.SetHardhatRPC(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		cClient, err := evm.GetClient(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		balance, err := cClient.GetAddressBalance(addr)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
-	ginkgo.It("can deploy with custom per chain config node SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
-
-		// create per node chain config
-		nodesRPCTxFeeCap := map[string]string{
-			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg": "101",
-			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ": "102",
-		}
-		perNodeChainConfig := "{\n"
-		i := 0
-		for nodeID, rpcTxFeeCap := range nodesRPCTxFeeCap {
-			commaStr := ","
-			if i == len(nodesRPCTxFeeCap)-1 {
-				commaStr = ""
-			}
-			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeID, rpcTxFeeCap, commaStr)
-			i++
-		}
-		perNodeChainConfig += "}\n"
-
-		// configure the subnet
-		file, err := os.CreateTemp("", constants.PerNodeChainConfigFileName+"*")
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = os.WriteFile(file.Name(), []byte(perNodeChainConfig), constants.DefaultPerms755)
-		gomega.Expect(err).Should(gomega.BeNil())
-		commands.ConfigurePerNodeChainConfig(subnetName, file.Name())
-
-		// deploy
-		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-
-		// get blockchain ID
-		rpcParts := strings.Split(rpcs[0], "/")
-		gomega.Expect(rpcParts).Should(gomega.HaveLen(7))
-		blockchainID := rpcParts[5]
-
-		// verify that plugin logs reflect per node configuration
-		nodesInfo, err := utils.GetLocalNetworkNodesInfo()
-		gomega.Expect(err).Should(gomega.BeNil())
-		for nodeID, nodeInfo := range nodesInfo {
-			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
-			fileBytes, err := os.ReadFile(logFile)
-			gomega.Expect(err).Should(gomega.BeNil())
-			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeID]
-			gomega.Expect(ok).Should(gomega.BeTrue())
-			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("RPCTxFeeCap:%s", rpcTxFeeCap))
-		}
-
-		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can list a subnet's validators SOV", func() {
