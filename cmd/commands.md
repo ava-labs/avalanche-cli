@@ -1294,6 +1294,8 @@ avalanche icm [subcommand] [flags]
 
 Deploys ICM Messenger and Registry into a given L1.
 
+For Local Networks, it also deploys into C-Chain.
+
 **Usage:**
 ```bash
 avalanche icm deploy [subcommand] [flags]
