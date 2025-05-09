@@ -20,6 +20,8 @@ const (
 	defaultRPCTxFeeCap = 100
 	newRPCTxFeeCap1    = 101
 	newRPCTxFeeCap2    = 102
+	acpSupport1        = 111
+	acpSupport2        = 112
 	node1CertPath      = "tests/e2e/assets/node1/staker.crt"
 	node2CertPath      = "tests/e2e/assets/node2/staker.crt"
 	node1TLSPath       = "tests/e2e/assets/node1/staker.key"
@@ -99,6 +101,29 @@ func checkSubnetConfig(
 
 func getSubnetConfig(nodeID string) string {
 	return fmt.Sprintf("{\"validatorOnly\": true, \"allowedNodes\": [\"%s\"]}", nodeID)
+}
+
+func checkNodeConfig(
+	nodesInfo map[string]utils.NodeInfo,
+	expectedACPSupport int,
+) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		fileBytes, err := os.ReadFile(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		if expectedACPSupport != -1 {
+			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("\"acp-support\":%d", expectedACPSupport))
+		}
+		for _, acpSupport := range []int{acpSupport1, acpSupport2} {
+			if acpSupport != expectedACPSupport {
+				gomega.Expect(fileBytes).ShouldNot(gomega.ContainSubstring("\"acp-support\":%d", acpSupport))
+			}
+		}
+	}
+}
+
+func getNodeConfig(acpSupport int) string {
+	return fmt.Sprintf("{\"acp-support\": %d}", acpSupport)
 }
 
 func cleanupLogs(nodesInfo map[string]utils.NodeInfo, blockchainID string) {
@@ -208,6 +233,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		checkBlockchainConfig(nodesInfo, blockchainID, defaultRPCTxFeeCap, nil)
 		checkSubnetConfig(nodesInfo, "")
+		checkNodeConfig(nodesInfo, -1)
 	})
 
 	ginkgo.It("set blockchain config", func() {
@@ -385,5 +411,60 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 		// check
 		checkSubnetConfig(nodesInfo, node2ID)
+	})
+
+	ginkgo.It("set node config", func() {
+		// set node config before deploy
+		nodeConfig := getNodeConfig(acpSupport1)
+		nodeConfigPath, err := utils.CreateTmpFile(constants.NodeConfigFileName, []byte(nodeConfig))
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"node-config": nodeConfigPath,
+			},
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// deploy l1
+		output, err := utils.TestCommand(
+			utils.BlockchainCmd,
+			"deploy",
+			[]string{utils.BlockchainName},
+			utils.GlobalFlags{},
+			utils.TestFlags{
+				"local":             true,
+				"skip-icm-deploy":   true,
+				"skip-update-check": true,
+			},
+		)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		blockchainID, err := utils.ParseBlockchainIDFromOutput(output)
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesInfo, err := utils.GetLocalClusterNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		// check
+		checkNodeConfig(nodesInfo, acpSupport1)
+		// stop
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
+		// cleanup logs
+		cleanupLogs(nodesInfo, blockchainID)
+		// change node config
+		nodeConfig = getNodeConfig(acpSupport2)
+		nodeConfigPath, err = utils.CreateTmpFile(constants.NodeConfigFileName, []byte(nodeConfig))
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = commands.BlockchainConfigure(
+			utils.BlockchainName,
+			utils.TestFlags{
+				"node-config": nodeConfigPath,
+			},
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// start
+		out := commands.StartNetwork()
+		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
+		// check
+		checkNodeConfig(nodesInfo, acpSupport2)
 	})
 })
