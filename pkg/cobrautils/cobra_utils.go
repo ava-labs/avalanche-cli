@@ -34,6 +34,7 @@ func ExactArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) != n {
 			_ = cmd.Help() // show full help with flag grouping
+			fmt.Println("")
 			return utils.ErrWrongArgCount(n, len(args))
 		}
 		return nil
