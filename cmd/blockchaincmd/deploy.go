@@ -176,15 +176,15 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	})
 
 	bootstrapValidatorGroup := flags.RegisterFlagGroup(cmd, "Bootstrap Validators Flags", "show-bootstrap-validators-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
-		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
+		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators")
+		set.BoolVar(&generateNodeID, "generate-node-id", false, "set to true to generate Node IDs for bootstrap validators when none are set up. Use these Node IDs to set up your Avalanche Nodes.")
 		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
 		set.Float64Var(
 			&deployBalanceAVAX,
 			"balance",
 			float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
-			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
+			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain (setting balance=1 equals to 1 AVAX for each bootstrap validator)",
 		)
 		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	})
@@ -421,6 +421,71 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) erro
 	return nil
 }
 
+func validateBootstrapFilepathFlag(cmd *cobra.Command) error {
+	if bootstrapValidatorsJSONFilePath != "" {
+		if generateNodeID {
+			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-filepath at the same time")
+		}
+		if cmd.Flags().Changed("num-bootstrap-validators") {
+			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-filepath at the same time")
+		}
+		if cmd.Flags().Changed("balance") {
+			return fmt.Errorf("cannot use a non-empty --balance and a non-empty --bootstrap-filepath at the same time")
+		}
+		if bootstrapEndpoints != nil {
+			return fmt.Errorf("cannot use a non-empty --bootstrap-endpoints and a non-empty --bootstrap-filepath at the same time")
+		}
+	}
+	return nil
+}
+
+func validateBootstrapEndpointFlag(cmd *cobra.Command) error {
+	if bootstrapEndpoints != nil {
+		if generateNodeID {
+			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-endpoints at the same time")
+		}
+		if cmd.Flags().Changed("num-bootstrap-validators") {
+			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-endpoints at the same time")
+		}
+	}
+	return nil
+}
+
+// checks for flags that will conflict if user sets convert only to false or if user sets use-local-machine to true
+// if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
+// convertOnly will be set to true
+func validateConvertOnlyFlag(cmd *cobra.Command) error {
+	if generateNodeID || bootstrapValidatorsJSONFilePath != "" || bootstrapEndpoints != nil {
+		flagName := ""
+		switch {
+		case generateNodeID:
+			flagName = "--generate-node-id=true"
+		case bootstrapValidatorsJSONFilePath != "":
+			flagName = "--bootstrap-filepath is not empty"
+		case bootstrapEndpoints != nil:
+			flagName = "--bootstrap-endpoints is not empty"
+		}
+
+		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
+			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
+		}
+		if cmd.Flags().Changed("convert-only") && !convertOnly {
+			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
+		}
+		convertOnly = true
+	}
+	return nil
+}
+func validateFlags(cmd *cobra.Command) error {
+	if err := validateBootstrapFilepathFlag(cmd); err != nil {
+		return err
+	}
+	if err := validateBootstrapEndpointFlag(cmd); err != nil {
+		return err
+	}
+	return validateConvertOnlyFlag(cmd)
+}
+
 // deployBlockchain is the cobra command run for deploying subnets
 func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
@@ -514,25 +579,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if generateNodeID || bootstrapValidatorsJSONFilePath != "" || bootstrapEndpoints != nil {
-		flagName := ""
-		switch {
-		case generateNodeID:
-			flagName = "--generate-node-id=true"
-		case bootstrapValidatorsJSONFilePath != "":
-			flagName = "--bootstrap-filepath is not empty"
-		case bootstrapEndpoints != nil:
-			flagName = "--bootstrap-endpoints is not empty"
-		}
 
-		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
-			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
-		}
-		if cmd.Flags().Changed("convert-only") && !convertOnly {
-			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
-		}
-		convertOnly = true
+	if err = validateFlags(cmd); err != nil {
+		return err
 	}
+
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {

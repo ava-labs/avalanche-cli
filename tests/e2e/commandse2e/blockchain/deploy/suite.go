@@ -5,13 +5,12 @@ package deploy
 
 import (
 	"fmt"
-	"regexp"
-	"runtime"
-
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"regexp"
+	"runtime"
 )
 
 const (
@@ -289,7 +288,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --generate-node-id=true"))
 	})
-	ginkgo.It("ERROR PATH: generate node id is not applicable if use local machine is false", func() {
+	ginkgo.It("ERROR PATH: generate node id is not applicable if use local machine is true", func() {
 		testFlags := utils.TestFlags{
 			"generate-node-id":  true,
 			"use-local-machine": true,
@@ -308,7 +307,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-filepath is not empty"))
 	})
-	ginkgo.It("ERROR PATH: bootstrap filepath is not applicable if use local machine is false", func() {
+	ginkgo.It("ERROR PATH: bootstrap filepath is not applicable if use local machine is true", func() {
 		testFlags := utils.TestFlags{
 			"bootstrap-filepath": utils.BootstrapValidatorPath,
 			"use-local-machine":  true,
@@ -326,7 +325,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-endpoints is not empty"))
 	})
-	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if use local machine is false", func() {
+	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if use local machine is true", func() {
 		testFlags := utils.TestFlags{
 			"bootstrap-endpoints": "127.0.0.1:9650",
 			"use-local-machine":   true,
@@ -334,5 +333,59 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --bootstrap-endpoints is not empty"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap filepath cannot be set if generate node id is true", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-filepath": utils.BootstrapValidatorPath2,
+			"generate-node-id":   true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use --generate-node-id=true and a non-empty --bootstrap-filepath at the same time"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap filepath cannot be set if num bootstrap validators is set", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-filepath":       utils.BootstrapValidatorPath2,
+			"num-bootstrap-validators": 2,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-filepath at the same time"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap filepath cannot be set if balance is set", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-filepath": utils.BootstrapValidatorPath2,
+			"balance":            0.2,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --balance and a non-empty --bootstrap-filepath at the same time"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap filepath cannot be set if bootstrap endpoints is set", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-filepath":  utils.BootstrapValidatorPath2,
+			"bootstrap-endpoints": "127.0.0.1:9650",
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --bootstrap-endpoints and a non-empty --bootstrap-filepath at the same time"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if generate node id is true", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-endpoints": utils.BootstrapValidatorPath2,
+			"generate-node-id":    true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use --generate-node-id=true and a non-empty --bootstrap-endpoints at the same time"))
+	})
+	ginkgo.It("ERROR PATH: bootstrap endpoints is not applicable if num bootstrap validators is set", func() {
+		testFlags := utils.TestFlags{
+			"bootstrap-endpoints":      utils.BootstrapValidatorPath2,
+			"num-bootstrap-validators": 2,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-endpoints at the same time"))
 	})
 })
