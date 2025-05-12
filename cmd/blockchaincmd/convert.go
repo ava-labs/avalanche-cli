@@ -66,10 +66,10 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 - or using remote nodes (we require the node's Node-ID and BLS info)`,
 		RunE:              convertBlockchain,
 		PersistentPostRun: handlePostRun,
-		Args:              cobrautils.ExactArgs(1),
+		PreRunE:           cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &convertFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &convertFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
@@ -112,6 +112,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
 
