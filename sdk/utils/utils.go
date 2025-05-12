@@ -6,7 +6,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/constants"
@@ -26,12 +26,7 @@ func Unique[T comparable](arr []T) []T {
 }
 
 func Belongs[T comparable](input []T, elem T) bool {
-	for _, e := range input {
-		if e == elem {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(input, elem)
 }
 
 func Map[T, U any](input []T, f func(T) U) []U {
@@ -43,7 +38,7 @@ func Map[T, U any](input []T, f func(T) U) []U {
 }
 
 func Uint32Sort(arr []uint32) {
-	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
+	slices.Sort(arr)
 }
 
 // Context for API requests

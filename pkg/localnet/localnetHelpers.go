@@ -65,7 +65,7 @@ func BlockchainAlreadyDeployedOnLocalNetwork(app *application.Avalanche, blockch
 	if err != nil {
 		return false, fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}
-	blockchains, err := GetLocalNetworkBlockchainInfo(app)
+	blockchains, err := GetLocalNetworkBlockchainsInfo(app)
 	if err != nil {
 		return false, err
 	}

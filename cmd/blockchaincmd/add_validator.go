@@ -92,12 +92,12 @@ staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
 
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
-		RunE: addValidator,
-		Args: cobrautils.MaximumNArgs(1),
+		RunE:    addValidator,
+		PreRunE: cobrautils.MaximumNArgs(1),
 	}
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app, &addValidatorFlags.RPC)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -149,7 +149,7 @@ Testnet or Mainnet.`,
 		set.StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, externalSigningGroup, remoteBlockchainGroup, localMachineGroup, posGroup, nonSovGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, externalSigningGroup, remoteBlockchainGroup, localMachineGroup, posGroup, nonSovGroup, sigAggGroup}))
 	return cmd
 }
 
@@ -478,6 +478,9 @@ func CallAddValidator(
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
+		}
+		if availableBalance == 0 {
+			return fmt.Errorf("chosen key has zero balance")
 		}
 		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
 		if err != nil {

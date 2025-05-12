@@ -94,8 +94,9 @@ func newLocalCmd() *cobra.Command {
 func newLocalStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start [clusterName]",
-		Short: "Create new Avalanche nodes on local machine",
-		Long: `The node local start command creates Avalanche nodes on the local machine.
+		Short: "Create or restart Avalanche nodes on local machine",
+		Long: `The node local start command creates Avalanche nodes on the local machine,
+or restarts previously created ones.
 Once this command is completed, you will have to wait for the Avalanche node
 to finish bootstrapping on the primary network before running further
 commands on it, e.g. validating a Subnet. 
@@ -128,9 +129,9 @@ You can check the bootstrapping status by running avalanche node status local.
 
 func newLocalStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop",
-		Short: "Stop local node",
-		Long:  `Stop local node.`,
+		Use:   "stop [clusterName]",
+		Short: "Stop local nodes",
+		Long:  `Stop local nodes.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStopNode,
 	}
@@ -282,6 +283,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 func localStopNode(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		clusterName := args[0]
+
 		// want to be able to stop clusters even if they are only partially operative
 		if running, err := localnet.LocalClusterIsPartiallyRunning(app, clusterName); err != nil {
 			return err
@@ -361,11 +363,11 @@ func newLocalValidateCmd() *cobra.Command {
 RPC URL of the L1. 
 
 This command can only be used to validate Proof of Stake L1.`,
-		Args: cobra.ExactArgs(1),
-		RunE: localValidate,
+		RunE:    localValidate,
+		PreRunE: cobra.ExactArgs(1),
 	}
 	flags.AddRPCFlagToCmd(cmd, app, &localValidateFlags.RPC)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
@@ -376,7 +378,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
-
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
 

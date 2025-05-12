@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/spf13/pflag"
 
@@ -71,6 +73,9 @@ var (
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
 	numLocalNodes                   int
+	stakingTLSKeyPaths              []string
+	stakingCertKeyPaths             []string
+	stakingSignerKeyPaths           []string
 	httpPorts                       []uint
 	stakingPorts                    []uint
 	partialSync                     bool
@@ -126,20 +131,13 @@ redeploy the chain with fresh state. You can deploy the same Blockchain to multi
 so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			requiredArgCount := 1
-			if len(args) != requiredArgCount {
-				_ = cmd.Help() // show full help with flag grouping
-				return utils.ErrWrongArgCount(requiredArgCount, len(args))
-			}
-			return nil
-		},
+		PreRunE:           cobrautils.ExactArgs(1),
 	}
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx (for multi-sig signing)")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [local/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -180,8 +178,8 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		)
 		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	})
-
-	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
+  
+	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
 		set.BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 		set.BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 		set.UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
@@ -193,30 +191,26 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 			constants.DefaultAvalancheGoVersion,
 			"use this version of avalanchego (ex: v1.17.12)",
 		)
+		set.StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking TLS key for node(s)")
+		set.StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
+		set.StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
 	})
 
 	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "Skip automatic ICM deploy")
 		set.BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
-
 		set.StringVar(&icmSpec.ICMVersion, "icm-version", constants.LatestReleaseVersionTag, "ICM version to deploy")
-
 		set.StringVar(&icmSpec.RelayerVersion, "relayer-version", constants.DefaultRelayerVersion, "relayer version to deploy")
 		set.StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
 		set.StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
-
 		set.Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
 		set.StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
-
 		set.StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
 		set.StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
-
 		set.BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
 		set.StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
-
 		set.BoolVar(&relayerAllowPrivateIPs, "relayer-allow-private-ips", true, "allow relayer to connec to private ips")
-
-		set.StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
+    set.StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
 		set.StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
 		set.StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
 		set.StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
@@ -231,7 +225,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup, sigAggGroup}))
 	return cmd
 }
 
@@ -617,6 +611,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				stakingTLSKeyPaths,
+				stakingCertKeyPaths,
+				stakingSignerKeyPaths,
 			); err != nil {
 				return err
 			} else if cancel {
@@ -956,7 +953,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
 				}
 				if network.Kind == models.Local {
-					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 					if err != nil {
 						return err
 					}
