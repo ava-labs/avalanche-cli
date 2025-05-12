@@ -5,10 +5,11 @@ package blockchaincmd
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/spf13/pflag"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
