@@ -31,7 +31,7 @@ func PrintEndpoints(
 		if err != nil {
 			return err
 		}
-		blockchains, err := GetLocalNetworkBlockchainInfo(app)
+		blockchains, err := GetLocalNetworkBlockchainsInfo(app)
 		if err != nil {
 			return err
 		}

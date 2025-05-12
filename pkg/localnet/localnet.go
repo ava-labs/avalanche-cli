@@ -4,6 +4,7 @@ package localnet
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+
+	"golang.org/x/exp/maps"
 )
 
 var ErrNetworkNotRunning = errors.New("network is not running")
@@ -88,12 +91,12 @@ func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 }
 
 // Returns blockchain info for all non standard blockchains deployed into the local network
-func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
+func GetLocalNetworkBlockchainsInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
 	endpoint, err := GetLocalNetworkEndpoint(app)
 	if err != nil {
 		return nil, err
 	}
-	return GetBlockchainInfo(endpoint)
+	return GetBlockchainsInfo(endpoint)
 }
 
 // Returns avalanchego version and RPC version for the local network
@@ -180,7 +183,7 @@ func LocalNetworkHealth(
 	if err != nil {
 		return false, false, err
 	}
-	blockchains, err := GetLocalNetworkBlockchainInfo(app)
+	blockchains, err := GetLocalNetworkBlockchainsInfo(app)
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}
@@ -223,4 +226,96 @@ func LocalNetworkHealth(
 		}
 	}
 	return pChainBootstrapped, true, nil
+}
+
+// Create a local network of [numNodes] nodes at [networkDir] using avalanchego binary at [avalancheGoBinPath]
+// Make local network meta to point to it
+func CreateLocalNetwork(
+	app *application.Avalanche,
+	networkDir string,
+	numNodes uint32,
+	pluginDir string,
+	avalancheGoBinPath string,
+) error {
+	// get default network conf for NumNodes
+	networkID, unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := GetDefaultNetworkConf(numNodes)
+	if err != nil {
+		return err
+	}
+	// add node flags on CLI config info default network flags
+	nodeConfigStr, err := app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	var nodeConfig map[string]interface{}
+	if err := json.Unmarshal([]byte(nodeConfigStr), &nodeConfig); err != nil {
+		return fmt.Errorf("invalid common node config JSON: %w", err)
+	}
+	maps.Copy(defaultFlags, nodeConfig)
+	// create network
+	ctx, cancel := GetLocalNetworkDefaultContext()
+	defer cancel()
+	if _, err := TmpNetCreate(
+		ctx,
+		app.Log,
+		networkDir,
+		avalancheGoBinPath,
+		pluginDir,
+		networkID,
+		nil,
+		nil,
+		unparsedGenesis,
+		upgradeBytes,
+		defaultFlags,
+		nodes,
+		true,
+	); err != nil {
+		_ = TmpNetStop(networkDir)
+		return err
+	}
+	// save network directory
+	return SaveLocalNetworkMeta(app, networkDir)
+}
+
+// Load a local network at [networkDir] using avalanchego binary at [avalancheGoBinPath]
+// Make local network meta to point to it
+func LoadLocalNetwork(
+	app *application.Avalanche,
+	networkDir string,
+	avalancheGoBinPath string,
+) error {
+	// add node flags on CLI config info flags
+	nodeConfigStr, err := app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	var nodeConfig map[string]interface{}
+	if err := json.Unmarshal([]byte(nodeConfigStr), &nodeConfig); err != nil {
+		return fmt.Errorf("invalid common node config JSON: %w", err)
+	}
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for i := range network.Nodes {
+		for k, v := range nodeConfig {
+			network.Nodes[i].Flags[k] = v
+		}
+	}
+	if err := network.Write(); err != nil {
+		return err
+	}
+	// local network
+	ctx, cancel := GetLocalNetworkDefaultContext()
+	defer cancel()
+	if _, err := TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
+		_ = TmpNetStop(networkDir)
+		return err
+	}
+	// set aliases
+	if err := TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
+		return err
+	}
+	// save network directory
+	return SaveLocalNetworkMeta(app, networkDir)
 }
