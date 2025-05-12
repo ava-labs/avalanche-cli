@@ -69,12 +69,12 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		PersistentPostRun: handlePostRun,
 		PreRunE:           cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
+	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &convertFlags.SigAggFlags)
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use to authorize ConvertSubnetTol1 Tx")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate ConvertSubnetTol1")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
@@ -124,7 +124,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{bootstrapValidatorGroup, localMachineGroup, posGroup, sigAggGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, posGroup, sigAggGroup}))
 	return cmd
 }
 
