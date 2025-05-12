@@ -23,6 +23,22 @@ func (e UsageError) Error() string {
 	return fmt.Sprintf("Usage error: %s", e.err)
 }
 
+func ErrWrongArgCount(expected, got int) error {
+	return fmt.Errorf("requires %d arg(s), received %d args(s)", expected, got)
+}
+
+func ErrMaxArgCount(expected, got int) error {
+	return fmt.Errorf("max %d arg(s), received %d args(s)", expected, got)
+}
+
+func ErrMinArgCount(expected, got int) error {
+	return fmt.Errorf("min %d arg(s), received %d args(s)", expected, got)
+}
+
+func ErrRangeArgCount(expectedLow, expectedHigh, got int) error {
+	return fmt.Errorf("accepted number of arg(s) is %d to %d, received %d args(s)", expectedLow, expectedHigh, got)
+}
+
 func NewUsageError(cmd *cobra.Command, err error) UsageError {
 	return UsageError{
 		cmd: cmd,
@@ -43,31 +59,34 @@ func ExactArgs(n int) cobra.PositionalArgs {
 
 func MaximumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		err := cobra.MaximumNArgs(n)(cmd, args)
-		if err != nil {
-			err = NewUsageError(cmd, err)
+		if len(args) > n {
+			_ = cmd.Help() // show full help with flag grouping
+			fmt.Println("")
+			return ErrMaxArgCount(n, len(args))
 		}
-		return err
+		return nil
 	}
 }
 
 func MinimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		err := cobra.MinimumNArgs(n)(cmd, args)
-		if err != nil {
-			err = NewUsageError(cmd, err)
+		if len(args) < n {
+			_ = cmd.Help() // show full help with flag grouping
+			fmt.Println("")
+			return ErrMinArgCount(n, len(args))
 		}
-		return err
+		return nil
 	}
 }
 
 func RangeArgs(min int, max int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		err := cobra.RangeArgs(min, max)(cmd, args)
-		if err != nil {
-			err = NewUsageError(cmd, err)
+		if len(args) < min || len(args) > max {
+			_ = cmd.Help() // show full help with flag grouping
+			fmt.Println("")
+			return ErrRangeArgCount(min, max, len(args))
 		}
-		return err
+		return nil
 	}
 }
 
