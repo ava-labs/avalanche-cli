@@ -461,6 +461,9 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
+		if availableBalance == 0 {
+			return fmt.Errorf("chosen key has zero balance")
+		}
 		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
 		if err != nil {
 			return err

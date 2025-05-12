@@ -5,6 +5,8 @@ package utils
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 )
 
 const (
@@ -43,6 +45,7 @@ const (
 	SubnetIDParseType     = "SubnetID"
 	BlockchainIDParseType = "BlockchainID"
 
-	SubnetName        = "e2eSubnetTest"
-	TestLocalNodeName = "e2eSubnetTest-local-node-local-network"
+	SubnetName = "e2eSubnetTest"
 )
+
+var TestLocalNodeName = localnet.LocalClusterName(models.NewLocalNetwork(), SubnetName)

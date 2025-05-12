@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
@@ -89,6 +88,9 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
+	cmd.Flags().StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking tls key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
 	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
 	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
@@ -121,13 +123,15 @@ func StartLocalMachine(
 	httpPorts []uint,
 	stakingPorts []uint,
 	numBootstrapValidator int,
+	stakingTLSKeyPaths []string,
+	stakingCertKeyPaths []string,
+	stakingSignerKeyPaths []string,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local && !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 		useLocalMachine = true
 	}
-	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
-	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
+	clusterName := localnet.LocalClusterName(network, blockchainName)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -205,12 +209,6 @@ func StartLocalMachine(
 			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
-		if app.AvagoNodeConfigExists(blockchainName) {
-			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-			if err != nil {
-				return false, err
-			}
-		}
 		if partialSync {
 			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 		}
@@ -220,10 +218,30 @@ func StartLocalMachine(
 		if network.Kind == models.Mainnet {
 			globalNetworkFlags.UseMainnet = true
 		}
-		nodeSettingsLen := max(len(httpPorts), len(stakingPorts))
+		if len(stakingSignerKeyPaths) != len(stakingCertKeyPaths) || len(stakingSignerKeyPaths) != len(stakingTLSKeyPaths) {
+			return false, fmt.Errorf("staking key inputs must be for the same number of nodes")
+		}
+		nodeSettingsLen := max(len(stakingSignerKeyPaths), len(httpPorts), len(stakingPorts))
 		nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
 		for i := range nodeSettingsLen {
 			nodeSetting := localnet.NodeSetting{}
+			if i < len(stakingSignerKeyPaths) {
+				stakingSignerKey, err := os.ReadFile(stakingSignerKeyPaths[i])
+				if err != nil {
+					return false, fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPaths[i], err)
+				}
+				stakingCertKey, err := os.ReadFile(stakingCertKeyPaths[i])
+				if err != nil {
+					return false, fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPaths[i], err)
+				}
+				stakingTLSKey, err := os.ReadFile(stakingTLSKeyPaths[i])
+				if err != nil {
+					return false, fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPaths[i], err)
+				}
+				nodeSetting.StakingSignerKey = stakingSignerKey
+				nodeSetting.StakingCertKey = stakingCertKey
+				nodeSetting.StakingTLSKey = stakingTLSKey
+			}
 			if i < len(httpPorts) {
 				nodeSetting.HTTPPort = uint64(httpPorts[i])
 			}
@@ -666,6 +684,9 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				httpPorts,
 				stakingPorts,
 				numBootstrapValidators,
+				stakingTLSKeyPaths,
+				stakingCertKeyPaths,
+				stakingSignerKeyPaths,
 			); err != nil {
 				return err
 			} else if cancel {

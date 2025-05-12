@@ -49,9 +49,11 @@ func NewDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploys ICM Messenger and Registry into a given L1",
-		Long:  `Deploys ICM Messenger and Registry into a given L1.`,
-		RunE:  deploy,
-		Args:  cobrautils.ExactArgs(0),
+		Long: `Deploys ICM Messenger and Registry into a given L1.
+
+For Local Networks, it also deploys into C-Chain.`,
+		RunE: deploy,
+		Args: cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
