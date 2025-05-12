@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/spf13/pflag"
 
@@ -71,6 +73,9 @@ var (
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
 	numLocalNodes                   int
+	stakingTLSKeyPaths              []string
+	stakingCertKeyPaths             []string
+	stakingSignerKeyPaths           []string
 	httpPorts                       []uint
 	stakingPorts                    []uint
 	partialSync                     bool
@@ -126,14 +131,7 @@ redeploy the chain with fresh state. You can deploy the same Blockchain to multi
 so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			requiredArgCount := 1
-			if len(args) != requiredArgCount {
-				_ = cmd.Help() // show full help with flag grouping
-				return utils.ErrWrongArgCount(requiredArgCount, len(args))
-			}
-			return nil
-		},
+		PreRunE:           cobrautils.ExactArgs(1),
 	}
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
@@ -617,6 +615,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				stakingTLSKeyPaths,
+				stakingCertKeyPaths,
+				stakingSignerKeyPaths,
 			); err != nil {
 				return err
 			} else if cancel {
