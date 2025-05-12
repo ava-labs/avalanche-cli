@@ -61,7 +61,7 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) > n {
 			_ = cmd.Help() // show full help with flag grouping
-      fmt.Println("")
+			fmt.Println("")
 			return ErrMaxArgCount(n, len(args))
 		}
 		return nil
@@ -72,7 +72,7 @@ func MinimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < n {
 			_ = cmd.Help() // show full help with flag grouping
-      fmt.Println("")
+			fmt.Println("")
 			return ErrMinArgCount(n, len(args))
 		}
 		return nil
@@ -83,7 +83,7 @@ func RangeArgs(min int, max int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < min || len(args) > max {
 			_ = cmd.Help() // show full help with flag grouping
-      fmt.Println("")
+			fmt.Println("")
 			return ErrRangeArgCount(min, max, len(args))
 		}
 		return nil
