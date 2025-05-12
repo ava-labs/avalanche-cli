@@ -567,9 +567,15 @@ func TmpNetSetSubnetConfig(
 	subnetID ids.ID,
 	subnetConfig []byte,
 ) error {
+	subnetConfigsDir := filepath.Join(network.Dir, "subnets")
+	for _, node := range network.Nodes {
+		node.Flags[config.SubnetConfigDirKey] = subnetConfigsDir
+		if err := node.Write(); err != nil {
+			return err
+		}
+	}
 	configPath := filepath.Join(
-		network.Dir,
-		"subnets",
+		subnetConfigsDir,
 		subnetID.String()+".json",
 	)
 	configDir := filepath.Dir(configPath)

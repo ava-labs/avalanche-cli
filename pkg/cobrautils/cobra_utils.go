@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
@@ -48,7 +50,8 @@ func ExactArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) != n {
 			_ = cmd.Help() // show full help with flag grouping
-			return ErrWrongArgCount(n, len(args))
+			fmt.Println("")
+			return utils.ErrWrongArgCount(n, len(args))
 		}
 		return nil
 	}
@@ -58,6 +61,7 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) > n {
 			_ = cmd.Help() // show full help with flag grouping
+      fmt.Println("")
 			return ErrMaxArgCount(n, len(args))
 		}
 		return nil
@@ -68,6 +72,7 @@ func MinimumNArgs(n int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < n {
 			_ = cmd.Help() // show full help with flag grouping
+      fmt.Println("")
 			return ErrMinArgCount(n, len(args))
 		}
 		return nil
@@ -78,6 +83,7 @@ func RangeArgs(min int, max int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < min || len(args) > max {
 			_ = cmd.Help() // show full help with flag grouping
+      fmt.Println("")
 			return ErrRangeArgCount(min, max, len(args))
 		}
 		return nil
