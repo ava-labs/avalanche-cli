@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/spf13/pflag"

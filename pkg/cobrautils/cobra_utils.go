@@ -24,6 +24,7 @@ func (e UsageError) Error() string {
 func ErrWrongArgCount(expected, got int) error {
 	return fmt.Errorf("requires %d arg(s), received %d args(s)", expected, got)
 }
+
 func ErrMaxArgCount(expected, got int) error {
 	return fmt.Errorf("max %d arg(s), received %d args(s)", expected, got)
 }
