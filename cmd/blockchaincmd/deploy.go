@@ -476,6 +476,7 @@ func validateConvertOnlyFlag(cmd *cobra.Command) error {
 	}
 	return nil
 }
+
 func validateFlags(cmd *cobra.Command) error {
 	if err := validateBootstrapFilepathFlag(cmd); err != nil {
 		return err
