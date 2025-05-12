@@ -173,13 +173,8 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "Skip automatic ICM deploy")
-		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
-		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
-		set.BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
-
 		set.BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 
-		set.StringVar(&icmSpec.ICMVersion, "teleporter-version", constants.LatestReleaseVersionTag, "ICM version to deploy")
 		set.StringVar(&icmSpec.ICMVersion, "icm-version", constants.LatestReleaseVersionTag, "ICM version to deploy")
 
 		set.StringVar(&icmSpec.RelayerVersion, "relayer-version", constants.DefaultRelayerVersion, "relayer version to deploy")
