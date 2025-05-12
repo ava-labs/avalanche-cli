@@ -154,7 +154,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
-	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
+	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "command stops after CreateSubnetTx and returns SubnetID")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
 	localNetworkGroup := flags.RegisterFlagGroup(cmd, "Local Network Flags", "show-local-network-flags", true, func(set *pflag.FlagSet) {
@@ -179,7 +179,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
-		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
 		set.Float64Var(
 			&deployBalanceAVAX,
 			"balance",
