@@ -129,7 +129,7 @@ func StartLocalMachine(
 	stakingSignerKeyPaths []string,
 ) (bool, error) {
 	var err error
-	if network.Kind == models.Local {
+	if network.Kind == models.Local && !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 		useLocalMachine = true
 	}
 	clusterName := localnet.LocalClusterName(network, blockchainName)
@@ -562,6 +562,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		numBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -674,7 +675,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 			}
 		}
-		if !generateNodeID {
+		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 			if cancel, err := StartLocalMachine(
 				network,
 				sidecar,
@@ -729,15 +730,17 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(
-				network,
-				changeOwnerAddress,
-				numBootstrapValidators,
-				deployBalance,
-				availableBalance,
-			)
-			if err != nil {
-				return err
+			if bootstrapValidators == nil {
+				bootstrapValidators, err = promptBootstrapValidators(
+					network,
+					changeOwnerAddress,
+					numBootstrapValidators,
+					deployBalance,
+					availableBalance,
+				)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
