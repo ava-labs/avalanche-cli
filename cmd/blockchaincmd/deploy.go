@@ -471,7 +471,7 @@ func prepareBootstrapValidators(
 	availableBalance uint64,
 	changeOwnerAddress *string,
 	localMachineFlags flags.LocalMachineFlags,
-) error {
+) ([]models.SubnetValidator, error) {
 	var err error
 	var bootstrapValidators []models.SubnetValidator
 	if *changeOwnerAddress == "" {
@@ -491,9 +491,9 @@ func prepareBootstrapValidators(
 			numBootstrapValidators,
 			localMachineFlags,
 		); err != nil {
-			return err
+			return nil, err
 		} else if cancel {
-			return nil
+			return nil, nil
 		}
 	}
 	switch {
@@ -501,7 +501,7 @@ func prepareBootstrapValidators(
 		if *changeOwnerAddress == "" {
 			*changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 		for _, endpoint := range bootstrapEndpoints {
@@ -510,7 +510,7 @@ func prepareBootstrapValidators(
 			defer cancel()
 			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
@@ -528,7 +528,7 @@ func prepareBootstrapValidators(
 		// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
 		bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
 		if err != nil {
-			return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
+			return nil, fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 		}
 
 	default:
@@ -541,11 +541,11 @@ func prepareBootstrapValidators(
 				availableBalance,
 			)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return nil
+	return bootstrapValidators, nil
 }
 func validateFlags(cmd *cobra.Command) error {
 	if err := validateBootstrapFilepathFlag(cmd); err != nil {
@@ -761,7 +761,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
-		if err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, deployFlags.LocalMachineFlags); err != nil {
+		bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, deployFlags.LocalMachineFlags)
+		if err != nil {
 			return err
 		}
 	} else if network.Kind == models.Local {
