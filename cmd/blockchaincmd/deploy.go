@@ -462,6 +462,7 @@ func validateConvertOnlyFlag(cmd *cobra.Command) error {
 	}
 	return nil
 }
+
 func prepareBootstrapValidators(
 	network models.Network,
 	sidecar models.Sidecar,
@@ -547,6 +548,7 @@ func prepareBootstrapValidators(
 	}
 	return bootstrapValidators, nil
 }
+
 func validateFlags(cmd *cobra.Command) error {
 	if err := validateBootstrapFilepathFlag(cmd); err != nil {
 		return err

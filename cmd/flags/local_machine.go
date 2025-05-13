@@ -4,6 +4,7 @@ package flags
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -39,6 +40,7 @@ func validateLocalMachineFlags(localMachineFlags LocalMachineFlags) error {
 	}
 	return nil
 }
+
 func AddLocalMachineFlagsToCmd(cmd *cobra.Command, localMachineFlags *LocalMachineFlags) GroupedFlags {
 	return RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&localMachineFlags.UseLocalMachine, useLocalMachineFlag, false, "use local machine as a blockchain validator")
