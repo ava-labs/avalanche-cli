@@ -64,7 +64,7 @@ func newConvertCmd() *cobra.Command {
 
 Sovereign L1s require bootstrap validators. avalanche blockchain convert command gives the option of: 
 - either using local machine as bootstrap validators (set the number of bootstrap validators using 
---num-local-nodes flag, default is set to 1)
+--num-bootstrap-validators flag, default is set to 1)
 - or using remote nodes (we require the node's Node-ID and BLS info)`,
 		RunE:              convertBlockchain,
 		PersistentPostRun: handlePostRun,
@@ -118,7 +118,6 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 		set.Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "reward basis points for PoS Reward Calculator")
 	})
-
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
@@ -137,12 +136,13 @@ func StartLocalMachine(
 	availableBalance uint64,
 	httpPorts []uint,
 	stakingPorts []uint,
+	numBootstrapValidator int,
 	stakingTLSKeyPaths []string,
 	stakingCertKeyPaths []string,
 	stakingSignerKeyPaths []string,
 ) (bool, error) {
 	var err error
-	if network.Kind == models.Local {
+	if network.Kind == models.Local && !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 		useLocalMachine = true
 	}
 	clusterName := localnet.LocalClusterName(network, blockchainName)
@@ -160,9 +160,6 @@ func StartLocalMachine(
 			network = models.ConvertClusterToNetwork(network)
 		}
 	}
-	if numLocalNodes > 0 {
-		useLocalMachine = true
-	}
 	// ask user if we want to use local machine if cluster is not provided
 	if !useLocalMachine && clusterNameFlagValue == "" {
 		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
@@ -174,9 +171,8 @@ func StartLocalMachine(
 		}
 	}
 	// default number of local machine nodes to be 1
-	// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
-	if useLocalMachine && numLocalNodes == 0 {
-		numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
+	if useLocalMachine && numBootstrapValidator == 0 {
+		numBootstrapValidator = constants.DefaultNumberOfLocalMachineNodes
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
@@ -199,11 +195,11 @@ func StartLocalMachine(
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
-		requiredBalance := deployBalance * uint64(numLocalNodes)
+		requiredBalance := deployBalance * uint64(numBootstrapValidator)
 		if availableBalance < requiredBalance {
 			return false, fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-				numLocalNodes,
+				numBootstrapValidator,
 				requiredBalance,
 				availableBalance,
 			)
@@ -273,7 +269,7 @@ func StartLocalMachine(
 			app,
 			clusterName,
 			avagoBinaryPath,
-			uint32(numLocalNodes),
+			uint32(numBootstrapValidator),
 			nodeConfig,
 			localnet.ConnectionSettings{},
 			nodeSettings,
@@ -579,6 +575,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		numBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -691,7 +688,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 			}
 		}
-		if !generateNodeID {
+		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 			if cancel, err := StartLocalMachine(
 				network,
 				sidecar,
@@ -700,6 +697,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				numBootstrapValidators,
 				stakingTLSKeyPaths,
 				stakingCertKeyPaths,
 				stakingSignerKeyPaths,
@@ -745,15 +743,17 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(
-				network,
-				changeOwnerAddress,
-				numBootstrapValidators,
-				deployBalance,
-				availableBalance,
-			)
-			if err != nil {
-				return err
+			if bootstrapValidators == nil {
+				bootstrapValidators, err = promptBootstrapValidators(
+					network,
+					changeOwnerAddress,
+					numBootstrapValidators,
+					deployBalance,
+					availableBalance,
+				)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
