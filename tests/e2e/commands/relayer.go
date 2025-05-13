@@ -26,3 +26,11 @@ func StopRelayer() {
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
+
+/* #nosec G204 */
+func DeployRelayer(args []string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(InterchainCMD, "relayer", args, utils.GlobalFlags{
+		"local":             true,
+		"skip-update-check": true,
+	}, testFlags)
+}

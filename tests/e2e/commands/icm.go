@@ -41,3 +41,11 @@ func SendICMMessage(network, subnetOne, subnetTwo, message, key string) string {
 
 	return string(output)
 }
+
+/* #nosec G204 */
+func DeployICMContracts(args []string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(utils.ICMCmd, "deploy", args, utils.GlobalFlags{
+		"local":             true,
+		"skip-update-check": true,
+	}, testFlags)
+}

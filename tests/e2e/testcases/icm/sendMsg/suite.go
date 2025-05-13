@@ -38,37 +38,34 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
+			// Deploy ICM
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM
-			icmDeployFlags := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   subnetName,
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -92,37 +89,34 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
+			// Deploy ICM
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM
-			icmDeployFlags := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   subnetName,
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -149,46 +143,41 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnet2Name, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnet2Name)
 
+			// Deploy ICM to subnet1
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy ICM to subnet2
+			_, err = commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnet2Name,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM to subnet1
-			icmDeployFlags1 := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags1)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy ICM to subnet2
-			icmDeployFlags2 := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnet2Name,
-			}
-
-			_, err = utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags2)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -215,46 +204,41 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnet2Name, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnet2Name)
 
+			// Deploy ICM to subnet1
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy ICM to subnet2
+			_, err = commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnet2Name,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM to subnet1
-			icmDeployFlags1 := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags1)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy ICM to subnet2
-			icmDeployFlags2 := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnet2Name,
-			}
-
-			_, err = utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags2)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -281,52 +265,47 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnet2Name, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnet2Name)
 
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
-
 			// Deploy ICM to subnet1
-			icmDeployFlags1 := utils.TestFlags{
+			output, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
 				"key":        ewoqKeyName,
 				"blockchain": subnetName,
-			}
-
-			output, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags1)
+			})
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			rpcs1, err := utils.ParseRPCsFromOutput(output)
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			// Deploy ICM to subnet2
-			icmDeployFlags2 := utils.TestFlags{
+			output, err = commands.DeployICMContracts([]string{}, utils.TestFlags{
 				"key":        ewoqKeyName,
 				"blockchain": subnet2Name,
-			}
-
-			output, err = utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags2)
+			})
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			rpcs2, err := utils.ParseRPCsFromOutput(output)
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   fmt.Sprintf("%s,%s", subnetName, subnet2Name),
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			// Send a message
+			globalFlags := utils.GlobalFlags{
+				"local":             true,
+				"skip-update-check": true,
+			}
+
 			sendMsgFlags := utils.TestFlags{
 				"key":        ewoqKeyName,
 				"source-rpc": rpcs2[0],
@@ -355,6 +334,7 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 				"local":             true,
 				"skip-update-check": true,
 			}
+
 			sendMsgFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -394,37 +374,34 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
+			// Deploy ICM
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM
-			icmDeployFlags := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   subnetName,
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key":        ewoqKeyName,
 				"source-rpc": "http://127.0.0.1:61171/ext/bc/invalid-subnet/rpc",
@@ -445,37 +422,34 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
+			// Deploy ICM
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
 			globalFlags := utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}
 
-			// Deploy ICM
-			icmDeployFlags := utils.TestFlags{
-				"key":        ewoqKeyName,
-				"blockchain": subnetName,
-			}
-
-			_, err := utils.TestCommand(utils.ICMCmd, "deploy", []string{}, globalFlags, icmDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			relayerDeployFlags := utils.TestFlags{
-				"key":           ewoqKeyName,
-				"blockchains":   subnetName,
-				"amount":        10000,
-				"cchain-amount": 10000,
-				"log-level":     "info",
-			}
-			relayerDeployArgs := []string{
-				"deploy",
-				"--cchain",
-			}
-
-			_, err = utils.TestCommand(utils.InterchainCMD, "relayer", relayerDeployArgs, globalFlags, relayerDeployFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
 			sendMsgFlags := utils.TestFlags{
 				"key":      ewoqKeyName,
 				"dest-rpc": "http://127.0.0.1:61171/ext/bc/invalid-subnet/rpc",
