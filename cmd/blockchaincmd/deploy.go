@@ -110,10 +110,8 @@ var (
 )
 
 type BlockchainDeployFlags struct {
-	SigAggFlags flags.SignatureAggregatorFlags
-}
-
-icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
+	SigAggFlags       flags.SignatureAggregatorFlags
+	LocalMachineFlags flags.LocalMachineFlags
 }
 
 // avalanche blockchain deploy
@@ -192,22 +190,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	})
 
-	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
-		set.BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-		set.BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-		set.UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
-		set.UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
-		set.StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-		set.StringVar(
-			&userProvidedAvagoVersion,
-			"avalanchego-version",
-			constants.DefaultAvalancheGoVersion,
-			"use this version of avalanchego (ex: v1.17.12)",
-		)
-		set.StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking TLS key for node(s)")
-		set.StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
-		set.StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
-	})
+	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &deployFlags.LocalMachineFlags)
 
 	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "Skip automatic ICM deploy")
@@ -479,12 +462,22 @@ func validateConvertOnlyFlag(cmd *cobra.Command) error {
 	}
 	return nil
 }
-func prepareBootstrapValidators(changeOwnerAddress *string) error {
+func prepareBootstrapValidators(
+	network models.Network,
+	sidecar models.Sidecar,
+	kc keychain.Keychain,
+	blockchainName string,
+	deployBalance,
+	availableBalance uint64,
+	changeOwnerAddress *string,
+	localMachineFlags flags.LocalMachineFlags,
+) error {
 	var err error
+	var bootstrapValidators []models.SubnetValidator
 	if *changeOwnerAddress == "" {
 		// use provided key as change owner unless already set
 		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			changeOwnerAddress = pAddr[0]
+			*changeOwnerAddress = pAddr[0]
 			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 		}
 	}
@@ -495,12 +488,8 @@ func prepareBootstrapValidators(changeOwnerAddress *string) error {
 			blockchainName,
 			deployBalance,
 			availableBalance,
-			httpPorts,
-			stakingPorts,
 			numBootstrapValidators,
-			stakingTLSKeyPaths,
-			stakingCertKeyPaths,
-			stakingSignerKeyPaths,
+			localMachineFlags,
 		); err != nil {
 			return err
 		} else if cancel {
@@ -510,7 +499,7 @@ func prepareBootstrapValidators(changeOwnerAddress *string) error {
 	switch {
 	case len(bootstrapEndpoints) > 0:
 		if *changeOwnerAddress == "" {
-			changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+			*changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 			if err != nil {
 				return err
 			}
@@ -532,7 +521,7 @@ func prepareBootstrapValidators(changeOwnerAddress *string) error {
 				Balance:              deployBalance,
 				BLSPublicKey:         publicKey,
 				BLSProofOfPossession: pop,
-				ChangeOwnerAddr:      changeOwnerAddress,
+				ChangeOwnerAddr:      *changeOwnerAddress,
 			})
 		}
 	case clusterNameFlagValue != "":
@@ -546,7 +535,7 @@ func prepareBootstrapValidators(changeOwnerAddress *string) error {
 		if bootstrapValidators == nil {
 			bootstrapValidators, err = promptBootstrapValidators(
 				network,
-				changeOwnerAddress,
+				*changeOwnerAddress,
 				numBootstrapValidators,
 				deployBalance,
 				availableBalance,
@@ -556,6 +545,7 @@ func prepareBootstrapValidators(changeOwnerAddress *string) error {
 			}
 		}
 	}
+	return nil
 }
 func validateFlags(cmd *cobra.Command) error {
 	if err := validateBootstrapFilepathFlag(cmd); err != nil {
@@ -771,80 +761,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
-		if changeOwnerAddress == "" {
-			// use provided key as change owner unless already set
-			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-				changeOwnerAddress = pAddr[0]
-				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-			}
-		}
-		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
-			if cancel, err := StartLocalMachine(
-				network,
-				sidecar,
-				blockchainName,
-				deployBalance,
-				availableBalance,
-				httpPorts,
-				stakingPorts,
-				numBootstrapValidators,
-				stakingTLSKeyPaths,
-				stakingCertKeyPaths,
-				stakingSignerKeyPaths,
-			); err != nil {
-				return err
-			} else if cancel {
-				return nil
-			}
-		}
-		switch {
-		case len(bootstrapEndpoints) > 0:
-			if changeOwnerAddress == "" {
-				changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
-				if err != nil {
-					return err
-				}
-			}
-			for _, endpoint := range bootstrapEndpoints {
-				infoClient := info.NewClient(endpoint)
-				ctx, cancel := utils.GetAPILargeContext()
-				defer cancel()
-				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-				if err != nil {
-					return err
-				}
-				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-
-				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-					NodeID:               nodeID.String(),
-					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              deployBalance,
-					BLSPublicKey:         publicKey,
-					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeOwnerAddress,
-				})
-			}
-		case clusterNameFlagValue != "":
-			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
-			if err != nil {
-				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
-			}
-
-		default:
-			if bootstrapValidators == nil {
-				bootstrapValidators, err = promptBootstrapValidators(
-					network,
-					changeOwnerAddress,
-					numBootstrapValidators,
-					deployBalance,
-					availableBalance,
-				)
-				if err != nil {
-					return err
-				}
-			}
+		if err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, deployFlags.LocalMachineFlags); err != nil {
+			return err
 		}
 	} else if network.Kind == models.Local {
 		sameControlKey = true

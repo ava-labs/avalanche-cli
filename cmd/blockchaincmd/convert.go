@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -35,7 +34,6 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -52,7 +50,8 @@ var (
 )
 
 type BlockchainConvertFlags struct {
-	SigAggFlags flags.SignatureAggregatorFlags
+	SigAggFlags       flags.SignatureAggregatorFlags
+	LocalMachineFlags flags.LocalMachineFlags
 }
 
 // avalanche blockchain convert
@@ -84,7 +83,6 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-		set.IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 		set.Float64Var(
 			&deployBalanceAVAX,
 			"balance",
@@ -93,22 +91,8 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		)
 		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	})
-	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
-		set.BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-		set.BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-		set.UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
-		set.UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
-		set.StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-		set.StringVar(
-			&userProvidedAvagoVersion,
-			"avalanchego-version",
-			constants.DefaultAvalancheGoVersion,
-			"use this version of avalanchego (ex: v1.17.12)",
-		)
-		set.StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking TLS key for node(s)")
-		set.StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
-		set.StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
-	})
+	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &deployFlags.LocalMachineFlags)
+
 	posGroup := flags.RegisterFlagGroup(cmd, "Proof Of Stake Flags", "show-pos-flags", false, func(set *pflag.FlagSet) {
 		set.Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
 		set.Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
@@ -135,12 +119,8 @@ func StartLocalMachine(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
-	httpPorts []uint,
-	stakingPorts []uint,
 	numBootstrapValidator int,
-	stakingTLSKeyPaths []string,
-	stakingCertKeyPaths []string,
-	stakingSignerKeyPaths []string,
+	localMachineFlags flags.LocalMachineFlags,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local && !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
@@ -233,23 +213,20 @@ func StartLocalMachine(
 		if network.Kind == models.Mainnet {
 			globalNetworkFlags.UseMainnet = true
 		}
-		if len(stakingSignerKeyPaths) != len(stakingCertKeyPaths) || len(stakingSignerKeyPaths) != len(stakingTLSKeyPaths) {
-			return false, fmt.Errorf("staking key inputs must be for the same number of nodes")
-		}
-		nodeSettingsLen := max(len(stakingSignerKeyPaths), len(httpPorts), len(stakingPorts))
+		nodeSettingsLen := max(len(localMachineFlags.StakingSignerKeyPaths), len(localMachineFlags.HTTPPorts), len(localMachineFlags.StakingPorts))
 		nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
 		for i := range nodeSettingsLen {
 			nodeSetting := localnet.NodeSetting{}
-			if i < len(stakingSignerKeyPaths) {
-				stakingSignerKey, err := os.ReadFile(stakingSignerKeyPaths[i])
+			if i < len(localMachineFlags.StakingSignerKeyPaths) {
+				stakingSignerKey, err := os.ReadFile(localMachineFlags.StakingSignerKeyPaths[i])
 				if err != nil {
 					return false, fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPaths[i], err)
 				}
-				stakingCertKey, err := os.ReadFile(stakingCertKeyPaths[i])
+				stakingCertKey, err := os.ReadFile(localMachineFlags.StakingCertKeyPaths[i])
 				if err != nil {
 					return false, fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPaths[i], err)
 				}
-				stakingTLSKey, err := os.ReadFile(stakingTLSKeyPaths[i])
+				stakingTLSKey, err := os.ReadFile(localMachineFlags.StakingTLSKeyPaths[i])
 				if err != nil {
 					return false, fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPaths[i], err)
 				}
@@ -257,11 +234,11 @@ func StartLocalMachine(
 				nodeSetting.StakingCertKey = stakingCertKey
 				nodeSetting.StakingTLSKey = stakingTLSKey
 			}
-			if i < len(httpPorts) {
-				nodeSetting.HTTPPort = uint64(httpPorts[i])
+			if i < len(localMachineFlags.HTTPPorts) {
+				nodeSetting.HTTPPort = uint64(localMachineFlags.HTTPPorts[i])
 			}
-			if i < len(stakingPorts) {
-				nodeSetting.StakingPort = uint64(stakingPorts[i])
+			if i < len(localMachineFlags.StakingPorts) {
+				nodeSetting.StakingPort = uint64(localMachineFlags.StakingPorts[i])
 			}
 			nodeSettings[i] = nodeSetting
 		}
@@ -681,82 +658,8 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 
-	if len(bootstrapValidators) == 0 {
-		if changeOwnerAddress == "" {
-			// use provided key as change owner unless already set
-			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-				changeOwnerAddress = pAddr[0]
-				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-			}
-		}
-		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
-			if cancel, err := StartLocalMachine(
-				network,
-				sidecar,
-				blockchainName,
-				deployBalance,
-				availableBalance,
-				httpPorts,
-				stakingPorts,
-				numBootstrapValidators,
-				stakingTLSKeyPaths,
-				stakingCertKeyPaths,
-				stakingSignerKeyPaths,
-			); err != nil {
-				return err
-			} else if cancel {
-				return nil
-			}
-		}
-		switch {
-		case len(bootstrapEndpoints) > 0:
-			if changeOwnerAddress == "" {
-				changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
-				if err != nil {
-					return err
-				}
-			}
-			for _, endpoint := range bootstrapEndpoints {
-				infoClient := info.NewClient(endpoint)
-				ctx, cancel := utils.GetAPILargeContext()
-				defer cancel()
-				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-				if err != nil {
-					return err
-				}
-				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-
-				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-					NodeID:               nodeID.String(),
-					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              deployBalance,
-					BLSPublicKey:         publicKey,
-					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeOwnerAddress,
-				})
-			}
-		case clusterNameFlagValue != "":
-			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
-			if err != nil {
-				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
-			}
-
-		default:
-			if bootstrapValidators == nil {
-				bootstrapValidators, err = promptBootstrapValidators(
-					network,
-					changeOwnerAddress,
-					numBootstrapValidators,
-					deployBalance,
-					availableBalance,
-				)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	if err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, convertFlags.LocalMachineFlags); err != nil {
+		return err
 	}
 
 	requiredBalance := deployBalance * uint64(len(bootstrapValidators))
