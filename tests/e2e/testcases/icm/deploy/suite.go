@@ -2,8 +2,11 @@ package deploy
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -297,8 +300,14 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM contracts from paths", func() {
-			contractsDirPath := ".avalanche-cli/bin/icm-contracts/v1.0.0"
-			homeDir, err := os.UserHomeDir()
+			td := interchain.ICMDeployer{}
+			contractsDirPath := path.Join(utils.GetBaseDir(), constants.AvalancheCliBinDir, constants.ICMContractsInstallDir)
+			version := "v1.0.0"
+			// Download contracts
+			err := td.DownloadAssets(
+				contractsDirPath,
+				version,
+			)
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			globalFlags := utils.GlobalFlags{
@@ -307,10 +316,10 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			}
 			testFlags := utils.TestFlags{
 				"key":                             ewoqKeyName,
-				"messenger-contract-address-path": filepath.Join(homeDir, contractsDirPath, "TeleporterMessenger_Contract_Address_v1.0.0.txt"),
-				"messenger-deployer-address-path": filepath.Join(homeDir, contractsDirPath, "TeleporterMessenger_Deployer_Address_v1.0.0.txt"),
-				"messenger-deployer-tx-path":      filepath.Join(homeDir, contractsDirPath, "TeleporterMessenger_Deployment_Transaction_v1.0.0.txt"),
-				"registry-bytecode-path":          filepath.Join(homeDir, contractsDirPath, "TeleporterRegistry_Bytecode_v1.0.0.txt"),
+				"messenger-contract-address-path": filepath.Join(contractsDirPath, version, "TeleporterMessenger_Contract_Address_v1.0.0.txt"),
+				"messenger-deployer-address-path": filepath.Join(contractsDirPath, version, "TeleporterMessenger_Deployer_Address_v1.0.0.txt"),
+				"messenger-deployer-tx-path":      filepath.Join(contractsDirPath, version, "TeleporterMessenger_Deployment_Transaction_v1.0.0.txt"),
+				"registry-bytecode-path":          filepath.Join(contractsDirPath, version, "TeleporterRegistry_Bytecode_v1.0.0.txt"),
 			}
 			commandArguments := []string{
 				"--c-chain",
@@ -322,6 +331,8 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 				Should(gomega.ContainSubstring("ICM Messenger successfully deployed to C-Chain"))
 			gomega.Expect(output).
 				Should(gomega.ContainSubstring("ICM Registry successfully deployed to C-Chain"))
+
+			_ = os.RemoveAll(filepath.Join(contractsDirPath, version))
 		})
 
 		ginkgo.It("should deploy ICM contracts with version", func() {
