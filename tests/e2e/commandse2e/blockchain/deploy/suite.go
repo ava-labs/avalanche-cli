@@ -24,7 +24,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		// Cleanup test subnet config
 		commands.DeleteSubnetConfig(subnetName)
 	})
