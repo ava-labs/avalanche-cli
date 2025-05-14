@@ -72,7 +72,6 @@ var (
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
-	numLocalNodes                   int
 	stakingTLSKeyPaths              []string
 	stakingCertKeyPaths             []string
 	stakingSignerKeyPaths           []string
@@ -169,7 +168,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-		set.IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 		set.Float64Var(
 			&deployBalanceAVAX,
 			"balance",
@@ -611,6 +609,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				numBootstrapValidators,
 				stakingTLSKeyPaths,
 				stakingCertKeyPaths,
 				stakingSignerKeyPaths,
