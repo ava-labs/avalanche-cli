@@ -3,6 +3,7 @@
 package messengercmd
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -145,9 +146,18 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("different ICM messenger addresses among blockchains: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	encodedMessage := []byte(message)
+	messageBytes := []byte(message)
 	if msgFlags.HexEncodedMessage {
-		encodedMessage = common.FromHex(message)
+		toDecode := message
+		if strings.HasPrefix(toDecode, "0x") {
+			toDecode = strings.TrimPrefix(toDecode, "0x")
+		} else if strings.HasPrefix(toDecode, "0X") {
+			toDecode = strings.TrimPrefix(toDecode, "0X")
+		}
+		messageBytes, err = hex.DecodeString(toDecode)
+		if err != nil {
+			return fmt.Errorf("invalid hex format at %s", message)
+		}
 	}
 	destAddr := common.Address{}
 	if msgFlags.DestinationAddress != "" {
@@ -164,7 +174,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		privateKey,
 		destBlockchainID,
 		destAddr,
-		encodedMessage,
+		messageBytes,
 	)
 	if err != nil {
 		return err
@@ -192,8 +202,13 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	if destBlockchainID != ids.ID(event.DestinationBlockchainID[:]) {
 		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destBlockchainID, ids.ID(event.DestinationBlockchainID[:]))
 	}
-	if message != string(event.Message.Message) {
-		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(event.Message.Message))
+
+	receivedMessage := string(event.Message.Message)
+	if msgFlags.HexEncodedMessage {
+		receivedMessage = common.Bytes2Hex(event.Message.Message)
+	}
+	if string(messageBytes) != string(event.Message.Message) {
+		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, receivedMessage)
 	}
 
 	// receive and process head from destination
