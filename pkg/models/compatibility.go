@@ -10,7 +10,8 @@ type VMCompatibility struct {
 type AvagoCompatiblity map[string][]string
 
 type NetworkVersion struct {
-	LatestVersion string `json:"latest-version"`
+	LatestVersion  string `json:"latest-version"`
+	MinimumVersion string `json:"minimum-version"`
 }
 
 type CLIDependencyMap struct {
