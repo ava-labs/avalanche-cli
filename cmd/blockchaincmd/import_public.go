@@ -15,14 +15,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/coreth/core"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -35,7 +34,6 @@ var (
 	useSubnetEvm    bool
 	useCustomVM     bool
 	rpcURL          string
-	noRPCAvailable  bool
 )
 
 // avalanche blockchain import public
@@ -54,8 +52,6 @@ flag.`,
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 
-	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "[optional] URL of an already running validator")
-
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "import a subnet-evm")
 	cmd.Flags().BoolVar(&useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(
@@ -71,7 +67,6 @@ flag.`,
 		"the blockchain ID",
 	)
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "rpc endpoint for the blockchain")
-	cmd.Flags().BoolVar(&noRPCAvailable, "no-rpc-available", false, "use this when an RPC if offline and can't be accesed")
 	return cmd
 }
 
@@ -97,7 +92,7 @@ func importPublic(*cobra.Command, []string) error {
 		}
 	}
 
-	sc, genBytes, err := importBlockchain(network, rpcURL, !noRPCAvailable, blockchainID, ux.Logger.PrintToUser)
+	sc, genBytes, err := importBlockchain(network, rpcURL, blockchainID, ux.Logger.PrintToUser)
 	if err != nil {
 		return err
 	}
@@ -110,42 +105,8 @@ func importPublic(*cobra.Command, []string) error {
 		return err
 	}
 
-	var nodeVersionReply *info.GetNodeVersionReply
-	if nodeEndpoint == "" {
-		yes, err := app.Prompt.CaptureNoYes("Have validator nodes already been deployed to this blockchain?")
-		if err != nil {
-			return err
-		}
-		if yes {
-			nodeEndpoint, err = app.Prompt.CaptureString(
-				"Please provide an API URL of such a node so we can query its VM version (e.g. http://111.22.33.44:5555)")
-			if err != nil {
-				return err
-			}
-			ctx, cancel := utils.GetAPIContext()
-			defer cancel()
-			infoAPI := info.NewClient(nodeEndpoint)
-			options := []rpc.Option{}
-			nodeVersionReply, err = infoAPI.GetNodeVersion(ctx, options...)
-			if err != nil {
-				return fmt.Errorf("failed to query node - is it running and reachable? %w", err)
-			}
-		}
-	}
-
-	var versions []string
-	if nodeVersionReply != nil {
-		// a node was queried
-		for _, v := range nodeVersionReply.VMVersions {
-			if v == sc.ImportedVMID {
-				sc.VMVersion = v
-				break
-			}
-		}
-		sc.RPCVersion = int(nodeVersionReply.RPCProtocolVersion)
-	} else if sc.VM == models.SubnetEvm {
-		// no node was queried, ask the user
-		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
+	if sc.VM == models.SubnetEvm {
+		versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
 		if err != nil {
 			return err
 		}
@@ -157,9 +118,6 @@ func importPublic(*cobra.Command, []string) error {
 		if err != nil {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", sc.VM, sc.VMVersion)
 		}
-	}
-
-	if sc.VM == models.SubnetEvm {
 		var genesis core.Genesis
 		if err := json.Unmarshal(genBytes, &genesis); err != nil {
 			return err
@@ -183,26 +141,26 @@ func importPublic(*cobra.Command, []string) error {
 func importBlockchain(
 	network models.Network,
 	rpcURL string,
-	rpcIsAvailable bool,
 	blockchainID ids.ID,
 	printFunc func(msg string, args ...interface{}),
 ) (models.Sidecar, []byte, error) {
 	var err error
 
-	if !rpcIsAvailable && rpcURL != "" {
-		return models.Sidecar{}, nil, fmt.Errorf("RPC can't be both non empty and unavailable")
-	}
-
-	if rpcIsAvailable && rpcURL == "" {
-		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	if rpcURL == "" {
+		rpcURL, err = app.Prompt.CaptureStringAllowEmpty("What is the RPC endpoint?")
 		if err != nil {
 			return models.Sidecar{}, nil, err
+		}
+		if rpcURL != "" {
+			if err := prompts.ValidateURLFormat(rpcURL); err != nil {
+				return models.Sidecar{}, nil, fmt.Errorf("invalid url format: %w", err)
+			}
 		}
 	}
 
 	if blockchainID == ids.Empty {
 		var err error
-		if rpcIsAvailable {
+		if rpcURL != "" {
 			blockchainID, _ = precompiles.WarpPrecompileGetBlockchainID(rpcURL)
 		}
 		if blockchainID == ids.Empty {
@@ -248,7 +206,7 @@ func importBlockchain(
 		ImportedFromAPM: true,
 	}
 
-	if rpcIsAvailable {
+	if rpcURL != "" {
 		e := sc.Networks[network.Name()]
 		e.RPCEndpoints = []string{rpcURL}
 		sc.Networks[network.Name()] = e
@@ -261,7 +219,7 @@ func importBlockchain(
 		e.ValidatorManagerAddress = validatorManagerAddress
 		sc.Networks[network.Name()] = e
 		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
-		if rpcIsAvailable {
+		if rpcURL != "" {
 			sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 			if err != nil {
 				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type: %w", err)

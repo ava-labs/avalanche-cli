@@ -185,7 +185,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, true, ids.Empty, ux.Logger.PrintToUser)
+		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, ids.Empty, ux.Logger.PrintToUser)
 		if err != nil {
 			return err
 		}
