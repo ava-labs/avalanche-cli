@@ -438,12 +438,6 @@ func prepareBootstrapValidators(
 	}
 	switch {
 	case len(bootstrapValidatorFlags.BootstrapEndpoints) > 0:
-		//if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
-		//	bootstrapValidatorFlags.ChangeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//}
 		for _, endpoint := range bootstrapValidatorFlags.BootstrapEndpoints {
 			infoClient := info.NewClient(endpoint)
 			ctx, cancel := utils.GetAPILargeContext()
