@@ -326,6 +326,59 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 
 			commands.StopRelayer()
 		})
+
+		ginkgo.It("should transfer hex encoded message", func() {
+			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
+			commands.DeploySubnetLocallyNonSOV(subnetName)
+
+			// Deploy ICM
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Send a message
+			globalFlags := utils.GlobalFlags{
+				"local":             true,
+				"skip-update-check": true,
+			}
+
+			sendMsgFlags := utils.TestFlags{
+				"key": ewoqKeyName,
+			}
+
+			hexEncodedMessage := "0x48656c6c6f20576f726c64" // "Hello World" in hex
+			sendMessageArgs := []string{
+				cChain,
+				subnetName,
+				hexEncodedMessage,
+				"--hex-encoded",
+			}
+
+			output, err := utils.TestCommand(utils.ICMCmd, "sendMsg", sendMessageArgs, globalFlags, sendMsgFlags)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("Delivering message \"%s\" from source blockchain \"%s\"", hexEncodedMessage, cChain)))
+			gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("Waiting for message to be delivered to destination blockchain \"%s\"", subnetName)))
+			gomega.Expect(output).Should(gomega.ContainSubstring("Message successfully Teleported!"))
+
+			commands.StopRelayer()
+		})
 	})
 
 	ginkgo.Context("with invalid input", func() {
