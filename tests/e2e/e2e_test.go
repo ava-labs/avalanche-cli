@@ -26,6 +26,7 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/devnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/monitoring"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/packageman"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/relayer/deploy"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/root"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/non-sov/local"

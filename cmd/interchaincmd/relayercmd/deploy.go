@@ -72,7 +72,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().Float64Var(&deployFlags.CChainAmount, "cchain-amount", 0, "automatically fund cchain fee payments with the given amount")
 	cmd.Flags().StringVar(&deployFlags.BlockchainFundingKey, "blockchain-funding-key", "", "key to be used to fund relayer account on all l1s")
 	cmd.Flags().StringVar(&deployFlags.CChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
-	cmd.Flags().BoolVar(&deployFlags.AllowPrivateIPs, "allow-private-ips", true, "allow relayer to connec to private ips")
+	cmd.Flags().BoolVar(&deployFlags.AllowPrivateIPs, "allow-private-ips", true, "allow relayer to connect to private ips")
 	return cmd
 }
 
