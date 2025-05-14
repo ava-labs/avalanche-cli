@@ -64,7 +64,6 @@ var (
 	userProvidedAvagoVersion string
 	outputTxPath             string
 	useLedger                bool
-	useLocalMachine          bool
 	useEwoq                  bool
 	ledgerAddresses          []string
 	subnetIDStr              string
@@ -363,7 +362,7 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 
 func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, bootstrapValidatorFlags flags.BootstrapValidatorFlags) error {
 	if network.Kind == models.Local {
-		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine &&
+		if cmd.Flags().Changed("use-local-machine") && !deployFlags.LocalMachineFlags.UseLocalMachine &&
 			bootstrapValidatorFlags.BootstrapEndpoints == nil &&
 			bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" &&
 			!bootstrapValidatorFlags.GenerateNodeID {
@@ -390,8 +389,7 @@ func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.B
 		case bootstrapValidatorFlags.BootstrapEndpoints != nil:
 			flagName = "--bootstrap-endpoints is not empty"
 		}
-
-		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
+		if cmd.Flags().Changed("use-local-machine") && deployFlags.LocalMachineFlags.UseLocalMachine {
 			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
 		}
 		if cmd.Flags().Changed("convert-only") && !convertOnly {
@@ -574,7 +572,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags); err != nil {
 		return err
 	}
@@ -855,7 +852,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if savePartialTx {
 			return nil
 		}
-		if convertOnly || (!useLocalMachine && clusterNameFlagValue == "") {
+		if convertOnly || (!deployFlags.LocalMachineFlags.UseLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("Next, we need to:")
 			if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
@@ -886,6 +883,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
+			deployFlags.LocalMachineFlags.UseLocalMachine,
 			deployFlags.SigAggFlags,
 			deployFlags.ProofOfStakeFlags,
 		)
@@ -951,7 +949,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.RedXToUser("Interchain Messaging is not deployed due to: %v", icmErr)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("ICM is successfully deployed")
-			if network.Kind != models.Local && !useLocalMachine {
+			if network.Kind != models.Local && !deployFlags.LocalMachineFlags.UseLocalMachine {
 				if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
 					ux.Logger.PrintToUser("")
 					yes, err := app.Prompt.CaptureYesNo("Do you want to setup local relayer for the messages to be interchanged, as Interchain Messaging was deployed to your blockchain?")
@@ -988,7 +986,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					}
 					deployRelayerFlags.BlockchainsToRelay = utils.Unique(sdkutils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
-				if network.Kind == models.Local || useLocalMachine {
+				if network.Kind == models.Local || deployFlags.LocalMachineFlags.UseLocalMachine {
 					relayerKeyName, _, _, err := relayer.GetDefaultRelayerKeyInfo(app)
 					if err != nil {
 						return err

@@ -106,13 +106,13 @@ func StartLocalMachine(
 		!bootstrapValidatorFlags.GenerateNodeID &&
 		bootstrapValidatorFlags.BootstrapEndpoints == nil &&
 		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" {
-		useLocalMachine = true
+		localMachineFlags.UseLocalMachine = true
 	}
 	clusterName := localnet.LocalClusterName(network, blockchainName)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
-			useLocalMachine = true
+			localMachineFlags.UseLocalMachine = true
 			if len(bootstrapValidatorFlags.BootstrapEndpoints) == 0 {
 				bootstrapValidatorFlags.BootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 				if err != nil {
@@ -124,21 +124,21 @@ func StartLocalMachine(
 		}
 	}
 	// ask user if we want to use local machine if cluster is not provided
-	if !useLocalMachine && clusterNameFlagValue == "" {
+	if !localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
 		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
-		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
+		localMachineFlags.UseLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 		if err != nil {
 			return false, err
 		}
 	}
 	// default number of local machine nodes to be 1
-	if useLocalMachine && bootstrapValidatorFlags.NumBootstrapValidators == 0 {
+	if localMachineFlags.UseLocalMachine && bootstrapValidatorFlags.NumBootstrapValidators == 0 {
 		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
-	if useLocalMachine && clusterNameFlagValue == "" {
+	if localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
 		if localnet.LocalClusterExists(app, clusterName) {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(
@@ -261,6 +261,7 @@ func InitializeValidatorManager(
 	validatorManagerAddrStr string,
 	proxyContractOwner string,
 	useACP99 bool,
+	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
@@ -718,6 +719,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
+			convertFlags.LocalMachineFlags.UseLocalMachine,
 			convertFlags.SigAggFlags,
 			convertFlags.ProofOfStakeFlags,
 		); err != nil {
