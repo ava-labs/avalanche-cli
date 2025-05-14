@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/pflag"
-
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -50,8 +48,10 @@ var (
 )
 
 type BlockchainConvertFlags struct {
-	SigAggFlags       flags.SignatureAggregatorFlags
-	LocalMachineFlags flags.LocalMachineFlags
+	SigAggFlags             flags.SignatureAggregatorFlags
+	LocalMachineFlags       flags.LocalMachineFlags
+	ProofOfStakeFlags       flags.POSFlags
+	BootstrapValidatorFlags flags.BootstrapValidatorFlags
 }
 
 // avalanche blockchain convert
@@ -78,30 +78,9 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
-	bootstrapValidatorGroup := flags.RegisterFlagGroup(cmd, "Bootstrap Validators Flags", "show-bootstrap-validators-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
-		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
-		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
-		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-		set.Float64Var(
-			&deployBalanceAVAX,
-			"balance",
-			float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
-			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
-		)
-		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
-	})
-	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &deployFlags.LocalMachineFlags)
-
-	posGroup := flags.RegisterFlagGroup(cmd, "Proof Of Stake Flags", "show-pos-flags", false, func(set *pflag.FlagSet) {
-		set.Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
-		set.Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-		set.Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
-		set.Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
-		set.Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
-		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
-		set.Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "reward basis points for PoS Reward Calculator")
-	})
+	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &convertFlags.LocalMachineFlags)
+	posGroup := flags.AddProofOfStakeToCmd(cmd, &convertFlags.ProofOfStakeFlags)
+	bootstrapValidatorGroup := flags.AddBootstrapValidatorFlagsToCmd(cmd, &convertFlags.BootstrapValidatorFlags)
 
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
@@ -280,6 +259,7 @@ func InitializeValidatorManager(
 	proxyContractOwner string,
 	useACP99 bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
+	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
 	if useACP99 {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
@@ -403,12 +383,12 @@ func InitializeValidatorManager(
 			extraAggregatorPeers,
 			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
-				MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
-				MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
-				MinimumStakeDuration:    poSMinimumStakeDuration,
-				MinimumDelegationFee:    poSMinimumDelegationFee,
-				MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
-				WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
+				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
+				MaximumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MaximumStakeAmount)),
+				MinimumStakeDuration:    proofOfStakeFlags.MinimumStakeDuration,
+				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
+				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
+				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
 				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},

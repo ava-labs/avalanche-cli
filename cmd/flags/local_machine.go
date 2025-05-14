@@ -42,7 +42,7 @@ func validateLocalMachineFlags(localMachineFlags LocalMachineFlags) error {
 }
 
 func AddLocalMachineFlagsToCmd(cmd *cobra.Command, localMachineFlags *LocalMachineFlags) GroupedFlags {
-	return RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", false, func(set *pflag.FlagSet) {
+	return RegisterFlagGroup(cmd, "Local Machine Flags (Use Local Machine as Bootstrap Validator)", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
 		set.BoolVar(&localMachineFlags.UseLocalMachine, useLocalMachineFlag, false, "use local machine as a blockchain validator")
 		set.BoolVar(&localMachineFlags.PartialSync, partialSyncFlag, true, "set primary network partial sync for new validators")
 		set.UintSliceVar(&localMachineFlags.HTTPPorts, httpPortFlag, []uint{}, "http port for node(s)")

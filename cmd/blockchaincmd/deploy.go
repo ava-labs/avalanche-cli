@@ -56,51 +56,34 @@ import (
 const skipRelayerFlagName = "skip-relayer"
 
 var (
-	sameControlKey                  bool
-	keyName                         string
-	threshold                       uint32
-	controlKeys                     []string
-	subnetAuthKeys                  []string
-	userProvidedAvagoVersion        string
-	outputTxPath                    string
-	useLedger                       bool
-	useLocalMachine                 bool
-	useEwoq                         bool
-	ledgerAddresses                 []string
-	subnetIDStr                     string
-	mainnetChainID                  uint32
-	skipCreatePrompt                bool
-	avagoBinaryPath                 string
-	numBootstrapValidators          int
-	stakingTLSKeyPaths              []string
-	stakingCertKeyPaths             []string
-	stakingSignerKeyPaths           []string
-	httpPorts                       []uint
-	stakingPorts                    []uint
-	partialSync                     bool
-	changeOwnerAddress              string
-	subnetOnly                      bool
-	icmSpec                         subnet.ICMSpec
-	generateNodeID                  bool
-	bootstrapValidatorsJSONFilePath string
-	bootstrapEndpoints              []string
-	convertOnly                     bool
-	numNodes                        uint32
-	relayerAmount                   float64
-	relayerKeyName                  string
-	relayCChain                     bool
-	cChainFundingKey                string
-	icmKeyName                      string
-	cchainIcmKeyName                string
-	relayerAllowPrivateIPs          bool
+	sameControlKey           bool
+	keyName                  string
+	threshold                uint32
+	controlKeys              []string
+	subnetAuthKeys           []string
+	userProvidedAvagoVersion string
+	outputTxPath             string
+	useLedger                bool
+	useLocalMachine          bool
+	useEwoq                  bool
+	ledgerAddresses          []string
+	subnetIDStr              string
+	mainnetChainID           uint32
+	skipCreatePrompt         bool
+	avagoBinaryPath          string
+	partialSync              bool
+	subnetOnly               bool
+	icmSpec                  subnet.ICMSpec
+	convertOnly              bool
+	numNodes                 uint32
+	relayerAmount            float64
+	relayerKeyName           string
+	relayCChain              bool
+	cChainFundingKey         string
+	icmKeyName               string
+	cchainIcmKeyName         string
+	relayerAllowPrivateIPs   bool
 
-	poSMinimumStakeAmount          uint64
-	poSMaximumStakeAmount          uint64
-	poSMinimumStakeDuration        uint64
-	poSMinimumDelegationFee        uint16
-	poSMaximumStakeMultiplier      uint8
-	poSWeightToValueFactor         uint64
-	deployBalanceAVAX              float64
 	validatorManagerAddress        string
 	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -110,8 +93,10 @@ var (
 )
 
 type BlockchainDeployFlags struct {
-	SigAggFlags       flags.SignatureAggregatorFlags
-	LocalMachineFlags flags.LocalMachineFlags
+	SigAggFlags             flags.SignatureAggregatorFlags
+	LocalMachineFlags       flags.LocalMachineFlags
+	ProofOfStakeFlags       flags.POSFlags
+	BootstrapValidatorFlags flags.BootstrapValidatorFlags
 }
 
 // avalanche blockchain deploy
@@ -176,20 +161,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	})
 
-	bootstrapValidatorGroup := flags.RegisterFlagGroup(cmd, "Bootstrap Validators Flags", "show-bootstrap-validators-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators")
-		set.BoolVar(&generateNodeID, "generate-node-id", false, "set to true to generate Node IDs for bootstrap validators when none are set up. Use these Node IDs to set up your Avalanche Nodes.")
-		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
-		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
-		set.Float64Var(
-			&deployBalanceAVAX,
-			"balance",
-			float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
-			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain (setting balance=1 equals to 1 AVAX for each bootstrap validator)",
-		)
-		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
-	})
-
+	bootstrapValidatorGroup := flags.AddBootstrapValidatorFlagsToCmd(cmd, &deployFlags.BootstrapValidatorFlags)
 	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &deployFlags.LocalMachineFlags)
 
 	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
@@ -211,15 +183,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
 		set.StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
 	})
-
-	posGroup := flags.RegisterFlagGroup(cmd, "Proof Of Stake Flags", "show-pos-flags", false, func(set *pflag.FlagSet) {
-		set.Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
-		set.Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-		set.Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
-		set.Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
-		set.Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
-		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
-	})
+	posGroup := flags.AddProofOfStakeToCmd(cmd, &deployFlags.ProofOfStakeFlags)
 
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup, sigAggGroup}))
 	return cmd
@@ -397,9 +361,12 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 	return app.UpdateSidecar(sc)
 }
 
-func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
+func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, bootstrapValidatorFlags flags.BootstrapValidatorFlags) error {
 	if network.Kind == models.Local {
-		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" && !generateNodeID {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine &&
+			bootstrapValidatorFlags.BootstrapEndpoints == nil &&
+			bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" &&
+			!bootstrapValidatorFlags.GenerateNodeID {
 			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
 		}
 	}
@@ -968,6 +935,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
 			deployFlags.SigAggFlags,
+			deployFlags.ProofOfStakeFlags,
 		)
 		if err != nil {
 			return err
