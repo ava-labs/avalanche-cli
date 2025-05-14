@@ -82,26 +82,10 @@ func AddBootstrapValidatorFlagsToCmd(cmd *cobra.Command, bootstrapFlags *Bootstr
 			if err := validateBootstrapValidatorFlags(cmd, *bootstrapFlags); err != nil {
 				return err
 			}
-			//if bootstrapValidatorsJSONFilePath != "" {
-			//	bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
-			//	if err != nil {
-			//		return err
-			//	}
-			//	numBootstrapValidators = len(bootstrapValidators)
-			//}
 
-			// TODO: incorporate this
 			if bootstrapFlags.DeployBalanceAVAX <= 0 {
 				return fmt.Errorf("bootstrap validator balance must be greater than 0 AVAX")
 			}
-			//TODO: incorporate this
-			//if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
-			//	// use provided key as change owner unless already set
-			//	if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			//		bootstrapValidatorFlags.ChangeOwnerAddress = pAddr[0]
-			//		ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", *changeOwnerAddress)
-			//	}
-			//}
 			return nil
 		}
 

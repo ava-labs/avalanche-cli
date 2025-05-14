@@ -403,6 +403,7 @@ func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.B
 }
 
 func prepareBootstrapValidators(
+	bootstrapValidators *[]models.SubnetValidator,
 	network models.Network,
 	sidecar models.Sidecar,
 	kc keychain.Keychain,
@@ -411,9 +412,8 @@ func prepareBootstrapValidators(
 	availableBalance uint64,
 	localMachineFlags *flags.LocalMachineFlags,
 	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
-) ([]models.SubnetValidator, error) {
+) error {
 	var err error
-	var bootstrapValidators []models.SubnetValidator
 	if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
 		// use provided key as change owner unless already set
 		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
@@ -431,9 +431,9 @@ func prepareBootstrapValidators(
 			localMachineFlags,
 			bootstrapValidatorFlags,
 		); err != nil {
-			return nil, err
+			return err
 		} else if cancel {
-			return nil, nil
+			return nil
 		}
 	}
 	switch {
@@ -450,12 +450,12 @@ func prepareBootstrapValidators(
 			defer cancel()
 			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 
-			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+			*bootstrapValidators = append(*bootstrapValidators, models.SubnetValidator{
 				NodeID:               nodeID.String(),
 				Weight:               constants.BootstrapValidatorWeight,
 				Balance:              deployBalance,
@@ -466,25 +466,25 @@ func prepareBootstrapValidators(
 		}
 	case clusterNameFlagValue != "":
 		// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-		bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
+		*bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
 		if err != nil {
-			return nil, fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
+			return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 		}
 
 	default:
 		if bootstrapValidators == nil {
-			bootstrapValidators, err = promptBootstrapValidators(
+			*bootstrapValidators, err = promptBootstrapValidators(
 				network,
 				deployBalance,
 				availableBalance,
 				bootstrapValidatorFlags,
 			)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
-	return bootstrapValidators, nil
+	return nil
 }
 
 // deployBlockchain is the cobra command run for deploying subnets
@@ -688,7 +688,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployBalance := uint64(deployFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
-		bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &deployFlags.LocalMachineFlags, &deployFlags.BootstrapValidatorFlags)
+		err = prepareBootstrapValidators(&bootstrapValidators, network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &deployFlags.LocalMachineFlags, &deployFlags.BootstrapValidatorFlags)
 		if err != nil {
 			return err
 		}

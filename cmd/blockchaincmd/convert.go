@@ -641,7 +641,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 
 	deployBalance := uint64(convertFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 
-	bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &convertFlags.LocalMachineFlags, &convertFlags.BootstrapValidatorFlags)
+	err = prepareBootstrapValidators(&bootstrapValidators, network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &convertFlags.LocalMachineFlags, &convertFlags.BootstrapValidatorFlags)
 	if err != nil {
 		return err
 	}
