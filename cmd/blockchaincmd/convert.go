@@ -98,11 +98,14 @@ func StartLocalMachine(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
-	numBootstrapValidator int,
-	localMachineFlags flags.LocalMachineFlags,
+	localMachineFlags *flags.LocalMachineFlags,
+	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
 ) (bool, error) {
 	var err error
-	if network.Kind == models.Local && !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
+	if network.Kind == models.Local &&
+		!bootstrapValidatorFlags.GenerateNodeID &&
+		bootstrapValidatorFlags.BootstrapEndpoints == nil &&
+		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" {
 		useLocalMachine = true
 	}
 	clusterName := localnet.LocalClusterName(network, blockchainName)
@@ -110,8 +113,8 @@ func StartLocalMachine(
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
 			useLocalMachine = true
-			if len(bootstrapEndpoints) == 0 {
-				bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
+			if len(bootstrapValidatorFlags.BootstrapEndpoints) == 0 {
+				bootstrapValidatorFlags.BootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 				if err != nil {
 					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 						"please create your local node again and call blockchain deploy command again", err)
@@ -131,8 +134,8 @@ func StartLocalMachine(
 		}
 	}
 	// default number of local machine nodes to be 1
-	if useLocalMachine && numBootstrapValidator == 0 {
-		numBootstrapValidator = constants.DefaultNumberOfLocalMachineNodes
+	if useLocalMachine && bootstrapValidatorFlags.NumBootstrapValidators == 0 {
+		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
@@ -155,11 +158,11 @@ func StartLocalMachine(
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
-		requiredBalance := deployBalance * uint64(numBootstrapValidator)
+		requiredBalance := deployBalance * uint64(bootstrapValidatorFlags.NumBootstrapValidators)
 		if availableBalance < requiredBalance {
 			return false, fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-				numBootstrapValidator,
+				bootstrapValidatorFlags.NumBootstrapValidators,
 				requiredBalance,
 				availableBalance,
 			)
@@ -199,15 +202,15 @@ func StartLocalMachine(
 			if i < len(localMachineFlags.StakingSignerKeyPaths) {
 				stakingSignerKey, err := os.ReadFile(localMachineFlags.StakingSignerKeyPaths[i])
 				if err != nil {
-					return false, fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPaths[i], err)
+					return false, fmt.Errorf("could not read staking signer key at %s: %w", localMachineFlags.StakingSignerKeyPaths[i], err)
 				}
 				stakingCertKey, err := os.ReadFile(localMachineFlags.StakingCertKeyPaths[i])
 				if err != nil {
-					return false, fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPaths[i], err)
+					return false, fmt.Errorf("could not read staking cert key at %s: %w", localMachineFlags.StakingCertKeyPaths[i], err)
 				}
 				stakingTLSKey, err := os.ReadFile(localMachineFlags.StakingTLSKeyPaths[i])
 				if err != nil {
-					return false, fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPaths[i], err)
+					return false, fmt.Errorf("could not read staking TLS key at %s: %w", localMachineFlags.StakingTLSKeyPaths[i], err)
 				}
 				nodeSetting.StakingSignerKey = stakingSignerKey
 				nodeSetting.StakingCertKey = stakingCertKey
@@ -226,7 +229,7 @@ func StartLocalMachine(
 			app,
 			clusterName,
 			avagoBinaryPath,
-			uint32(numBootstrapValidator),
+			uint32(bootstrapValidatorFlags.NumBootstrapValidators),
 			nodeConfig,
 			localnet.ConnectionSettings{},
 			nodeSettings,
@@ -236,8 +239,8 @@ func StartLocalMachine(
 			return false, err
 		}
 		clusterNameFlagValue = clusterName
-		if len(bootstrapEndpoints) == 0 {
-			bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
+		if len(bootstrapValidatorFlags.BootstrapEndpoints) == 0 {
+			bootstrapValidatorFlags.BootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 			if err != nil {
 				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 					"please create your local node again and call blockchain deploy command again", err)
@@ -528,12 +531,12 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	}
 
 	var bootstrapValidators []models.SubnetValidator
-	if bootstrapValidatorsJSONFilePath != "" {
-		bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
+	if convertFlags.BootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" {
+		bootstrapValidators, err = LoadBootstrapValidator(convertFlags.BootstrapValidatorFlags)
 		if err != nil {
 			return err
 		}
-		numBootstrapValidators = len(bootstrapValidators)
+		convertFlags.BootstrapValidatorFlags.NumBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -636,9 +639,9 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
+	deployBalance := uint64(convertFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 
-	bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, convertFlags.LocalMachineFlags)
+	bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &convertFlags.LocalMachineFlags, &convertFlags.BootstrapValidatorFlags)
 	if err != nil {
 		return err
 	}
@@ -703,7 +706,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if !convertOnly && !generateNodeID {
+	if !convertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
 		if _, err = InitializeValidatorManager(
 			blockchainName,
 			sidecar.ValidatorManagerOwner,
@@ -716,6 +719,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
 			convertFlags.SigAggFlags,
+			convertFlags.ProofOfStakeFlags,
 		); err != nil {
 			return err
 		}

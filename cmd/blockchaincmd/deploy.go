@@ -374,48 +374,20 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, boot
 	return nil
 }
 
-func validateBootstrapFilepathFlag(cmd *cobra.Command) error {
-	if bootstrapValidatorsJSONFilePath != "" {
-		if generateNodeID {
-			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-filepath at the same time")
-		}
-		if cmd.Flags().Changed("num-bootstrap-validators") {
-			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-filepath at the same time")
-		}
-		if cmd.Flags().Changed("balance") {
-			return fmt.Errorf("cannot use a non-empty --balance and a non-empty --bootstrap-filepath at the same time")
-		}
-		if bootstrapEndpoints != nil {
-			return fmt.Errorf("cannot use a non-empty --bootstrap-endpoints and a non-empty --bootstrap-filepath at the same time")
-		}
-	}
-	return nil
-}
-
-func validateBootstrapEndpointFlag(cmd *cobra.Command) error {
-	if bootstrapEndpoints != nil {
-		if generateNodeID {
-			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-endpoints at the same time")
-		}
-		if cmd.Flags().Changed("num-bootstrap-validators") {
-			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-endpoints at the same time")
-		}
-	}
-	return nil
-}
-
 // checks for flags that will conflict if user sets convert only to false or if user sets use-local-machine to true
 // if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
 // convertOnly will be set to true
-func validateConvertOnlyFlag(cmd *cobra.Command) error {
-	if generateNodeID || bootstrapValidatorsJSONFilePath != "" || bootstrapEndpoints != nil {
+func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.BootstrapValidatorFlags) error {
+	if bootstrapValidatorFlags.GenerateNodeID ||
+		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" ||
+		bootstrapValidatorFlags.BootstrapEndpoints != nil {
 		flagName := ""
 		switch {
-		case generateNodeID:
+		case bootstrapValidatorFlags.GenerateNodeID:
 			flagName = "--generate-node-id=true"
-		case bootstrapValidatorsJSONFilePath != "":
+		case bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "":
 			flagName = "--bootstrap-filepath is not empty"
-		case bootstrapEndpoints != nil:
+		case bootstrapValidatorFlags.BootstrapEndpoints != nil:
 			flagName = "--bootstrap-endpoints is not empty"
 		}
 
@@ -437,27 +409,27 @@ func prepareBootstrapValidators(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
-	changeOwnerAddress *string,
-	localMachineFlags flags.LocalMachineFlags,
+	localMachineFlags *flags.LocalMachineFlags,
+	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
 ) ([]models.SubnetValidator, error) {
 	var err error
 	var bootstrapValidators []models.SubnetValidator
-	if *changeOwnerAddress == "" {
+	if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
 		// use provided key as change owner unless already set
 		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			*changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", *changeOwnerAddress)
+			bootstrapValidatorFlags.ChangeOwnerAddress = pAddr[0]
+			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", bootstrapValidatorFlags.ChangeOwnerAddress)
 		}
 	}
-	if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
+	if !bootstrapValidatorFlags.GenerateNodeID && bootstrapValidatorFlags.BootstrapEndpoints == nil && bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" {
 		if cancel, err := StartLocalMachine(
 			network,
 			sidecar,
 			blockchainName,
 			deployBalance,
 			availableBalance,
-			numBootstrapValidators,
 			localMachineFlags,
+			bootstrapValidatorFlags,
 		); err != nil {
 			return nil, err
 		} else if cancel {
@@ -465,14 +437,14 @@ func prepareBootstrapValidators(
 		}
 	}
 	switch {
-	case len(bootstrapEndpoints) > 0:
-		if *changeOwnerAddress == "" {
-			*changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
-			if err != nil {
-				return nil, err
-			}
-		}
-		for _, endpoint := range bootstrapEndpoints {
+	case len(bootstrapValidatorFlags.BootstrapEndpoints) > 0:
+		//if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
+		//	bootstrapValidatorFlags.ChangeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//}
+		for _, endpoint := range bootstrapValidatorFlags.BootstrapEndpoints {
 			infoClient := info.NewClient(endpoint)
 			ctx, cancel := utils.GetAPILargeContext()
 			defer cancel()
@@ -489,7 +461,7 @@ func prepareBootstrapValidators(
 				Balance:              deployBalance,
 				BLSPublicKey:         publicKey,
 				BLSProofOfPossession: pop,
-				ChangeOwnerAddr:      *changeOwnerAddress,
+				ChangeOwnerAddr:      bootstrapValidatorFlags.ChangeOwnerAddress,
 			})
 		}
 	case clusterNameFlagValue != "":
@@ -503,10 +475,9 @@ func prepareBootstrapValidators(
 		if bootstrapValidators == nil {
 			bootstrapValidators, err = promptBootstrapValidators(
 				network,
-				*changeOwnerAddress,
-				numBootstrapValidators,
 				deployBalance,
 				availableBalance,
+				bootstrapValidatorFlags,
 			)
 			if err != nil {
 				return nil, err
@@ -514,16 +485,6 @@ func prepareBootstrapValidators(
 		}
 	}
 	return bootstrapValidators, nil
-}
-
-func validateFlags(cmd *cobra.Command) error {
-	if err := validateBootstrapFilepathFlag(cmd); err != nil {
-		return err
-	}
-	if err := validateBootstrapEndpointFlag(cmd); err != nil {
-		return err
-	}
-	return validateConvertOnlyFlag(cmd)
 }
 
 // deployBlockchain is the cobra command run for deploying subnets
@@ -546,12 +507,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	var bootstrapValidators []models.SubnetValidator
-	if bootstrapValidatorsJSONFilePath != "" {
-		bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
+	if deployFlags.BootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" {
+		bootstrapValidators, err = LoadBootstrapValidator(deployFlags.BootstrapValidatorFlags)
 		if err != nil {
 			return err
 		}
-		numBootstrapValidators = len(bootstrapValidators)
+		deployFlags.BootstrapValidatorFlags.NumBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -571,7 +532,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if !sidecar.Sovereign && bootstrapValidatorsJSONFilePath != "" {
+	if !sidecar.Sovereign && deployFlags.BootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" {
 		return fmt.Errorf("--bootstrap-filepath flag is only applicable to sovereign blockchains")
 	}
 
@@ -620,14 +581,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err = validateFlags(cmd); err != nil {
+	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
-		if err = deployLocalNetworkPreCheck(cmd, network); err != nil {
+		if err = deployLocalNetworkPreCheck(cmd, network, deployFlags.BootstrapValidatorFlags); err != nil {
 			return err
 		}
 		app.Log.Debug("Deploy local")
@@ -724,13 +685,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if deployBalanceAVAX <= 0 {
-		return fmt.Errorf("bootstrap validator balance must be greater than 0 AVAX")
-	}
-	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
+	deployBalance := uint64(deployFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
-		bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &changeOwnerAddress, deployFlags.LocalMachineFlags)
+		bootstrapValidators, err = prepareBootstrapValidators(network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &deployFlags.LocalMachineFlags, &deployFlags.BootstrapValidatorFlags)
 		if err != nil {
 			return err
 		}
@@ -906,13 +864,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if convertOnly || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("Next, we need to:")
-			if generateNodeID {
+			if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
 				ux.Logger.PrintToUser("- Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			}
 			ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
 			ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
 			ux.Logger.PrintToUser("==================================================")
-			if generateNodeID {
+			if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
 				ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
 				ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 				ux.Logger.PrintToUser("")
@@ -1301,11 +1259,11 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 	return nil
 }
 
-func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
-	if !utils.FileExists(filepath) {
-		return nil, fmt.Errorf("file path %q doesn't exist", filepath)
+func LoadBootstrapValidator(bootstrapValidatorFlags flags.BootstrapValidatorFlags) ([]models.SubnetValidator, error) {
+	if !utils.FileExists(bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath) {
+		return nil, fmt.Errorf("file path %q doesn't exist", bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath)
 	}
-	jsonBytes, err := os.ReadFile(filepath)
+	jsonBytes, err := os.ReadFile(bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -1313,10 +1271,10 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	if err = json.Unmarshal(jsonBytes, &subnetValidators); err != nil {
 		return nil, err
 	}
-	if err = validateSubnetValidatorsJSON(generateNodeID, subnetValidators); err != nil {
+	if err = validateSubnetValidatorsJSON(bootstrapValidatorFlags.GenerateNodeID, subnetValidators); err != nil {
 		return nil, err
 	}
-	if generateNodeID {
+	if bootstrapValidatorFlags.GenerateNodeID {
 		for _, subnetValidator := range subnetValidators {
 			subnetValidator.NodeID, subnetValidator.BLSPublicKey, subnetValidator.BLSProofOfPossession, err = generateNewNodeAndBLS()
 			if err != nil {
