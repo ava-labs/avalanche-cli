@@ -103,7 +103,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			logMap := map[string]interface{}{}
 			err := json.Unmarshal([]byte(logLine), &logMap)
 			if err != nil {
-				return err
+				continue
 			}
 			levelEmoji := ""
 			levelStr, b := logMap["level"].(string)
