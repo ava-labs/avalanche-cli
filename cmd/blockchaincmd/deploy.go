@@ -506,7 +506,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployFlags.BootstrapValidatorFlags.NumBootstrapValidators = len(bootstrapValidators)
 	}
-	fmt.Printf("we have bootstrapValidators %s \n", bootstrapValidators)
 
 	chain := chains[0]
 
