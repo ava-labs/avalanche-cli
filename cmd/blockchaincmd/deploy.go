@@ -464,7 +464,7 @@ func prepareBootstrapValidators(
 		}
 
 	default:
-		if bootstrapValidators == nil {
+		if len(*bootstrapValidators) == 0 {
 			*bootstrapValidators, err = promptBootstrapValidators(
 				network,
 				deployBalance,
@@ -506,6 +506,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployFlags.BootstrapValidatorFlags.NumBootstrapValidators = len(bootstrapValidators)
 	}
+	fmt.Printf("we have bootstrapValidators %s \n", bootstrapValidators)
 
 	chain := chains[0]
 
@@ -1265,14 +1266,6 @@ func LoadBootstrapValidator(bootstrapValidatorFlags flags.BootstrapValidatorFlag
 	}
 	if err = validateSubnetValidatorsJSON(bootstrapValidatorFlags.GenerateNodeID, subnetValidators); err != nil {
 		return nil, err
-	}
-	if bootstrapValidatorFlags.GenerateNodeID {
-		for _, subnetValidator := range subnetValidators {
-			subnetValidator.NodeID, subnetValidator.BLSPublicKey, subnetValidator.BLSProofOfPossession, err = generateNewNodeAndBLS()
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 	return subnetValidators, nil
 }
