@@ -31,10 +31,29 @@ func checkConvertOnlyOutput(output string, generateNodeID bool) {
 	}
 }
 
-var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
+var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
+	blockchainCmdArgs := []string{subnetName}
 	_ = ginkgo.BeforeEach(func() {
 		// Create test subnet config
-		commands.CreateEtnaSubnetEvmConfig(subnetName, ewoqEVMAddress, commands.PoA)
+		testFlags := utils.TestFlags{
+			"evm":               true,
+			"test-defaults":     true,
+			"evm-chain-id":      99999,
+			"evm-token":         "TOK",
+			"sovereign":         false,
+			"icm":               false,
+			"skip-update-check": true,
+		}
+		_, err := utils.TestCommand(utils.BlockchainCmd, "create", blockchainCmdArgs, nil, testFlags)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		globalFlags := utils.GlobalFlags{
+			"local":             true,
+			"skip-icm-deploy":   true,
+			"skip-update-check": true,
+		}
+		_, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.AfterEach(func() {
@@ -42,22 +61,19 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		// Cleanup test subnet config
 		commands.DeleteSubnetConfig(subnetName)
 	})
-	blockchainCmdArgs := []string{subnetName}
 	globalFlags := utils.GlobalFlags{
-		"local":             true,
-		"skip-icm-deploy":   true,
 		"skip-update-check": true,
 	}
-	//ginkgo.It("HAPPY PATH: local deploy default", func() {
-	//	testFlags := utils.TestFlags{}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//	localClusterUris, err := utils.GetLocalClusterUris()
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//	gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-	//})
-	//
+	ginkgo.It("HAPPY PATH: local convert default", func() {
+		testFlags := utils.TestFlags{}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		localClusterUris, err := utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
+	})
+
 	//ginkgo.It("HAPPY PATH: local deploy with avalanchego path set", func() {
 	//	avalanchegoPath := "tests/e2e/assets/mac/avalanchego"
 	//	if runtime.GOOS == "linux" {
