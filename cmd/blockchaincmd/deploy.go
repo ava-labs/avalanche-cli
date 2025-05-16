@@ -56,32 +56,30 @@ import (
 const skipRelayerFlagName = "skip-relayer"
 
 var (
-	sameControlKey           bool
-	keyName                  string
-	threshold                uint32
-	controlKeys              []string
-	subnetAuthKeys           []string
-	userProvidedAvagoVersion string
-	outputTxPath             string
-	useLedger                bool
-	useEwoq                  bool
-	ledgerAddresses          []string
-	subnetIDStr              string
-	mainnetChainID           uint32
-	skipCreatePrompt         bool
-	avagoBinaryPath          string
-	partialSync              bool
-	subnetOnly               bool
-	icmSpec                  subnet.ICMSpec
-	convertOnly              bool
-	numNodes                 uint32
-	relayerAmount            float64
-	relayerKeyName           string
-	relayCChain              bool
-	cChainFundingKey         string
-	icmKeyName               string
-	cchainIcmKeyName         string
-	relayerAllowPrivateIPs   bool
+	sameControlKey         bool
+	keyName                string
+	threshold              uint32
+	controlKeys            []string
+	subnetAuthKeys         []string
+	outputTxPath           string
+	useLedger              bool
+	useEwoq                bool
+	ledgerAddresses        []string
+	subnetIDStr            string
+	mainnetChainID         uint32
+	skipCreatePrompt       bool
+	partialSync            bool
+	subnetOnly             bool
+	icmSpec                subnet.ICMSpec
+	convertOnly            bool
+	numNodes               uint32
+	relayerAmount          float64
+	relayerKeyName         string
+	relayCChain            bool
+	cChainFundingKey       string
+	icmKeyName             string
+	cchainIcmKeyName       string
+	relayerAllowPrivateIPs bool
 
 	validatorManagerAddress        string
 	deployFlags                    BlockchainDeployFlags
@@ -144,9 +142,9 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	localNetworkGroup := flags.RegisterFlagGroup(cmd, "Local Network Flags", "show-local-network-flags", true, func(set *pflag.FlagSet) {
 		set.Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
-		set.StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+		set.StringVar(&deployFlags.LocalMachineFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 		set.StringVar(
-			&userProvidedAvagoVersion,
+			&deployFlags.LocalMachineFlags.UserProvidedAvagoVersion,
 			"avalanchego-version",
 			constants.DefaultAvalancheGoVersion,
 			"use this version of avalanchego (ex: v1.17.12)",
@@ -584,9 +582,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		app.Log.Debug("Deploy local")
 
-		avagoVersion := userProvidedAvagoVersion
+		avagoVersion := deployFlags.LocalMachineFlags.UserProvidedAvagoVersion
 
-		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
+		if avagoVersion == constants.DefaultAvalancheGoVersion && deployFlags.LocalMachineFlags.AvagoBinaryPath == "" {
 			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
 				if err != dependencies.ErrNoAvagoVersion {
@@ -600,7 +598,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err := networkcmd.Start(
 			networkcmd.StartFlags{
 				UserProvidedAvagoVersion: avagoVersion,
-				AvagoBinaryPath:          avagoBinaryPath,
+				AvagoBinaryPath:          deployFlags.LocalMachineFlags.AvagoBinaryPath,
 				NumNodes:                 numNodes,
 			},
 			false,
