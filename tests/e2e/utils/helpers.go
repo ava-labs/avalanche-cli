@@ -1263,3 +1263,18 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 
 	return homeAddress, remoteAddress, nil
 }
+
+// clean up avalanchego logs for the given [nodesInfo]
+// clean main.log and [blockchainID].log
+func CleanupLogs(nodesInfo map[string]NodeInfo, blockchainID string) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		err := os.Remove(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		if blockchainID != "" {
+			logFile = path.Join(nodeInfo.LogDir, blockchainID+".log")
+			err = os.Remove(logFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+	}
+}

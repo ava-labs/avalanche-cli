@@ -28,9 +28,11 @@ Testnet or Mainnet.
 - [`changeWeight`](#avalanche-blockchain-changeweight): The blockchain changeWeight command changes the weight of a L1 Validator.
 
 The L1 has to be a Proof of Authority L1.
-- [`configure`](#avalanche-blockchain-configure): AvalancheGo nodes support several different configuration files. Each network (a Subnet or an L1) has their own config which applies to all blockchains/VMs in the network. Each blockchain within the network
-can have its own chain config. A chain can also have special requirements for the AvalancheGo node 
-configuration itself. This command allows you to set all those files.
+- [`configure`](#avalanche-blockchain-configure): AvalancheGo nodes support several different configuration files.
+Each network (a Subnet or an L1) has their own config which applies to all blockchains/VMs in the network (see https://build.avax.network/docs/nodes/configure/avalanche-l1-configs)
+Each blockchain within the network can have its own chain config (see https://build.avax.network/docs/nodes/chain-configs/c-chain https://github.com/ava-labs/subnet-evm/blob/master/plugin/evm/config/config.go for subnet-evm options).
+A chain can also have special requirements for the AvalancheGo node configuration itself (see https://build.avax.network/docs/nodes/configure/configs-flags).
+This command allows you to set all those files.
 - [`create`](#avalanche-blockchain-create): The blockchain create command builds a new genesis file to configure your Blockchain.
 By default, the command runs an interactive wizard. It walks you through
 all the steps you need to create your first Blockchain.
@@ -242,9 +244,11 @@ avalanche blockchain changeWeight [subcommand] [flags]
 <a id="avalanche-blockchain-configure"></a>
 ### configure
 
-AvalancheGo nodes support several different configuration files. Each network (a Subnet or an L1) has their own config which applies to all blockchains/VMs in the network. Each blockchain within the network
-can have its own chain config. A chain can also have special requirements for the AvalancheGo node 
-configuration itself. This command allows you to set all those files.
+AvalancheGo nodes support several different configuration files.
+Each network (a Subnet or an L1) has their own config which applies to all blockchains/VMs in the network (see https://build.avax.network/docs/nodes/configure/avalanche-l1-configs)
+Each blockchain within the network can have its own chain config (see https://build.avax.network/docs/nodes/chain-configs/c-chain https://github.com/ava-labs/subnet-evm/blob/master/plugin/evm/config/config.go for subnet-evm options).
+A chain can also have special requirements for the AvalancheGo node configuration itself (see https://build.avax.network/docs/nodes/configure/configs-flags).
+This command allows you to set all those files.
 
 **Usage:**
 ```bash
