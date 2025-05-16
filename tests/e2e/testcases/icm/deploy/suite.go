@@ -18,6 +18,11 @@ const (
 	subnetName  = "testSubnet"
 )
 
+var globalFlags = utils.GlobalFlags{
+	"local":             true,
+	"skip-update-check": true,
+}
+
 var _ = ginkgo.Describe("[ICM] deploy", func() {
 	ginkgo.Context("with valid input", func() {
 		ginkgo.BeforeEach(func() {
@@ -28,13 +33,8 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			commands.CleanNetwork()
 			err := utils.DeleteConfigs(subnetName)
 			gomega.Expect(err).Should(gomega.BeNil())
-			utils.DeleteCustomBinary(subnetName)
 		})
 		ginkgo.It("should deploy ICM contracts into c-chain", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -54,10 +54,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":        ewoqKeyName,
 				"blockchain": subnetName,
@@ -77,10 +73,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM messenger into C-Chain", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":             ewoqKeyName,
 				"deploy-registry": "false",
@@ -98,10 +90,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM registry into C-Chain", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":              ewoqKeyName,
 				"deploy-messenger": "false",
@@ -122,10 +110,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":             ewoqKeyName,
 				"blockchain":      subnetName,
@@ -149,10 +133,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 			commands.DeploySubnetLocallyNonSOV(subnetName)
 
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":              ewoqKeyName,
 				"blockchain":       subnetName,
@@ -173,10 +153,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should not re-deploy ICM contracts if already deployed", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -193,10 +169,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should force deploy ICM registry with messenger already deployed", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key": ewoqKeyName,
 			}
@@ -226,10 +198,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM registry with messenger not deployed", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"deploy-messenger": "false",
 				"key":              ewoqKeyName,
@@ -249,10 +217,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should force deploy ICM registry with messenger not deployed", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"deploy-messenger": "false",
 				"key":              ewoqKeyName,
@@ -274,10 +238,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM messenger and force deploy registry", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"deploy-messenger": "false",
 				"key":              ewoqKeyName,
@@ -310,10 +270,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":                             ewoqKeyName,
 				"messenger-contract-address-path": filepath.Join(contractsDirPath, version, "TeleporterMessenger_Contract_Address_v1.0.0.txt"),
@@ -336,10 +292,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM contracts with version", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":     ewoqKeyName,
 				"version": "v1.0.0",
@@ -365,10 +317,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			commands.CleanNetwork()
 		})
 		ginkgo.It("should fail with invalid mutually exclusive fields (network flags)", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"blockchain":    "test",
 				"blockchain-id": "test",
@@ -382,10 +330,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should faile with both deploy messenger and deploy registry set to false", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"deploy-messenger": "false",
 				"deploy-registry":  "false",
@@ -401,10 +345,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should fail with one of the contract paths set", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":                             ewoqKeyName,
 				"messenger-contract-address-path": "./test/path",
@@ -420,10 +360,6 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should fail with invalid version", func() {
-			globalFlags := utils.GlobalFlags{
-				"local":             true,
-				"skip-update-check": true,
-			}
 			testFlags := utils.TestFlags{
 				"key":     ewoqKeyName,
 				"version": "v0.122.5321",

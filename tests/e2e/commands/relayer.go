@@ -4,27 +4,15 @@
 package commands
 
 import (
-	"fmt"
-	"os/exec"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/onsi/gomega"
 )
 
 /* #nosec G204 */
-func StopRelayer() {
-	cmdArgs := []string{InterchainCMD, "relayer", "stop", "--local"}
-	cmdArgs = append(cmdArgs, "--"+constants.SkipUpdateFlag)
-
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
+func StopRelayer() (string, error) {
+	return utils.TestCommand(InterchainCMD, "relayer", []string{"stop"}, utils.GlobalFlags{
+		"local":             true,
+		"skip-update-check": true,
+	}, utils.TestFlags{})
 }
 
 /* #nosec G204 */
