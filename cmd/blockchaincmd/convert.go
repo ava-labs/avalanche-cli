@@ -746,7 +746,7 @@ func printSuccessfulConvertOnlyOutput(blockchainName, subnetID string, generateN
 	ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
 	ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
 	ux.Logger.PrintToUser("==================================================")
-	if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
+	if generateNodeID {
 		ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
 		ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 		ux.Logger.PrintToUser("")
