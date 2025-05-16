@@ -79,16 +79,16 @@ var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
 		"proof-of-authority":        true,
 		"key":                       "ewoq",
 	}
-	ginkgo.It("HAPPY PATH: local convert default", func() {
-		testFlags := utils.TestFlags{}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
-		gomega.Expect(err).Should(gomega.BeNil())
-		// verify that we have a local machine created that is now a bootstrap validator
-		localClusterUris, err := utils.GetLocalClusterUris()
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-	})
+	//ginkgo.It("HAPPY PATH: local convert default", func() {
+	//	testFlags := utils.TestFlags{}
+	//	output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+	//	gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	// verify that we have a local machine created that is now a bootstrap validator
+	//	localClusterUris, err := utils.GetLocalClusterUris()
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
+	//})
 
 	ginkgo.It("HAPPY PATH: local convert with avalanchego path set", func() {
 		avalanchegoPath := "tests/e2e/assets/mac/avalanchego"

@@ -170,7 +170,7 @@ func StartLocalMachine(
 		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
-		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
+		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && localMachineFlags.AvagoBinaryPath == "" {
 			// nothing given: get avago version from RPC compat using latest.json defined in
 			// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
 			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
@@ -181,7 +181,7 @@ func StartLocalMachine(
 				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
 		}
-		avagoBinaryPath, err := localnet.SetupAvalancheGoBinary(app, avagoVersion, avagoBinaryPath)
+		localMachineFlags.AvagoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avagoVersion, localMachineFlags.AvagoBinaryPath)
 		if err != nil {
 			return false, err
 		}
@@ -228,7 +228,7 @@ func StartLocalMachine(
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
-			avagoBinaryPath,
+			localMachineFlags.AvagoBinaryPath,
 			uint32(bootstrapValidatorFlags.NumBootstrapValidators),
 			nodeConfig,
 			localnet.ConnectionSettings{},
