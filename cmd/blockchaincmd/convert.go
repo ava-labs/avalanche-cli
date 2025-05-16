@@ -726,10 +726,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
-		ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-		ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
-		ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
+		printSuccessfulConvertOnlyOutput(blockchainName, subnetID.String(), convertFlags.BootstrapValidatorFlags.GenerateNodeID)
 	}
 
 	ux.Logger.PrintToUser("")
@@ -738,4 +735,23 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted to sovereign L1")
 
 	return nil
+}
+
+func printSuccessfulConvertOnlyOutput(blockchainName, subnetID string, generateNodeID bool) {
+	ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
+	ux.Logger.PrintToUser("Next, we need to:")
+	if generateNodeID {
+		ux.Logger.PrintToUser("- Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+	}
+	ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
+	ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
+	ux.Logger.PrintToUser("==================================================")
+	if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
+		ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
+		ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+		ux.Logger.PrintToUser("")
+	}
+	ux.Logger.PrintToUser("To enable the nodes to track the L1:")
+	ux.Logger.PrintToUser("- Set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
+	ux.Logger.PrintToUser("- Ensure that the P2P port is exposed and 'public-ip' config value is set")
 }

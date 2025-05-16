@@ -853,22 +853,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		if convertOnly || (!deployFlags.LocalMachineFlags.UseLocalMachine && clusterNameFlagValue == "") {
-			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
-			ux.Logger.PrintToUser("Next, we need to:")
-			if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
-				ux.Logger.PrintToUser("- Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-			}
-			ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
-			ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
-			ux.Logger.PrintToUser("==================================================")
-			if deployFlags.BootstrapValidatorFlags.GenerateNodeID {
-				ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
-				ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
-				ux.Logger.PrintToUser("")
-			}
-			ux.Logger.PrintToUser("To enable the nodes to track the L1:")
-			ux.Logger.PrintToUser("- Set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
-			ux.Logger.PrintToUser("- Ensure that the P2P port is exposed and 'public-ip' config value is set")
+			printSuccessfulConvertOnlyOutput(blockchainName, subnetID.String(), deployFlags.BootstrapValidatorFlags.GenerateNodeID)
 			return nil
 		}
 
