@@ -46,8 +46,8 @@ var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
 		//	"genesis":           utils.SubnetEvmGenesisPoaPath,
 		//}
 		testFlags := utils.TestFlags{
+			"latest":            true,
 			"evm":               true,
-			"evm-chain-id":      99999,
 			"evm-token":         "TOK",
 			"sovereign":         false,
 			"icm":               false,
@@ -61,7 +61,7 @@ var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
 			"local":             true,
 			"skip-update-check": true,
 		}
-		_, err = utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, nil)
+		_, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
