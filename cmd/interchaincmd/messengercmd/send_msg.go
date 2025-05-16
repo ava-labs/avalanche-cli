@@ -234,7 +234,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		time.Sleep(arrivalCheckInterval)
 	}
 
-	ux.Logger.PrintToUser("Message successfully Teleported!")
+	ux.Logger.PrintToUser("Message successfully delivered!")
 
 	return nil
 }

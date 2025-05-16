@@ -3,12 +3,7 @@
 package commands
 
 import (
-	"fmt"
-	"os/exec"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/onsi/gomega"
 )
 
 const (
@@ -16,28 +11,17 @@ const (
 )
 
 /* #nosec G204 */
-func SendICMMessage(network, subnetOne, subnetTwo, message, key string) string {
-	// Create config
-	cmdArgs := []string{
-		ICMCmd,
-		"sendMsg",
-		network,
-		subnetOne,
-		subnetTwo,
-		message,
-		"--key",
-		key,
-		"--" + constants.SkipUpdateFlag,
-	}
+func SendICMMessage(args []string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(utils.ICMCmd, "sendMsg", args, utils.GlobalFlags{
+		"local":             true,
+		"skip-update-check": true,
+	}, testFlags)
+}
 
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return string(output)
+/* #nosec G204 */
+func DeployICMContracts(args []string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(utils.ICMCmd, "deploy", args, utils.GlobalFlags{
+		"local":             true,
+		"skip-update-check": true,
+	}, testFlags)
 }

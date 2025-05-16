@@ -35,6 +35,7 @@ test: fmt vet ## Run tests.
 
 lint: ## Run golangci-lint against code.
 	golangci-lint run  --path-prefix=.
+	gofumpt -w .
 	
 build: fmt vet ## Build avalanche CLI binary.
 	scripts/build.sh
