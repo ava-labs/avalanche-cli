@@ -567,9 +567,10 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags, &convertFlags.ConvertOnly, convertFlags.LocalMachineFlags.UseLocalMachine); err != nil {
+	if err = validateConvertOnlyFlag(cmd, convertFlags.BootstrapValidatorFlags, &convertFlags.ConvertOnly, convertFlags.LocalMachineFlags.UseLocalMachine); err != nil {
 		return err
 	}
+	fmt.Printf("convertFlags.ConvertOnly %s \n", convertFlags.ConvertOnly)
 
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
