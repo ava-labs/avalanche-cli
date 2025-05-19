@@ -375,6 +375,16 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, boot
 // if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
 // convertOnly will be set to true
 func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.BootstrapValidatorFlags, convertOnly *bool, useLocalMachine bool) error {
+	fmt.Printf("validateConvertOnlyFlag \n")
+	fmt.Printf("bootstrapValidatorFlags.GenerateNodeID %s \n", bootstrapValidatorFlags.GenerateNodeID)
+
+	fmt.Printf("bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath %s \n", bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath)
+
+	fmt.Printf("convertOnly %s \n", *convertOnly)
+	fmt.Printf("convertOnly changed %s \n", cmd.Flags().Changed("convert-only"))
+
+	fmt.Printf("useLocalMachine %s \n", useLocalMachine)
+
 	if bootstrapValidatorFlags.GenerateNodeID ||
 		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" ||
 		bootstrapValidatorFlags.BootstrapEndpoints != nil {
@@ -390,7 +400,7 @@ func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.B
 		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
 			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
 		}
-		if cmd.Flags().Changed("convert-only") && *convertOnly {
+		if cmd.Flags().Changed("convert-only") && !*convertOnly {
 			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
 		}
 		*convertOnly = true
