@@ -375,7 +375,6 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, boot
 // if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
 // convertOnly will be set to true
 func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.BootstrapValidatorFlags, convertOnly *bool, useLocalMachine bool) error {
-	fmt.Printf("we here bootstrapValidatorFlags %s \n", bootstrapValidatorFlags)
 	if bootstrapValidatorFlags.GenerateNodeID ||
 		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" ||
 		bootstrapValidatorFlags.BootstrapEndpoints != nil {
@@ -394,7 +393,6 @@ func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.B
 		if cmd.Flags().Changed("convert-only") && *convertOnly {
 			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
 		}
-		fmt.Printf("we here validateConvertOnlyFlag %s \n", validateConvertOnlyFlag)
 		*convertOnly = true
 	}
 	return nil
