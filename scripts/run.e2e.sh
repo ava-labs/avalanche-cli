@@ -68,7 +68,6 @@ then
     export GOCOVERDIR=$(PWD)/coverage/e2e
 	echo 'Coverage mode enabled - re-creating coverage dir $GOCOVERDIR'
 	echo 'It requires the CLI binary to be built by build.sh with COVERAGE_MODE=true too'
-	rm -rf ${GOCOVERDIR}
 	mkdir -p ${GOCOVERDIR}
 fi
 
