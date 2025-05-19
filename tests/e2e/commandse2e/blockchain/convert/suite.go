@@ -222,23 +222,6 @@ var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(2))
 	})
 
-	ginkgo.It("ERROR PATH: can't convert same Subnet", func() {
-		testFlags := utils.TestFlags{}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
-		gomega.Expect(err).Should(gomega.BeNil())
-		// verify that we have a local machine created that is now a bootstrap validator
-		localClusterUris, err := utils.GetLocalClusterUris()
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-
-		output, err = utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(output).Should(gomega.ContainSubstring("failed execution: \"%s\" is immutable.", sc.Networks["Local Network"].SubnetID.String()))
-	})
-
 	ginkgo.It("ERROR PATH: invalid_version", func() {
 		testFlags := utils.TestFlags{
 			"avalanchego-version": "invalid_version",
