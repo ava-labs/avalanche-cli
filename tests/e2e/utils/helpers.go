@@ -339,6 +339,22 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
+func ParseBlockchainIDFromOutput(output string) (string, error) {
+	rpcs, err := ParseRPCsFromOutput(output)
+	if err != nil {
+		return "", err
+	}
+	if len(rpcs) == 0 {
+		return "", fmt.Errorf("deploy output has no rpc info")
+	}
+	rpc := rpcs[0]
+	rpcParts := strings.Split(rpc, "/")
+	if len(rpcParts) != 7 {
+		return "", fmt.Errorf("rpc at deploy output has inconsistent format: %s", rpc)
+	}
+	return rpcParts[5], nil
+}
+
 func ParseRPCsFromOutput(output string) ([]string, error) {
 	rpcs := []string{}
 	blockchainIDs := map[string]struct{}{}
@@ -602,7 +618,9 @@ func RunHardhatScript(script string) (string, string, error) {
 func PrintStdErr(err error) {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		fmt.Println(string(exitErr.Stderr))
+		if string(exitErr.Stderr) != "" {
+			fmt.Println(string(exitErr.Stderr))
+		}
 	}
 }
 
@@ -740,11 +758,44 @@ func GetLocalNetwork() (*tmpnet.Network, error) {
 	return localnet.GetLocalNetwork(app)
 }
 
-func GetNodesInfo() (map[string]NodeInfo, error) {
+func GetLocalNetworkNodesInfo() (map[string]NodeInfo, error) {
 	network, err := GetLocalNetwork()
 	if err != nil {
 		return nil, err
 	}
+	return getNodesInfo(network)
+}
+
+func GetLocalClusterName() (string, error) {
+	app := GetApp()
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return "", err
+	}
+	if len(clusters) != 1 {
+		return "", fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
+	}
+	return clusters[0], nil
+}
+
+func GetLocalCluster() (*tmpnet.Network, error) {
+	app := GetApp()
+	clusterName, err := GetLocalClusterName()
+	if err != nil {
+		return nil, err
+	}
+	return localnet.GetLocalCluster(app, clusterName)
+}
+
+func GetLocalClusterNodesInfo() (map[string]NodeInfo, error) {
+	network, err := GetLocalCluster()
+	if err != nil {
+		return nil, err
+	}
+	return getNodesInfo(network)
+}
+
+func getNodesInfo(network *tmpnet.Network) (map[string]NodeInfo, error) {
 	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return nil, err
@@ -765,14 +816,10 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 
 func GetLocalClusterUris() ([]string, error) {
 	app := GetApp()
-	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	clusterName, err := GetLocalClusterName()
 	if err != nil {
 		return nil, err
 	}
-	if len(clusters) != 1 {
-		return nil, fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
-	}
-	clusterName := clusters[0]
 	return localnet.GetLocalClusterURIs(app, clusterName)
 }
 
@@ -1080,6 +1127,21 @@ func GetTmpFilePath(fnamePrefix string) (string, error) {
 	return path, err
 }
 
+func CreateTmpFile(fnamePrefix string, data []byte) (string, error) {
+	file, err := os.CreateTemp("", fnamePrefix+"*")
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(file.Name(), data, constants.DefaultPerms755); err != nil {
+		return "", err
+	}
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
 func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected bool) string {
 	cmd := exec.Command(cmdName, args...)
 
@@ -1207,4 +1269,19 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 	}
 
 	return homeAddress, remoteAddress, nil
+}
+
+// clean up avalanchego logs for the given [nodesInfo]
+// clean main.log and [blockchainID].log
+func CleanupLogs(nodesInfo map[string]NodeInfo, blockchainID string) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		err := os.Remove(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		if blockchainID != "" {
+			logFile = path.Join(nodeInfo.LogDir, blockchainID+".log")
+			err = os.Remove(logFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+	}
 }
