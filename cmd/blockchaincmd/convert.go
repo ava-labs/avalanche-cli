@@ -52,6 +52,7 @@ type BlockchainConvertFlags struct {
 	LocalMachineFlags       flags.LocalMachineFlags
 	ProofOfStakeFlags       flags.POSFlags
 	BootstrapValidatorFlags flags.BootstrapValidatorFlags
+	ConvertOnly             bool
 }
 
 // avalanche blockchain convert
@@ -76,7 +77,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+	cmd.Flags().BoolVar(&convertFlags.ConvertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
 	localMachineGroup := flags.AddLocalMachineFlagsToCmd(cmd, &convertFlags.LocalMachineFlags)
 	posGroup := flags.AddProofOfStakeToCmd(cmd, &convertFlags.ProofOfStakeFlags)
@@ -523,7 +524,7 @@ func convertSubnetToL1(
 }
 
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1
-func convertBlockchain(_ *cobra.Command, args []string) error {
+func convertBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
 	chains, err := ValidateSubnetNameAndGetChains(args)
@@ -565,6 +566,11 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags, &convertFlags.ConvertOnly, convertFlags.LocalMachineFlags.UseLocalMachine); err != nil {
+		return err
+	}
+
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
 	subnetID := sidecar.Networks[network.Name()].SubnetID
@@ -608,7 +614,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
 	}
 
-	if !convertOnly {
+	if !convertFlags.ConvertOnly {
 		if err = promptValidatorManagementType(app, &sidecar); err != nil {
 			return err
 		}
@@ -707,7 +713,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if !convertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
+	if !convertFlags.ConvertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
 		if _, err = InitializeValidatorManager(
 			blockchainName,
 			sidecar.ValidatorManagerOwner,

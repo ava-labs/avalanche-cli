@@ -71,7 +71,6 @@ var (
 	partialSync            bool
 	subnetOnly             bool
 	icmSpec                subnet.ICMSpec
-	convertOnly            bool
 	numNodes               uint32
 	relayerAmount          float64
 	relayerKeyName         string
@@ -94,6 +93,7 @@ type BlockchainDeployFlags struct {
 	LocalMachineFlags       flags.LocalMachineFlags
 	ProofOfStakeFlags       flags.POSFlags
 	BootstrapValidatorFlags flags.BootstrapValidatorFlags
+	ConvertOnly             bool
 }
 
 // avalanche blockchain deploy
@@ -138,7 +138,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "command stops after CreateSubnetTx and returns SubnetID")
-	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+	cmd.Flags().BoolVar(&deployFlags.ConvertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
 	localNetworkGroup := flags.RegisterFlagGroup(cmd, "Local Network Flags", "show-local-network-flags", true, func(set *pflag.FlagSet) {
 		set.Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
@@ -374,7 +374,7 @@ func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network, boot
 // checks for flags that will conflict if user sets convert only to false or if user sets use-local-machine to true
 // if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
 // convertOnly will be set to true
-func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.BootstrapValidatorFlags) error {
+func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.BootstrapValidatorFlags, convertOnly *bool, useLocalMachine bool) error {
 	if bootstrapValidatorFlags.GenerateNodeID ||
 		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath != "" ||
 		bootstrapValidatorFlags.BootstrapEndpoints != nil {
@@ -387,13 +387,13 @@ func validateConvertOnlyFlag(cmd *cobra.Command, bootstrapValidatorFlags flags.B
 		case bootstrapValidatorFlags.BootstrapEndpoints != nil:
 			flagName = "--bootstrap-endpoints is not empty"
 		}
-		if cmd.Flags().Changed("use-local-machine") && deployFlags.LocalMachineFlags.UseLocalMachine {
+		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
 			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
 		}
-		if cmd.Flags().Changed("convert-only") && !convertOnly {
+		if cmd.Flags().Changed("convert-only") && *convertOnly {
 			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
 		}
-		convertOnly = true
+		*convertOnly = true
 	}
 	return nil
 }
@@ -570,7 +570,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags); err != nil {
+
+	if err = validateConvertOnlyFlag(cmd, deployFlags.BootstrapValidatorFlags, &deployFlags.ConvertOnly, deployFlags.LocalMachineFlags.UseLocalMachine); err != nil {
 		return err
 	}
 
@@ -850,7 +851,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if savePartialTx {
 			return nil
 		}
-		if convertOnly || (!deployFlags.LocalMachineFlags.UseLocalMachine && clusterNameFlagValue == "") {
+		if deployFlags.ConvertOnly || (!deployFlags.LocalMachineFlags.UseLocalMachine && clusterNameFlagValue == "") {
 			printSuccessfulConvertOnlyOutput(blockchainName, subnetID.String(), deployFlags.BootstrapValidatorFlags.GenerateNodeID)
 			return nil
 		}
