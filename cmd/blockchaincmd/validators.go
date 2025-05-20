@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/olekukonko/tablewriter"
@@ -62,32 +63,15 @@ func printValidators(_ *cobra.Command, args []string) error {
 
 	subnetID := deployInfo.SubnetID
 
-	if network.Kind == models.Local {
-		return printLocalValidators(subnetID)
-	} else {
-		return printPublicValidators(subnetID, network)
-	}
-}
-
-func printLocalValidators(subnetID ids.ID) error {
-	validators, err := subnet.GetSubnetValidators(subnetID)
+	validators, err := subnet.GetSubnetValidators(network, subnetID)
 	if err != nil {
 		return err
 	}
 
-	return printValidatorsFromList(validators)
+	return printValidatorsFromList(network, subnetID, validators)
 }
 
-func printPublicValidators(subnetID ids.ID, network models.Network) error {
-	validators, err := subnet.GetPublicSubnetValidators(subnetID, network)
-	if err != nil {
-		return err
-	}
-
-	return printValidatorsFromList(validators)
-}
-
-func printValidatorsFromList(validators []platformvm.ClientPermissionlessValidator) error {
+func printValidatorsFromList(network models.Network, subnetID ids.ID, validators []platformvm.ClientPermissionlessValidator) error {
 	header := []string{"NodeID", "Weight", "Delegator Weight", "Start Time", "End Time", "Type"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -99,9 +83,13 @@ func printValidatorsFromList(validators []platformvm.ClientPermissionlessValidat
 			delegatorWeight = *validator.DelegatorWeight
 		}
 
+		validatorKind, err := validatorsdk.GetValidatorKind(network.SDKNetwork(), subnetID, validator.NodeID)
+		if err != nil {
+			return err
+		}
 		validatorType := "permissioned"
-		if validator.PotentialReward != nil && *validator.PotentialReward > 0 {
-			validatorType = "elastic"
+		if validatorKind == validatorsdk.SovereignValidator {
+			validatorType = "sovereign"
 		}
 
 		table.Append([]string{

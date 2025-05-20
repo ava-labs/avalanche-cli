@@ -166,7 +166,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	validatorKind, err := validatorsdk.IsSovereignValidator(network.SDKNetwork(), subnetID, nodeID)
+	validatorKind, err := validatorsdk.GetValidatorKind(network.SDKNetwork(), subnetID, nodeID)
 	if err != nil {
 		return err
 	}

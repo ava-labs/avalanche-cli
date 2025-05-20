@@ -19,6 +19,8 @@ type CommandGroup string
 
 const (
 	BlockchainCmd CommandGroup = "blockchain"
+	ICMCmd        CommandGroup = "icm"
+	InterchainCmd CommandGroup = "interchain"
 )
 
 var avalancheBinaryPath = "./bin/avalanche"
@@ -56,7 +58,9 @@ func TestCommand(commandGroup CommandGroup, command string, args []string, globa
 		}
 		fmt.Println(string(output))
 		PrintStdErr(err)
-		fmt.Println(stderr)
+		if stderr != "" {
+			fmt.Println(stderr)
+		}
 	}
 
 	return string(output), err
