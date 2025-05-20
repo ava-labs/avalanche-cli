@@ -18,6 +18,7 @@ jobs:
             "\\[APM\\]",
             "\\[Error handling\\]",
             "\\[Key\\]",
+            "\\[ICM\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
             "\\[Package Management\\]",
@@ -39,8 +40,6 @@ jobs:
           ]
         os: [ubuntu-24.04, macos-14]
         exclude:
-          - os: ubuntu-24.04
-            suite: "\\[Etna Subnet SOV\\]"
           - os: macos-14
             suite: "\\[Node create\\]"
           - os: macos-14
@@ -49,12 +48,6 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet non SOV\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna AddRemove Validator SOV PoA\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna AddRemove Validator SOV PoS\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna Add Validator SOV Local\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
