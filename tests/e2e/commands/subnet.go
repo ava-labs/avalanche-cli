@@ -380,7 +380,7 @@ func DeploySubnetLocallyWithArgsSOV(subnetName string, version string, confPath 
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag, bootstrapFilepathFlag + "=" + utils.BootstrapValidatorPath}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}

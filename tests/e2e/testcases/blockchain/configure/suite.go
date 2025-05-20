@@ -272,13 +272,13 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			output, err := commands.DeployBlockchain(
 				utils.BlockchainName,
 				utils.TestFlags{
-					"local":                   true,
-					"num-local-nodes":         2,
-					"staking-cert-key-path":   node1CertPath + "," + node2CertPath,
-					"staking-tls-key-path":    node1TLSPath + "," + node2TLSPath,
-					"staking-signer-key-path": node1BLSPath + "," + node2BLSPath,
-					"skip-icm-deploy":         true,
-					"skip-update-check":       true,
+					"local":                    true,
+					"num-bootstrap-validators": 2,
+					"staking-cert-key-path":    node1CertPath + "," + node2CertPath,
+					"staking-tls-key-path":     node1TLSPath + "," + node2TLSPath,
+					"staking-signer-key-path":  node1BLSPath + "," + node2BLSPath,
+					"skip-icm-deploy":          true,
+					"skip-update-check":        true,
 				},
 			)
 			gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
