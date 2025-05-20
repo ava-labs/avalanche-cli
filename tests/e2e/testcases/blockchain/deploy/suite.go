@@ -39,7 +39,7 @@ func checkConvertOnlyOutput(output string, generateNodeID bool) {
 	}
 }
 
-var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
+var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeEach(func() {
 		// Create test subnet config
 		commands.CreateEtnaSubnetEvmConfig(subnetName, ewoqEVMAddress, commands.PoA)
