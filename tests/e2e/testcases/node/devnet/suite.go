@@ -30,7 +30,7 @@ var (
 const (
 	NumNodes           = 1
 	NumAPINodes        = 1
-	avalanchegoVersion = "v1.11.5"
+	avalanchegoVersion = "v1.13.0"
 )
 
 var _ = ginkgo.Describe("[Node devnet]", func() {

@@ -20,6 +20,7 @@ jobs:
             "\\[Key\\]",
             "\\[ICM\\]",
             "\\[Network\\]",
+            "\\[Blockchain Configure\\]",
             "\\[Package Management\\]",
             "\\[Root\\]",
             "\\[Local Subnet non SOV\\]",
