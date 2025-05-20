@@ -164,12 +164,8 @@ func TrackSubnet(
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	if networkModel.Kind == models.Local {
-		if err := TmpNetSetAlias(network.Nodes, blockchainID.String(), blockchainName, subnetID); err != nil {
+		if err := TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
 			return err
 		}
 	}
