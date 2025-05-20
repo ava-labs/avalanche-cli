@@ -19,6 +19,7 @@ type CommandGroup string
 
 const (
 	BlockchainCmd CommandGroup = "blockchain"
+	NetworkCmd    CommandGroup = "network"
 )
 
 var avalancheBinaryPath = "./bin/avalanche"
