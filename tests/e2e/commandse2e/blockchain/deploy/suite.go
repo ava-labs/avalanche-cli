@@ -69,8 +69,8 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		subnetInfo, _ := blockchain.GetSubnet(sc.Networks["Local Network"].SubnetID, models.NewLocalNetwork())
 		validatorManagerAddress := "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-		URI := fmt.Sprintf("%s/ext/bc/%s/rpc", localClusterUris[0], sc.Networks["Local Network"].BlockchainID)
-		valType, _ := validatorManagerSDK.GetValidatorManagerType(URI, common.HexToAddress(validatorManagerAddress))
+		uri := fmt.Sprintf("%s/ext/bc/%s/rpc", localClusterUris[0], sc.Networks["Local Network"].BlockchainID)
+		valType, _ := validatorManagerSDK.GetValidatorManagerType(uri, common.HexToAddress(validatorManagerAddress))
 		expectedValType := validatormanagertypes.ValidatorManagementTypeFromString(validatormanagertypes.ProofOfAuthority)
 		gomega.Expect(valType).Should(gomega.Equal(expectedValType))
 	})
@@ -195,12 +195,12 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		//get validation ID of the validator
+		// get validation ID of the validator
 		validators, err := utils.GetCurrentValidatorsLocalAPI(sc.Networks["Local Network"].SubnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(validators)).Should(gomega.Equal(1))
 
-		//verify change reward owner of the validator
+		// verify change reward owner of the validator
 		addr, _ := utils.GetL1ValidatorInfo(validators[0].ValidationID)
 		gomega.Expect(addr.RemainingBalanceOwner.Addresses[0]).Should(gomega.Equal("P-custom1y5ku603lh583xs9v50p8kk0awcqzgeq0mezkqr"))
 	})

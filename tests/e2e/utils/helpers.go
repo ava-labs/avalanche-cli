@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
-	"github.com/ava-labs/avalanchego/utils/rpc"
 	"io"
 	"os"
 	"os/exec"
@@ -21,6 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
