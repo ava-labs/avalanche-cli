@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	avalanchegoVersion = "v1.11.5"
+	avalanchegoVersion = "v1.13.0"
 	network            = "fuji"
 	networkCapitalized = "Fuji"
 	numNodes           = 1
