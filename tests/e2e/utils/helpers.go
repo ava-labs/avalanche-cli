@@ -1285,3 +1285,37 @@ func CleanupLogs(nodesInfo map[string]NodeInfo, blockchainID string) {
 		}
 	}
 }
+
+func ParseICMContractAddressesFromOutput(subnet, output string) (string, string, error) {
+	var messengerAddress string
+	var registryAddress string
+
+	// split output by newline
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		if strings.Contains(line, "ICM Messenger successfully deployed to "+subnet) {
+			startIndex := strings.Index(line, "(")
+			endIndex := strings.Index(line, ")")
+			if startIndex == -1 || endIndex == -1 || startIndex >= endIndex {
+				return "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			messengerAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+
+		if strings.Contains(line, "ICM Registry successfully deployed to "+subnet) {
+			startIndex := strings.Index(line, "(")
+			endIndex := strings.Index(line, ")")
+			if startIndex == -1 || endIndex == -1 || startIndex >= endIndex {
+				return "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			registryAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+	}
+
+	if messengerAddress == "" && registryAddress == "" {
+		return "", "", fmt.Errorf("messenger address not found in output")
+	}
+
+	return messengerAddress, registryAddress, nil
+}

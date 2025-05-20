@@ -7,6 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	ewoqKeyName = "ewoq"
-	subnetName  = "testSubnet"
+	ewoqKeyName      = "ewoq"
+	subnetName       = "testSubnet"
+	cChainRPCUrl     = "http://127.0.0.1:9650/ext/bc/C/rpc"
+	cChainSubnetName = "c-chain"
 )
 
 var globalFlags = utils.GlobalFlags{
@@ -23,10 +26,16 @@ var globalFlags = utils.GlobalFlags{
 	"skip-update-check": true,
 }
 
+var evmClient evm.Client
+
 var _ = ginkgo.Describe("[ICM] deploy", func() {
 	ginkgo.Context("with valid input", func() {
 		ginkgo.BeforeEach(func() {
 			commands.StartNetwork()
+
+			var err error
+			evmClient, err = evm.GetClient(cChainRPCUrl)
+			gomega.Expect(err).Should(gomega.BeNil())
 		})
 
 		ginkgo.AfterEach(func() {
@@ -48,11 +57,25 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 				Should(gomega.ContainSubstring("ICM Messenger successfully deployed to C-Chain"))
 			gomega.Expect(output).
 				Should(gomega.ContainSubstring("ICM Registry successfully deployed to C-Chain"))
+
+			// Check that contracts are actually deployed
+			messengerContract, registryContract, err := utils.ParseICMContractAddressesFromOutput("C-Chain", output)
+			gomega.Expect(err).Should(gomega.BeNil())
+			deployed, err := evmClient.ContractAlreadyDeployed(messengerContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
+			deployed, err = evmClient.ContractAlreadyDeployed(registryContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
 		})
 
 		ginkgo.It("should deploy ICM contracts into subnet (including c-chain)", func() {
 			commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
-			commands.DeploySubnetLocallyNonSOV(subnetName)
+			output := commands.DeploySubnetLocallyNonSOV(subnetName)
+			rpcUrls, err := utils.ParseRPCsFromOutput(output)
+			gomega.Expect(err).Should(gomega.BeNil())
+			client, err := evm.GetClient(rpcUrls[0])
+			gomega.Expect(err).Should(gomega.BeNil())
 
 			testFlags := utils.TestFlags{
 				"key":        ewoqKeyName,
@@ -60,7 +83,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			}
 			commandArguments := []string{}
 
-			output, err := utils.TestCommand(utils.ICMCmd, "deploy", commandArguments, globalFlags, testFlags)
+			output, err = utils.TestCommand(utils.ICMCmd, "deploy", commandArguments, globalFlags, testFlags)
 			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(output).
 				Should(gomega.ContainSubstring("ICM Messenger successfully deployed to " + subnetName))
@@ -70,6 +93,26 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 				Should(gomega.ContainSubstring("ICM Messenger successfully deployed to c-chain"))
 			gomega.Expect(output).
 				Should(gomega.ContainSubstring("ICM Registry successfully deployed to c-chain"))
+
+			// Check that contracts are actually deployed to C-Chain
+			messengerContract, registryContract, err := utils.ParseICMContractAddressesFromOutput(cChainSubnetName, output)
+			gomega.Expect(err).Should(gomega.BeNil())
+			deployed, err := evmClient.ContractAlreadyDeployed(messengerContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
+			deployed, err = evmClient.ContractAlreadyDeployed(registryContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
+
+			// Check that contracts are actually deployed to Subnet
+			messengerContract, registryContract, err = utils.ParseICMContractAddressesFromOutput(subnetName, output)
+			gomega.Expect(err).Should(gomega.BeNil())
+			deployed, err = client.ContractAlreadyDeployed(messengerContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
+			deployed, err = client.ContractAlreadyDeployed(registryContract)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(deployed).Should(gomega.BeTrue())
 		})
 
 		ginkgo.It("should deploy ICM messenger into C-Chain", func() {
