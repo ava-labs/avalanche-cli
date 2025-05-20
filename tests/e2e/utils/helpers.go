@@ -1039,20 +1039,6 @@ func IsCustomVM(subnetName string) (bool, error) {
 	return sc.VM == models.CustomVM, nil
 }
 
-// Get NodeIDs of all validators on the blockchain
-func GetBlockchainValidators(subnetName string) ([]string, error) {
-	network := models.NewLocalNetwork()
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return nil, errors.New("no subnet id")
-	}
-	return GetSubnetValidators(subnetID)
-}
-
 // Get NodeIDs of all validators on the subnet
 func GetSubnetValidators(subnetID ids.ID) ([]string, error) {
 	network := models.NewLocalNetwork()
