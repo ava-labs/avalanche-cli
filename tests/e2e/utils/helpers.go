@@ -1242,27 +1242,6 @@ func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, erro
 	return validators, nil
 }
 
-func GetValidatorInfo(validationID ids.ID) (platformvm.L1Validator, error) {
-	pClient := platformvm.NewClient("http://127.0.0.1:9650")
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	fmt.Printf("validationID %s \n", validationID.String())
-	vdrInfo, _, err := pClient.GetL1Validator(ctx, validationID)
-	if err != nil {
-		fmt.Printf("err %s \n", err.Error())
-		return platformvm.L1Validator{}, err
-	}
-
-	remainingBalanceOwnerAddrs, err := ids.ShortFromString(vdrInfo.RemainingBalanceOwner.Addrs[0].String())
-	fmt.Printf("remainingBalanceOwnerAddrs %s \n", remainingBalanceOwnerAddrs.String())
-	fmt.Printf("vdrInfo %s \n", vdrInfo.RemainingBalanceOwner)
-	fmt.Printf("nodeid %s \n", vdrInfo.NodeID)
-	fmt.Printf("balance initial %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0])
-	fmt.Printf("balance %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0].String())
-	fmt.Printf("balance 2 %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0].Hex())
-	return vdrInfo, nil
-}
-
 func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
@@ -1279,19 +1258,4 @@ func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, er
 		return *res, err
 	}
 	return *res, nil
-	//fmt.Printf("res.RemainingBalanceOwner.Addresses %s \n", res.RemainingBalanceOwner.Addresses[0])
-	//validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
-	//for _, vI := range res.RemainingBalanceOwner.Addresses {
-	//	vBytes, err := json.Marshal(vI)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	var v CurrentValidatorInfo
-	//	if err := json.Unmarshal(vBytes, &v); err != nil {
-	//		return nil, err
-	//	}
-	//	validators = append(validators, v)
-	//}
-	//return validators, nil
-	//return nil, nil
 }
