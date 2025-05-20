@@ -402,7 +402,6 @@ avalanche blockchain deploy [subcommand] [flags]
 -m, --mainnet                                          operate on mainnet
 --mainnet-chain-id uint32                              use different ChainID for mainnet deployment
 --num-bootstrap-validators int                         (only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)
---num-local-nodes int                                  number of nodes to be created on local machine
 --num-nodes uint32                                     number of nodes to be created on local network deploy (default 2)
 --output-tx-path string                                file path of the blockchain creation tx
 --partial-sync                                         set primary network partial sync for new validators (default true)
