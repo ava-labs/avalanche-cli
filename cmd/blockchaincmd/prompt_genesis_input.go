@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -126,16 +127,15 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 
 func promptBootstrapValidators(
 	network models.Network,
-	changeOwnerAddress string,
-	numBootstrapValidators int,
 	validatorBalance uint64,
 	availableBalance uint64,
+	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
 ) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	var err error
-	if numBootstrapValidators == 0 {
+	if bootstrapValidatorFlags.NumBootstrapValidators == 0 {
 		maxNumValidators := availableBalance / validatorBalance
-		numBootstrapValidators, err = app.Prompt.CaptureInt(
+		bootstrapValidatorFlags.NumBootstrapValidators, err = app.Prompt.CaptureInt(
 			"How many bootstrap validators do you want to set up?",
 			func(n int) error {
 				if err := prompts.ValidatePositiveInt(n); err != nil {
@@ -157,22 +157,22 @@ func promptBootstrapValidators(
 		return nil, err
 	}
 	var setUpNodes bool
-	if generateNodeID {
+	if bootstrapValidatorFlags.GenerateNodeID {
 		setUpNodes = false
 	} else {
 		setUpNodes, err = promptSetUpNodes()
 		if err != nil {
 			return nil, err
 		}
-		generateNodeID = !setUpNodes
+		bootstrapValidatorFlags.GenerateNodeID = !setUpNodes
 	}
-	if changeOwnerAddress == "" {
-		changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+	if bootstrapValidatorFlags.ChangeOwnerAddress == "" {
+		bootstrapValidatorFlags.ChangeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 		if err != nil {
 			return nil, err
 		}
 	}
-	for len(subnetValidators) < numBootstrapValidators {
+	for len(subnetValidators) < bootstrapValidatorFlags.NumBootstrapValidators {
 		ux.Logger.PrintToUser("Getting info for bootstrap validator %d", len(subnetValidators)+1)
 		var nodeID ids.NodeID
 		var publicKey, pop string
@@ -201,12 +201,12 @@ func promptBootstrapValidators(
 			Balance:              validatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
-			ChangeOwnerAddr:      changeOwnerAddress,
+			ChangeOwnerAddr:      bootstrapValidatorFlags.ChangeOwnerAddress,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
 		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
-		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
+		ux.Logger.PrintToUser("- Change Address: %s", bootstrapValidatorFlags.ChangeOwnerAddress)
 	}
 	return subnetValidators, nil
 }

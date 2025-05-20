@@ -35,6 +35,8 @@ jobs:
             "\\[Node create\\]",
             "\\[Node devnet\\]",
             "\\[Docker\\]",
+            "\\[Blockchain Deploy Flags\\]",
+            "\\[Blockchain Convert Flags\\]",
           ]
         os: [ubuntu-24.04, macos-14]
         exclude:
