@@ -194,6 +194,9 @@ func StartLocalMachine(
 		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
+		if err = dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, userProvidedAvagoVersion); err != nil {
+			return false, err
+		}
 		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
 			// nothing given: get avago version from RPC compat using latest.json defined in
 			// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json

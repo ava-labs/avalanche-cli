@@ -4,23 +4,19 @@
   "avalanchego": {
     "Local Network": {
       "latest-version": "v1.13.0",
-      "require-prerelease": false,
-      "prerelease-version": ""
+      "minimum-version": ""
     },
     "DevNet": {
       "latest-version": "v1.13.0",
-      "require-prerelease": false,
-      "prerelease-version": ""
+      "minimum-version": ""
     },
     "Fuji": {
       "latest-version": "v1.13.0",
-      "require-prerelease": false,
-      "prerelease-version": ""
+      "minimum-version": "v1.13.0-fuji"
     },
     "Mainnet": {
       "latest-version": "v1.13.0",
-      "require-prerelease": false,
-      "prerelease-version": ""
+      "minimum-version": "v1.13.0"
     }
   }
 }

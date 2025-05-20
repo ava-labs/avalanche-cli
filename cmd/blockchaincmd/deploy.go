@@ -592,9 +592,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		app.Log.Debug("Deploy local")
-
 		avagoVersion := userProvidedAvagoVersion
-
 		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
 			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
