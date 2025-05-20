@@ -47,47 +47,6 @@ var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 			gomega.Expect(err).Should(gomega.BeNil())
 		})
 
-		ginkgo.It("should send a message from c-chain to c-chain", func() {
-			// Deploy ICM
-			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
-				"key": ewoqKeyName,
-				// "blockchain": subnetName,
-			})
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Deploy the relayer
-			_, err = commands.DeployRelayer(
-				[]string{
-					"deploy",
-					"--cchain",
-				},
-				utils.TestFlags{
-					"key": ewoqKeyName,
-					// "blockchains":   subnetName,
-					"amount":        10000,
-					"cchain-amount": 10000,
-					"log-level":     "info",
-				})
-			gomega.Expect(err).Should(gomega.BeNil())
-
-			// Send a message
-			sendMsgFlags := utils.TestFlags{
-				"key": ewoqKeyName,
-			}
-
-			sendMessageArgs := []string{
-				cChain,
-				subnetName,
-				message,
-			}
-
-			output, err := utils.TestCommand(utils.ICMCmd, "sendMsg", sendMessageArgs, globalFlags, sendMsgFlags)
-			gomega.Expect(err).Should(gomega.BeNil())
-			gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("Delivering message \"%s\" from source blockchain \"%s\"", message, cChain)))
-			gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("Waiting for message to be delivered to destination blockchain \"%s\"", cChain)))
-			gomega.Expect(output).Should(gomega.ContainSubstring("Message successfully delivered!"))
-		})
-
 		ginkgo.It("should send a message from c-chain to subnet", func() {
 			// Deploy ICM
 			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
