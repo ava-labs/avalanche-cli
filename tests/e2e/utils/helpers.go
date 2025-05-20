@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
 	"io"
 	"os"
 	"os/exec"
@@ -1200,4 +1202,96 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 	}
 
 	return homeAddress, remoteAddress, nil
+}
+
+type CurrentValidatorInfo struct {
+	Weight       avalanchegojson.Uint64 `json:"weight"`
+	NodeID       ids.NodeID             `json:"nodeID"`
+	ValidationID ids.ID                 `json:"validationID"`
+	Balance      avalanchegojson.Uint64 `json:"balance"`
+}
+
+func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetCurrentValidatorsReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getCurrentValidators",
+		&platformvm.GetCurrentValidatorsArgs{
+			SubnetID: subnetID,
+			NodeIDs:  nil,
+		},
+		res,
+	); err != nil {
+		return nil, err
+	}
+	validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	for _, vI := range res.Validators {
+		vBytes, err := json.Marshal(vI)
+		if err != nil {
+			return nil, err
+		}
+		var v CurrentValidatorInfo
+		if err := json.Unmarshal(vBytes, &v); err != nil {
+			return nil, err
+		}
+		validators = append(validators, v)
+	}
+	return validators, nil
+}
+
+func GetValidatorInfo(validationID ids.ID) (platformvm.L1Validator, error) {
+	pClient := platformvm.NewClient("http://127.0.0.1:9650")
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	fmt.Printf("validationID %s \n", validationID.String())
+	vdrInfo, _, err := pClient.GetL1Validator(ctx, validationID)
+	if err != nil {
+		fmt.Printf("err %s \n", err.Error())
+		return platformvm.L1Validator{}, err
+	}
+
+	remainingBalanceOwnerAddrs, err := ids.ShortFromString(vdrInfo.RemainingBalanceOwner.Addrs[0].String())
+	fmt.Printf("remainingBalanceOwnerAddrs %s \n", remainingBalanceOwnerAddrs.String())
+	fmt.Printf("vdrInfo %s \n", vdrInfo.RemainingBalanceOwner)
+	fmt.Printf("nodeid %s \n", vdrInfo.NodeID)
+	fmt.Printf("balance initial %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0])
+	fmt.Printf("balance %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0].String())
+	fmt.Printf("balance 2 %s \n", vdrInfo.RemainingBalanceOwner.Addrs[0].Hex())
+	return vdrInfo, nil
+}
+
+func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetL1ValidatorReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getL1Validator",
+		&platformvm.GetL1ValidatorArgs{
+			ValidationID: validationID,
+		},
+		res,
+	); err != nil {
+		return *res, err
+	}
+	return *res, nil
+	//fmt.Printf("res.RemainingBalanceOwner.Addresses %s \n", res.RemainingBalanceOwner.Addresses[0])
+	//validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	//for _, vI := range res.RemainingBalanceOwner.Addresses {
+	//	vBytes, err := json.Marshal(vI)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	var v CurrentValidatorInfo
+	//	if err := json.Unmarshal(vBytes, &v); err != nil {
+	//		return nil, err
+	//	}
+	//	validators = append(validators, v)
+	//}
+	//return validators, nil
+	//return nil, nil
 }
