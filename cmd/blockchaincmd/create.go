@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/spf13/pflag"
 	"os"
 	"sort"
 	"strconv"
@@ -90,41 +91,52 @@ the path to your genesis and VM binaries with the --genesis and --vm flags.
 By default, running the command with a blockchainName that already exists
 causes the command to fail. If you'd like to overwrite an existing
 configuration, pass the -f flag.`,
-		Args:              cobrautils.ExactArgs(1),
+		PreRunE:           cobrautils.ExactArgs(1),
 		RunE:              createBlockchainConfig,
 		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
-	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
-	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
-	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
-	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVMVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
-	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVMVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
-	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
-	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "evm-defaults", false, "deprecation notice: use '--production-defaults'")
-	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "production-defaults", false, "use default production settings for your blockchain")
-	cmd.Flags().BoolVar(&createFlags.useTestDefaults, "test-defaults", false, "use default test settings for your blockchain")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
-	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
-	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
-	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
-	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
-	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
-	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for ICM)")
-	cmd.Flags().BoolVar(&createFlags.useICM, "teleporter", false, "interoperate with other blockchains using ICM")
-	cmd.Flags().BoolVar(&createFlags.useICM, "icm", false, "interoperate with other blockchains using ICM")
-	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
-	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
-	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
-	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
-	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
-	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
-	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
-	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
-	cmd.Flags().BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
+
+	sovGroup := flags.RegisterFlagGroup(cmd, "Subnet-Only-Validators (SOV) Flags", "show-sov-flags", true, func(set *pflag.FlagSet) {
+		set.BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
+		set.BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
+		set.BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
+		set.StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
+		set.StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
+		set.Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
+		set.BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
+	})
+
+	evmGroup := flags.RegisterFlagGroup(cmd, "EVM Flags", "show-evm-flags", true, func(set *pflag.FlagSet) {
+		set.BoolVar(&createFlags.useSubnetEvm, "evm", false, "use Subnet-EVM")
+		set.Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
+		set.StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
+		set.StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
+		set.BoolVar(&createFlags.useLatestPreReleasedVMVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
+		set.BoolVar(&createFlags.useLatestReleasedVMVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
+		set.BoolVar(&createFlags.useProductionDefaults, "production-defaults", false, "use default production settings for your blockchain")
+		set.BoolVar(&createFlags.useTestDefaults, "test-defaults", false, "use default test settings for your blockchain")
+	})
+
+	customVMGroup := flags.RegisterFlagGroup(cmd, "Custom VM Flags", "show-custom-vm-flags", true, func(set *pflag.FlagSet) {
+		set.StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
+		set.BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM")
+		set.StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
+		set.StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
+		set.BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
+	})
+
+	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", true, func(set *pflag.FlagSet) {
+		set.BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for ICM)")
+		set.BoolVar(&createFlags.useICM, "icm", false, "interoperate with other blockchains using ICM")
+		set.BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+		set.BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
+		set.BoolVar(&createFlags.useProductionDefaults, "production-defaults", false, "use default production settings for your blockchain")
+		set.BoolVar(&createFlags.useTestDefaults, "test-defaults", false, "use default test settings for your blockchain")
+	})
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sovGroup, evmGroup, customVMGroup, icmGroup}))
 	return cmd
 }
 
