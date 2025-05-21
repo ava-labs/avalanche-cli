@@ -85,7 +85,7 @@ jobs:
         run: |
           brew install docker
           brew install colima
-          colima start --vm-type vz --profile e2e
+          colima start --vm-type vz --vz-rosetta
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
 
       - name: Generate SSH token for E2E tests
