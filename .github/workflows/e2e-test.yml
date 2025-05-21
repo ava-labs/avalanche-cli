@@ -19,6 +19,7 @@ jobs:
             "\\[Error handling\\]",
             "\\[Key\\]",
             "\\[ICM\\]",
+            "\\[Local Network\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
             "\\[Package Management\\]",
@@ -31,8 +32,8 @@ jobs:
             "\\[Etna AddRemove Validator SOV PoS\\]",
             "\\[Etna Add Validator SOV Local\\]",
             "\\[Subnet\\]",
-            "\\[Upgrade expect network failure\\]",
-            "\\[Upgrade public network\\]",
+            "\\[Upgrade expect network failure",
+            "\\[Upgrade public network",
             "\\[Upgrade local network\\]",
             "\\[Node create\\]",
             "\\[Node devnet\\]",
@@ -46,8 +47,6 @@ jobs:
             suite: "\\[Node devnet\\]"
           - os: macos-14
             suite: "\\[Docker\\]"
-          - os: macos-14
-            suite: "\\[Public Subnet non SOV\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

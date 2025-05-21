@@ -35,12 +35,12 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabl
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
-func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string, icmEnabled bool) (string, string) {
+func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], icmEnabled)
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
@@ -87,13 +87,11 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, version string, icmEnabled bool) {
+func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
-
-	icmFlag := fmt.Sprintf("--icm=%t", icmEnabled)
 
 	// Create config
 	cmdArgs := []string{
@@ -109,7 +107,7 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		"--proxy-contract-owner",
 		poaValidatorManagerOwner,
 		"--" + constants.SkipUpdateFlag,
-		icmFlag,
+		"--icm=false",
 		"--evm-token",
 		"TOK",
 	}

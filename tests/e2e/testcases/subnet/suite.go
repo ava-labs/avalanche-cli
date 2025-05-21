@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can create and delete a subnet evm config SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, false)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
