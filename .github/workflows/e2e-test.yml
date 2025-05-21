@@ -39,14 +39,16 @@ jobs:
             "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
-        os: [ubuntu-24.04, macos-15]
+        os: [ubuntu-24.04, macos-14]
         exclude:
-          - os: macos-15
+          - os: macos-14
             suite: "\\[Node create\\]"
-          - os: macos-15
+          - os: macos-14
             suite: "\\[Node devnet\\]"
-          - os: macos-15
+          - os: macos-14
             suite: "\\[Docker\\]"
+          - os: macos-14
+            suite: "\\[Public Subnet non SOV\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -57,7 +59,7 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Install MacOSX dependencies
-        if: ${{ matrix.os == 'macos-15' }}
+        if: ${{ matrix.os == 'macos-14' }}
         run: brew install python-setuptools
 
       - name: Use Node.js
@@ -81,11 +83,11 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-15') && (matrix.suite == '\[Public Subnet non SOV\]') }}
+        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\[Public Subnet non SOV\]') }}
         run: |
           brew install docker
           brew install colima
-          colima start --vm-type vz --vz-rosetta
+          colima start --vm-type vz
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
 
       - name: Generate SSH token for E2E tests
