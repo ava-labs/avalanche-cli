@@ -455,7 +455,7 @@ func intraEvmSend(
 	}
 	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+		utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 	return err
 }
 
@@ -597,7 +597,7 @@ func interEvmSend(
 	}
 	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+		utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 
 	if receipt2 != nil {
 		chainName, err := contract.GetBlockchainDesc(receiverChain)
@@ -606,7 +606,7 @@ func interEvmSend(
 		}
 		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 			chainName,
-			calculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+			utils.CalculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
 	}
 
 	return nil
@@ -1090,14 +1090,4 @@ func getBuilderContext(wallet *primary.Wallet) *builder.Context {
 		return nil
 	}
 	return wallet.P().Builder().Context()
-}
-
-func calculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
-	gasUsedBig := new(big.Int).SetUint64(gasUsed)
-	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
-
-	totalCostInNanoAvax := utils.ConvertToNanoAvax(totalCost)
-
-	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
-	return result / float64(units.Avax)
 }

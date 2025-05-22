@@ -134,24 +134,29 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	}
 
+	logLevelOptions := []string{
+		logging.Info.LowerString(),
+		logging.Warn.LowerString(),
+		logging.Error.LowerString(),
+		logging.Off.LowerString(),
+		logging.Fatal.LowerString(),
+		logging.Debug.LowerString(),
+		logging.Trace.LowerString(),
+		logging.Verbo.LowerString(),
+	}
 	if flags.LogLevel == "" {
 		prompt := "Which log level do you prefer for your relayer?"
-		options := []string{
-			logging.Info.LowerString(),
-			logging.Warn.LowerString(),
-			logging.Error.LowerString(),
-			logging.Off.LowerString(),
-			logging.Fatal.LowerString(),
-			logging.Debug.LowerString(),
-			logging.Trace.LowerString(),
-			logging.Verbo.LowerString(),
-		}
+
 		flags.LogLevel, err = app.Prompt.CaptureList(
 			prompt,
-			options,
+			logLevelOptions,
 		)
 		if err != nil {
 			return err
+		}
+	} else {
+		if _, err := logging.ToLevel(flags.LogLevel); err != nil {
+			return fmt.Errorf("invalid log level %s: %w", flags.LogLevel, err)
 		}
 	}
 
@@ -375,7 +380,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 					return err
 				}
 				if balance.Cmp(big.NewInt(0)) == 0 {
-					return fmt.Errorf("destination %s funding key as no balance", destination.blockchainDesc)
+					return fmt.Errorf("destination %s funding key has no balance", destination.blockchainDesc)
 				}
 				balanceBigFlt := new(big.Float).SetInt(balance)
 				balanceBigFlt = balanceBigFlt.Quo(balanceBigFlt, new(big.Float).SetInt(vm.OneAvax))
@@ -415,9 +420,13 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 				amount, _ := amountBigFlt.Int(nil)
-				if _, err := client.FundAddress(privateKey, addr.Hex(), amount); err != nil {
+				receipt, err := client.FundAddress(privateKey, addr.Hex(), amount)
+				if err != nil {
 					return err
 				}
+				ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+					destination.blockchainDesc,
+					utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 			}
 		}
 	}

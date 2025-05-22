@@ -3,11 +3,13 @@
 package utils
 
 import (
+	"math/big"
 	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
@@ -51,4 +53,14 @@ func GetNetworkBalance(addressList []ids.ShortID, networkEndpoint string) (uint6
 		return 0, err
 	}
 	return uint64(bal.Balance), nil
+}
+
+func CalculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
+	gasUsedBig := new(big.Int).SetUint64(gasUsed)
+	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
+
+	totalCostInNanoAvax := ConvertToNanoAvax(totalCost)
+
+	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
+	return result / float64(units.Avax)
 }
