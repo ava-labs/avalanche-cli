@@ -5,9 +5,11 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/pflag"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -27,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -98,7 +99,7 @@ Testnet or Mainnet.`,
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app, &addValidatorFlags.RPC)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
 		"balance",
@@ -118,17 +119,18 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 
 	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
+		set.StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided in command argument)")
+		set.StringVar(&addValidatorFlags.RPC, "rpc", "", "blockchain rpc endpoint (only if blockchain name is not provided in command argument)")
 	})
 
 	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (Non-SOV) Flags", "show-non-sov-flags", false, func(set *pflag.FlagSet) {
-		set.BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
-		set.StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-		set.BoolVar(&useDefaultDuration, "default-duration", false, "(for Subnets, not L1s) set duration so as to validate until primary validator ends its period")
-		set.BoolVar(&defaultValidatorParams, "default-validator-params", false, "(for Subnets, not L1s) use default weight/start/duration params for subnet validator")
-		set.StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
-		set.StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
-		set.BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
+		set.BoolVar(&useDefaultStartTime, "default-start-time", false, "use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
+		set.StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+		set.BoolVar(&useDefaultDuration, "default-duration", false, "set duration so as to validate until primary validator ends its period")
+		set.BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
+		set.StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
+		set.StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
+		set.BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "just issue the add validator tx, without waiting for its acceptance")
 		set.DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	})
 
@@ -204,6 +206,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 0 {
 		sc, err = importL1(blockchainIDStr, addValidatorFlags.RPC, network)
+		fmt.Printf("obtained sc %s \n", sc)
 		if err != nil {
 			return err
 		}

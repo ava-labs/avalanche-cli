@@ -31,7 +31,6 @@ import (
 
 var (
 	blockchainIDStr string
-	subnetIDstr     string
 	nodeURL         string
 	useSubnetEvm    bool
 	useCustomVM     bool
