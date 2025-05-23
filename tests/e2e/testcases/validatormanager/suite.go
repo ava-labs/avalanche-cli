@@ -82,7 +82,7 @@ func createSovereignSubnet() (string, string, error) {
 		"deploy",
 		utils.BlockchainName,
 		"--local",
-		"--num-local-nodes=1",
+		"--num-bootstrap-validators=1",
 		"--ewoq",
 		"--convert-only",
 		"--change-owner-address",
