@@ -26,5 +26,11 @@ func (h *HostInstaller) GetArch() (string, string) {
 	if err != nil {
 		return "", ""
 	}
+	if string(goOSBytes) == "darwin" {
+		goArhBytes, err = h.Host.Command("uname -m", nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return "", ""
+		}
+	}
 	return strings.TrimSpace(string(goArhBytes)), strings.TrimSpace(strings.ToLower(string(goOSBytes)))
 }
