@@ -19,6 +19,7 @@ jobs:
             "\\[Error handling\\]",
             "\\[Key\\]",
             "\\[ICM\\]",
+            "\\[Local Network\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
             "\\[Package Management\\]",
@@ -31,8 +32,8 @@ jobs:
             "\\[Etna AddRemove Validator SOV PoS\\]",
             "\\[Etna Add Validator SOV Local\\]",
             "\\[Subnet\\]",
-            "\\[Upgrade expect network failure\\]",
-            "\\[Upgrade public network\\]",
+            "\\[Upgrade expect network failure",
+            "\\[Upgrade public network",
             "\\[Upgrade local network\\]",
             "\\[Node create\\]",
             "\\[Node devnet\\]",
@@ -82,7 +83,7 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet non SOV\\]') }}
+        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\[Public Subnet non SOV\]') }}
         run: |
           brew install docker
           brew install colima

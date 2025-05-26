@@ -95,16 +95,11 @@ in with avalanche blockchain create myNewBlockchain.`,
 	// add node command
 	rootCmd.AddCommand(nodecmd.NewCmd(app))
 
-	// add teleporter command
-	subcmd := messengercmd.NewCmd(app)
-	subcmd.Use = "teleporter"
-	rootCmd.AddCommand(subcmd)
-
 	// add interchain command
 	rootCmd.AddCommand(interchaincmd.NewCmd(app))
 
 	// add icm command
-	subcmd = messengercmd.NewCmd(app)
+	subcmd := messengercmd.NewCmd(app)
 	subcmd.Use = "icm"
 	rootCmd.AddCommand(subcmd)
 
