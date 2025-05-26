@@ -33,6 +33,41 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 	})
 
 	ginkgo.Context("With valid input", func() {
+		ginkgo.It("should display logs", func() {
+			// Deploy ICM contracts
+			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
+				"key":        ewoqKeyName,
+				"blockchain": subnetName,
+			})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Deploy the relayer
+			_, err = commands.DeployRelayer(
+				[]string{
+					"deploy",
+					"--cchain",
+				},
+				utils.TestFlags{
+					"key":           ewoqKeyName,
+					"blockchains":   subnetName,
+					"amount":        10000,
+					"cchain-amount": 10000,
+					"log-level":     "info",
+				})
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			// Display relayer logs
+			logsArgs := []string{
+				"logs",
+			}
+			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
+				"local":             true,
+				"skip-update-check": true,
+			}, utils.TestFlags{})
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(output).Should(gomega.ContainSubstring("Initializing icm-relayer"))
+		})
+
 		ginkgo.It("should display raw logs", func() {
 			// Deploy ICM contracts
 			_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{

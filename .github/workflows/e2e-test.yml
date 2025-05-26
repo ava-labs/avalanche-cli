@@ -19,6 +19,7 @@ jobs:
             "\\[Error handling\\]",
             "\\[Key\\]",
             "\\[ICM\\]",
+            "\\[Relayer\\]",
             "\\[Local Network\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
