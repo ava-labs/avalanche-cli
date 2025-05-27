@@ -175,7 +175,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
 		set.StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
 		set.BoolVar(&relayerAllowPrivateIPs, "relayer-allow-private-ips", true, "allow relayer to connec to private ips")
-    set.StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
+		set.StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
 		set.StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
 		set.StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
 		set.StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
