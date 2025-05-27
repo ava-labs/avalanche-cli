@@ -90,21 +90,21 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		"remaining-balance-owner": "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
 		"disable-owner":           "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
 	}
-	ginkgo.It("HAPPY PATH: add validator default", func() {
-		fmt.Printf("HAPPYnodeIDStr %s \n", nodeIDStr)
-		fmt.Printf("HAPPYpublicKey %s \n", publicKey)
-		fmt.Printf("HAPPYpop %s \n", pop)
-		testFlags := utils.TestFlags{
-			"node-id":                 nodeIDStr,
-			"bls-public-key":          publicKey,
-			"bls-proof-of-possession": pop,
-		}
-		_, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-		if err != nil {
-			fmt.Printf("err %s \n", err.Error())
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-	})
+	//ginkgo.It("HAPPY PATH: add validator default", func() {
+	//	fmt.Printf("HAPPYnodeIDStr %s \n", nodeIDStr)
+	//	fmt.Printf("HAPPYpublicKey %s \n", publicKey)
+	//	fmt.Printf("HAPPYpop %s \n", pop)
+	//	testFlags := utils.TestFlags{
+	//		"node-id":                 nodeIDStr,
+	//		"bls-public-key":          publicKey,
+	//		"bls-proof-of-possession": pop,
+	//	}
+	//	_, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+	//	if err != nil {
+	//		fmt.Printf("err %s \n", err.Error())
+	//	}
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
 	//
 	//ginkgo.It("HAPPY PATH: add validator with node endpoint", func() {
 	//	avalanchegoPath := "tests/e2e/assets/mac/avalanchego"
@@ -120,15 +120,19 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 	//	gomega.Expect(err).Should(gomega.BeNil())
 	//})
 	//
-	//ginkgo.It("HAPPY PATH: add validator with create-local-validator", func() {
-	//	testFlags := utils.TestFlags{
-	//		"convert-only": true,
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-	//	checkConvertOnlyOutput(output, false)
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//})
-	//
+	ginkgo.It("HAPPY PATH: add validator with create-local-validator", func() {
+		testFlags := utils.TestFlags{
+			"create-local-validator": true,
+		}
+		_, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		//checkConvertOnlyOutput(output, false)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// we should have two local machine instances
+		localClusterUris, err := utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(2))
+	})
+
 	//ginkgo.It("HAPPY PATH: add validator using rpc flag (remote L1)", func() {
 	//	testFlags := utils.TestFlags{
 	//		"generate-node-id":         true,
