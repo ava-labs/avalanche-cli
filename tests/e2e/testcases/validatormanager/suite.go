@@ -40,7 +40,7 @@ var err error
 
 func createEtnaSubnetEvmConfig() error {
 	// Check config does not already exist
-	_, err = utils.SubnetConfigExists(utils.SubnetName)
+	_, err = utils.SubnetConfigExists(utils.BlockchainName)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func createEtnaSubnetEvmConfig() error {
 		CLIBinary,
 		"blockchain",
 		"create",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--evm",
 		"--proof-of-authority",
 		"--validator-manager-owner",
@@ -80,7 +80,7 @@ func createSovereignSubnet() (string, string, error) {
 		CLIBinary,
 		"blockchain",
 		"deploy",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--local",
 		"--num-bootstrap-validators=1",
 		"--ewoq",
@@ -165,13 +165,13 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
-		_ = utils.DeleteConfigs(utils.SubnetName)
+		_ = utils.DeleteConfigs(utils.BlockchainName)
 		destroyLocalNode()
 	})
 
 	ginkgo.AfterEach(func() {
 		destroyLocalNode()
-		commands.DeleteSubnetConfig(utils.SubnetName)
+		commands.DeleteSubnetConfig(utils.BlockchainName)
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
@@ -182,9 +182,9 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		uris, err := utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(uris)).Should(gomega.Equal(1))
-		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
+		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", utils.SubnetName)+constants.KeySuffix)
+		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", utils.BlockchainName)+constants.KeySuffix)
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 		rpcURL := fmt.Sprintf("%s/ext/bc/%s/rpc", uris[0], blockchainIDStr)
