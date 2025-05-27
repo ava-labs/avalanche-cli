@@ -74,20 +74,6 @@ func AddPoAValidatorManagerV2_0_0ContractToAllocations(
 	}
 }
 
-//go:embed deployed_native_pos_validator_manager_bytecode.txt
-var deployedPoSValidatorManagerBytecode []byte
-
-func AddPoSValidatorManagerContractToAllocations(
-	allocs core.GenesisAlloc,
-) {
-	deployedPoSValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoSValidatorManagerBytecode)))
-	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
-		Balance: big.NewInt(0),
-		Code:    deployedPoSValidatorManagerBytes,
-		Nonce:   1,
-	}
-}
-
 //go:embed native_token_staking_manager_bytecode_v1.0.0.txt
 var posValidatorManagerBytecode []byte
 
@@ -170,14 +156,14 @@ func AddTransparentProxyContractToAllocations(
 	}
 }
 
-//go:embed deployed_example_reward_calculator_bytecode_v1.0.0.txt
-var deployedRewardCalculatorBytecode []byte
+//go:embed deployed_example_reward_calculator_bytecode_v2.0.0.txt
+var deployedRewardCalculatorV2_0_0Bytecode []byte
 
-func AddRewardCalculatorToAllocations(
+func AddRewardCalculatorV2_0_0ToAllocations(
 	allocs core.GenesisAlloc,
 	rewardBasisPoints uint64,
 ) {
-	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorBytecode)))
+	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorV2_0_0Bytecode)))
 	allocs[common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedRewardCalculatorBytes,
