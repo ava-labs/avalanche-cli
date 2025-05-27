@@ -20,6 +20,9 @@ import (
 	"strings"
 	"time"
 
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -996,7 +999,7 @@ func GetPluginBinaries() ([]string, error) {
 	return pluginFiles, nil
 }
 
-func getSideCar(subnetName string) (models.Sidecar, error) {
+func GetSideCar(subnetName string) (models.Sidecar, error) {
 	exists, err := sidecarExists(subnetName)
 	if err != nil {
 		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
@@ -1021,7 +1024,7 @@ func getSideCar(subnetName string) (models.Sidecar, error) {
 }
 
 func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return 0, err
 	}
@@ -1029,25 +1032,11 @@ func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
 }
 
 func IsCustomVM(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
 	return sc.VM == models.CustomVM, nil
-}
-
-// Get NodeIDs of all validators on the blockchain
-func GetBlockchainValidators(subnetName string) ([]string, error) {
-	network := models.NewLocalNetwork()
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return nil, errors.New("no subnet id")
-	}
-	return GetSubnetValidators(subnetID)
 }
 
 // Get NodeIDs of all validators on the subnet
@@ -1065,7 +1054,7 @@ func GetSubnetValidators(subnetID ids.ID) ([]string, error) {
 }
 
 func GetCurrentSupply(subnetName string) error {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return err
 	}
@@ -1074,7 +1063,7 @@ func GetCurrentSupply(subnetName string) error {
 }
 
 func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
@@ -1083,7 +1072,7 @@ func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
 }
 
 func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
@@ -1269,6 +1258,62 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 	}
 
 	return homeAddress, remoteAddress, nil
+}
+
+type CurrentValidatorInfo struct {
+	Weight       avalanchegojson.Uint64 `json:"weight"`
+	NodeID       ids.NodeID             `json:"nodeID"`
+	ValidationID ids.ID                 `json:"validationID"`
+	Balance      avalanchegojson.Uint64 `json:"balance"`
+}
+
+func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetCurrentValidatorsReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getCurrentValidators",
+		&platformvm.GetCurrentValidatorsArgs{
+			SubnetID: subnetID,
+			NodeIDs:  nil,
+		},
+		res,
+	); err != nil {
+		return nil, err
+	}
+	validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	for _, vI := range res.Validators {
+		vBytes, err := json.Marshal(vI)
+		if err != nil {
+			return nil, err
+		}
+		var v CurrentValidatorInfo
+		if err := json.Unmarshal(vBytes, &v); err != nil {
+			return nil, err
+		}
+		validators = append(validators, v)
+	}
+	return validators, nil
+}
+
+func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetL1ValidatorReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getL1Validator",
+		&platformvm.GetL1ValidatorArgs{
+			ValidationID: validationID,
+		},
+		res,
+	); err != nil {
+		return *res, err
+	}
+	return *res, nil
 }
 
 // clean up avalanchego logs for the given [nodesInfo]

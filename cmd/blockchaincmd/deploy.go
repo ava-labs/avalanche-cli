@@ -72,7 +72,6 @@ var (
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
-	numLocalNodes                   int
 	stakingTLSKeyPaths              []string
 	stakingCertKeyPaths             []string
 	stakingSignerKeyPaths           []string
@@ -119,12 +118,24 @@ func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [blockchainName]",
 		Short: "Deploys a blockchain configuration",
-		Long: `The blockchain deploy command deploys your Blockchain configuration locally, to Fuji Testnet, or to Mainnet.
+		Long: `The blockchain deploy command deploys your Blockchain configuration to Local Network, to Fuji Testnet, DevNet or to Mainnet.
 
-At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
+At the end of the call, the command prints the RPC URL you can use to interact with the L1 / Subnet.
+
+When deploying an L1, Avalanche-CLI lets you use your local machine as a bootstrap validator, so you don't need to run separate Avalanche nodes. 
+This is controlled by the --use-local-machine flag (enabled by default on Local Network).
+
+If --use-local-machine is set to true: 
+- Avalanche-CLI will call CreateSubnetTx, CreateChainTx, ConvertSubnetToL1Tx, followed by syncing the local machine bootstrap validator to the L1 and initialize 
+Validator Manager Contract on the L1
+
+If using your own Avalanche Nodes as bootstrap validators: 
+- Avalanche-CLI will call CreateSubnetTx, CreateChainTx, ConvertSubnetToL1Tx 
+- You will have to sync your bootstrap validators to the L1 
+- Next, Initialize Validator Manager contract on the L1 using avalanche contract initValidatorManager <L1_Name>
 
 Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
-attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet) aren't
+attempts to deploy the same Blockchain to the same network (Local Network, Fuji, Mainnet) aren't
 allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
@@ -143,7 +154,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
-	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
+	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "command stops after CreateSubnetTx and returns SubnetID")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
 	localNetworkGroup := flags.RegisterFlagGroup(cmd, "Local Network Flags", "show-local-network-flags", true, func(set *pflag.FlagSet) {
@@ -165,16 +176,15 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	})
 
 	bootstrapValidatorGroup := flags.RegisterFlagGroup(cmd, "Bootstrap Validators Flags", "show-bootstrap-validators-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
-		set.BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
+		set.StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators")
+		set.BoolVar(&generateNodeID, "generate-node-id", false, "set to true to generate Node IDs for bootstrap validators when none are set up. Use these Node IDs to set up your Avalanche Nodes.")
 		set.StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
-		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-		set.IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
+		set.IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator)")
 		set.Float64Var(
 			&deployBalanceAVAX,
 			"balance",
 			float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
-			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
+			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain (setting balance=1 equals to 1 AVAX for each bootstrap validator)",
 		)
 		set.StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	})
@@ -401,6 +411,82 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 	return app.UpdateSidecar(sc)
 }
 
+func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
+	if network.Kind == models.Local {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" && !generateNodeID {
+			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
+		}
+	}
+
+	return nil
+}
+
+func validateBootstrapFilepathFlag(cmd *cobra.Command) error {
+	if bootstrapValidatorsJSONFilePath != "" {
+		if generateNodeID {
+			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-filepath at the same time")
+		}
+		if cmd.Flags().Changed("num-bootstrap-validators") {
+			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-filepath at the same time")
+		}
+		if cmd.Flags().Changed("balance") {
+			return fmt.Errorf("cannot use a non-empty --balance and a non-empty --bootstrap-filepath at the same time")
+		}
+		if bootstrapEndpoints != nil {
+			return fmt.Errorf("cannot use a non-empty --bootstrap-endpoints and a non-empty --bootstrap-filepath at the same time")
+		}
+	}
+	return nil
+}
+
+func validateBootstrapEndpointFlag(cmd *cobra.Command) error {
+	if bootstrapEndpoints != nil {
+		if generateNodeID {
+			return fmt.Errorf("cannot use --generate-node-id=true and a non-empty --bootstrap-endpoints at the same time")
+		}
+		if cmd.Flags().Changed("num-bootstrap-validators") {
+			return fmt.Errorf("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-endpoints at the same time")
+		}
+	}
+	return nil
+}
+
+// checks for flags that will conflict if user sets convert only to false or if user sets use-local-machine to true
+// if any of generateNodeID, bootstrapValidatorsJSONFilePath or bootstrapEndpoints is used by user,
+// convertOnly will be set to true
+func validateConvertOnlyFlag(cmd *cobra.Command) error {
+	if generateNodeID || bootstrapValidatorsJSONFilePath != "" || bootstrapEndpoints != nil {
+		flagName := ""
+		switch {
+		case generateNodeID:
+			flagName = "--generate-node-id=true"
+		case bootstrapValidatorsJSONFilePath != "":
+			flagName = "--bootstrap-filepath is not empty"
+		case bootstrapEndpoints != nil:
+			flagName = "--bootstrap-endpoints is not empty"
+		}
+
+		if cmd.Flags().Changed("use-local-machine") && useLocalMachine {
+			return fmt.Errorf("cannot use local machine as bootstrap validator if %s", flagName)
+		}
+		if cmd.Flags().Changed("convert-only") && !convertOnly {
+			return fmt.Errorf("cannot set --convert-only=false if %s", flagName)
+		}
+		convertOnly = true
+	}
+	return nil
+}
+
+func validateFlags(cmd *cobra.Command) error {
+	if err := validateBootstrapFilepathFlag(cmd); err != nil {
+		return err
+	}
+	if err := validateBootstrapEndpointFlag(cmd); err != nil {
+		return err
+	}
+	return validateConvertOnlyFlag(cmd)
+}
+
 // deployBlockchain is the cobra command run for deploying subnets
 func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
@@ -426,6 +512,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		numBootstrapValidators = len(bootstrapValidators)
 	}
 
 	chain := chains[0]
@@ -494,9 +581,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if err = validateFlags(cmd); err != nil {
+		return err
+	}
+
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
+		if err = deployLocalNetworkPreCheck(cmd, network); err != nil {
+			return err
+		}
 		app.Log.Debug("Deploy local")
 		avagoVersion := userProvidedAvagoVersion
 		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
@@ -589,7 +683,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	if deployBalanceAVAX <= 0 {
+		return fmt.Errorf("bootstrap validator balance must be greater than 0 AVAX")
+	}
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
@@ -600,7 +696,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 			}
 		}
-		if !generateNodeID {
+		if !generateNodeID && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
 			if cancel, err := StartLocalMachine(
 				network,
 				sidecar,
@@ -609,6 +705,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				numBootstrapValidators,
 				stakingTLSKeyPaths,
 				stakingCertKeyPaths,
 				stakingSignerKeyPaths,
@@ -654,15 +751,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(
-				network,
-				changeOwnerAddress,
-				numBootstrapValidators,
-				deployBalance,
-				availableBalance,
-			)
-			if err != nil {
-				return err
+			if bootstrapValidators == nil {
+				bootstrapValidators, err = promptBootstrapValidators(
+					network,
+					changeOwnerAddress,
+					numBootstrapValidators,
+					deployBalance,
+					availableBalance,
+				)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	} else if network.Kind == models.Local {
@@ -834,14 +933,23 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if savePartialTx {
 			return nil
 		}
-		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
+		if convertOnly || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
-			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+			ux.Logger.PrintToUser("Next, we need to:")
+			if generateNodeID {
+				ux.Logger.PrintToUser("- Create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			}
+			ux.Logger.PrintToUser("- Have the Avalanche node(s) track the blockchain")
+			ux.Logger.PrintToUser("- Call `avalanche contract initValidatorManager %s`", blockchainName)
 			ux.Logger.PrintToUser("==================================================")
-			ux.Logger.PrintToUser("To enable the nodes to track the L1, set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
-			ux.Logger.PrintToUser("Ensure that the P2P port is exposed and 'public-ip' config value is set")
-			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
+			if generateNodeID {
+				ux.Logger.PrintToUser("To create the Avalanche node(s) with the provided Node ID and BLS Info:")
+				ux.Logger.PrintToUser("- Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+				ux.Logger.PrintToUser("")
+			}
+			ux.Logger.PrintToUser("To enable the nodes to track the L1:")
+			ux.Logger.PrintToUser("- Set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
+			ux.Logger.PrintToUser("- Ensure that the P2P port is exposed and 'public-ip' config value is set")
 			return nil
 		}
 
