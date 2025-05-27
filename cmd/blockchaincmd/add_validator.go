@@ -5,9 +5,10 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/pflag"
 	"strings"
 	"time"
+
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
