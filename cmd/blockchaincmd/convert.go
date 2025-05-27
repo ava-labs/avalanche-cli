@@ -360,7 +360,7 @@ func InitializeValidatorManager(
 	}
 
 	if pos {
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)
+		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
 		if err != nil {
 			return tracked, err
 		}
@@ -376,12 +376,22 @@ func InitializeValidatorManager(
 			if err != nil {
 				return tracked, err
 			}
-			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				rpcURL,
-				genesisPrivateKey,
-				proxyOwnerPrivateKey,
-			); err != nil {
-				return tracked, err
+			if useACP99 {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return tracked, err
+				}
+			} else {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return tracked, err
+				}
 			}
 		}
 	}
@@ -429,6 +439,7 @@ func InitializeValidatorManager(
 				UptimeBlockchainID:      blockchainID,
 			},
 			validatorManagerAddrStr,
+			useACP99,
 		); err != nil {
 			return tracked, err
 		}

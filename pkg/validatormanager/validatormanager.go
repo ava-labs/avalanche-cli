@@ -75,13 +75,13 @@ func AddPoAValidatorManagerV2_0_0ContractToAllocations(
 }
 
 //go:embed native_token_staking_manager_bytecode_v1.0.0.txt
-var posValidatorManagerBytecode []byte
+var posValidatorManagerV1_0_0Bytecode []byte
 
-func DeployPoSValidatorManagerContract(
+func DeployPoSValidatorManagerV1_0_0Contract(
 	rpcURL string,
 	privateKey string,
 ) (common.Address, error) {
-	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerBytecode))
+	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV1_0_0Bytecode))
 	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
 	posValidatorManagerBytes := []byte(posValidatorManagerString)
 	return contract.DeployContract(
@@ -93,19 +93,60 @@ func DeployPoSValidatorManagerContract(
 	)
 }
 
-func DeployAndRegisterPoSValidatorManagerContrac(
+func DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
 	rpcURL string,
 	privateKey string,
 	proxyOwnerPrivateKey string,
 ) (common.Address, error) {
-	posValidatorManagerAddress, err := DeployPoSValidatorManagerContract(
+	posValidatorManagerAddress, err := DeployPoSValidatorManagerV1_0_0Contract(
 		rpcURL,
 		privateKey,
 	)
 	if err != nil {
 		return common.Address{}, err
 	}
-	if _, _, err := SetupValidatorManagerAtProxy(
+	if _, _, err := SetupValidatorProxyImplementation(
+		rpcURL,
+		proxyOwnerPrivateKey,
+		posValidatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	return posValidatorManagerAddress, nil
+}
+
+//go:embed native_token_staking_manager_bytecode_v2.0.0.txt
+var posValidatorManagerV2_0_0Bytecode []byte
+
+func DeployPoSValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+) (common.Address, error) {
+	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV2_0_0Bytecode))
+	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
+	posValidatorManagerBytes := []byte(posValidatorManagerString)
+	return contract.DeployContract(
+		rpcURL,
+		privateKey,
+		posValidatorManagerBytes,
+		"(uint8)",
+		uint8(0),
+	)
+}
+
+func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+	proxyOwnerPrivateKey string,
+) (common.Address, error) {
+	posValidatorManagerAddress, err := DeployPoSValidatorManagerV2_0_0Contract(
+		rpcURL,
+		privateKey,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, _, err := SetupValidatorProxyImplementation(
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
@@ -121,7 +162,7 @@ var deployedTransparentProxyBytecode []byte
 //go:embed deployed_proxy_admin_bytecode.txt
 var deployedProxyAdminBytecode []byte
 
-func AddTransparentProxyContractToAllocations(
+func AddValidatorTransparentProxyContractToAllocations(
 	allocs core.GenesisAlloc,
 	proxyManager string,
 ) {
@@ -133,7 +174,7 @@ func AddTransparentProxyContractToAllocations(
 	}
 	// proxy admin
 	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
-	allocs[common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedProxyAdmin,
 		Nonce:   1,
@@ -144,13 +185,48 @@ func AddTransparentProxyContractToAllocations(
 
 	// transparent proxy
 	deployedTransparentProxy := common.FromHex(strings.TrimSpace(string(deployedTransparentProxyBytecode)))
-	allocs[common.HexToAddress(validatorManagerSDK.ProxyContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedTransparentProxy,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
 			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(validatorManagerSDK.ValidatorContractAddress),  // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.ProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.ValidatorProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
+		},
+	}
+}
+
+func AddSpecializationTransparentProxyContractToAllocations(
+	allocs core.GenesisAlloc,
+	proxyManager string,
+) {
+	if _, found := allocs[common.HexToAddress(proxyManager)]; !found {
+		ownerBalance := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1))
+		allocs[common.HexToAddress(proxyManager)] = core.GenesisAccount{
+			Balance: ownerBalance,
+		}
+	}
+	// proxy admin
+	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
+	allocs[common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedProxyAdmin,
+		Nonce:   1,
+		Storage: map[common.Hash]common.Hash{
+			common.HexToHash("0x0"): common.HexToHash(proxyManager),
+		},
+	}
+
+	// transparent proxy
+	deployedTransparentProxy := common.FromHex(strings.TrimSpace(string(deployedTransparentProxyBytecode)))
+	allocs[common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedTransparentProxy,
+		Nonce:   1,
+		Storage: map[common.Hash]common.Hash{
+			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.Hash{}, // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.SpecializationProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
 			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
 		},
 	}
@@ -217,6 +293,7 @@ func SetupPoS(
 	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
 	validatorManagerAddressStr string,
+	v2_0_0 bool,
 ) error {
 	return subnet.InitializeProofOfStake(
 		ctx,
@@ -227,5 +304,6 @@ func SetupPoS(
 		aggregatorLogger,
 		posParams,
 		validatorManagerAddressStr,
+		v2_0_0,
 	)
 }

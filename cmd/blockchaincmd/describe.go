@@ -356,11 +356,15 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			} else {
 				description = "v1.0.0 Compatible " + description
 			}
-		case address == common.HexToAddress(validatorManagerSDK.ProxyContractAddress):
-			description = "Transparent Proxy"
-		case address == common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress):
-			description = "Proxy Admin"
+		case address == common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress):
+			description = "Validator Transparent Proxy"
+		case address == common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress):
+			description = "Validator Proxy Admin"
 			deployer = sc.ProxyContractOwner
+		case address == common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress):
+			description = "Validator Specialization Transparent Proxy"
+		case address == common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress):
+			description = "Validator Specialization Proxy Admin"
 		case address == common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress):
 			description = "Reward Calculator"
 		}

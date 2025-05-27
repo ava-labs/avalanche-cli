@@ -433,6 +433,7 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 	validatorManagerAddressStr string,
+	useACP99 bool,
 ) error {
 	if client, err := evm.GetClient(c.RPC); err != nil {
 		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
@@ -449,6 +450,7 @@ func (c *Subnet) InitializeProofOfStake(
 		privateKey,
 		c.SubnetID,
 		posParams,
+		useACP99,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {

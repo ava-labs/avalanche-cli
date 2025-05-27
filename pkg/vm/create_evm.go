@@ -131,7 +131,7 @@ func CreateEVMGenesis(
 		return nil, fmt.Errorf("blockchain can not be both PoA and PoS")
 	}
 	if params.UsePoAValidatorManager {
-		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		validatormanager.AddValidatorTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		// valid for both v2.0.0 and v1.0.0
 		validatormanager.AddValidatorMessagesV2_0_0ContractToAllocations(params.initialTokenAllocation)
 		if useV2_0_0 {
@@ -140,11 +140,15 @@ func CreateEVMGenesis(
 			validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		}
 	} else if params.UsePoSValidatorManager {
-		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		validatormanager.AddValidatorTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		// valid for both v2.0.0 and v1.0.0
 		validatormanager.AddValidatorMessagesV2_0_0ContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddRewardCalculatorV2_0_0ToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		params.enableNativeMinterPrecompile = true
+		if useV2_0_0 {
+			validatormanager.AddPoAValidatorManagerV2_0_0ContractToAllocations(params.initialTokenAllocation)
+			validatormanager.AddSpecializationTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		}
 	}
 
 	if params.UseExternalGasToken {

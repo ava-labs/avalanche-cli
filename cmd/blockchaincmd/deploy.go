@@ -810,7 +810,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerStr := validatorManagerSDK.ProxyContractAddress
+		validatorManagerStr := validatorManagerSDK.ValidatorProxyContractAddress
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,

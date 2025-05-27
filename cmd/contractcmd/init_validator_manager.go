@@ -209,7 +209,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(initValidatorManagerFlags.RPC)
+		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(initValidatorManagerFlags.RPC)
 		if err != nil {
 			return err
 		}
@@ -225,12 +225,22 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				initValidatorManagerFlags.RPC,
-				genesisPrivateKey,
-				proxyOwnerPrivateKey,
-			); err != nil {
-				return err
+			if sc.UseACP99 {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					initValidatorManagerFlags.RPC,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return err
+				}
+			} else {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					initValidatorManagerFlags.RPC,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return err
+				}
 			}
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
@@ -256,6 +266,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				UptimeBlockchainID:      blockchainID,
 			},
 			validatorManagerAddress,
+			sc.UseACP99,
 		); err != nil {
 			return err
 		}
