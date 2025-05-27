@@ -131,40 +131,24 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
-func ConfigureChainConfig(subnetName string, genesisPath string) {
-	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath, "--" + constants.SkipUpdateFlag}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		fmt.Println(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err := utils.ChainConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
+func ConfigureBlockchain(blockchainName string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(
+		utils.BlockchainCmd,
+		"configure",
+		[]string{blockchainName},
+		utils.GlobalFlags{},
+		testFlags,
+	)
 }
 
-/* #nosec G204 */
-func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath string) {
-	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--per-node-chain-config", perNodeChainConfigPath, "--" + constants.SkipUpdateFlag}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		fmt.Println(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err := utils.PerNodeChainConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
+func DeployBlockchain(blockchainName string, testFlags utils.TestFlags) (string, error) {
+	return utils.TestCommand(
+		utils.BlockchainCmd,
+		"deploy",
+		[]string{blockchainName},
+		utils.GlobalFlags{},
+		testFlags,
+	)
 }
 
 /* #nosec G204 */
