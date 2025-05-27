@@ -4,6 +4,7 @@ package flags
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/spf13/cobra"
