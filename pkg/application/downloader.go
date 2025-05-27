@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -46,17 +47,14 @@ func NewDownloader() Downloader {
 	return &downloader{}
 }
 
-func (downloader) Download(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+func (d downloader) Download(url string) ([]byte, error) {
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	body, err := d.doAPIRequest(url, token)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
-	}
-
-	return io.ReadAll(resp.Body)
+	defer body.Close()
+	return io.ReadAll(body)
 }
 
 // GetLatestPreReleaseVersion returns the latest available pre release or release version from github
@@ -148,22 +146,33 @@ func (d downloader) GetAllReleasesForRepo(org, repo, component string, kind Rele
 }
 
 func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request for %s: %w", url, err)
+	retries := 0
+	for {
+		request, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request for %s: %w", url, err)
+		}
+		if token != "" {
+			// avoid rate limitation issues at CI
+			request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+		}
+		resp, err := http.DefaultClient.Do(request)
+		if err != nil {
+			return nil, fmt.Errorf("failed doing request to %s: %w", url, err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusTooManyRequests {
+				if retries <= 5 {
+					retries++
+					toSleep := time.Duration(retries) * 10 * time.Second
+					time.Sleep(toSleep)
+					continue
+				}
+			}
+			return nil, fmt.Errorf("failed doing request %s: unexpected http status code: %d", url, resp.StatusCode)
+		}
+		return resp.Body, nil
 	}
-	if token != "" {
-		// avoid rate limitation issues at CI
-		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed doing request to %s: %w", url, err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed doing request %s: unexpected http status code: %d", url, resp.StatusCode)
-	}
-	return resp.Body, nil
 }
 
 func (d downloader) getLatestReleaseVersion(org, repo string) (string, error) {

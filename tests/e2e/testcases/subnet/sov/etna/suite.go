@@ -24,14 +24,14 @@ const (
 
 func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	cmdArgs := []string{
 		"blockchain",
 		"create",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--evm",
 		"--validator-manager-owner",
 		ewoqEVMAddress,
@@ -59,7 +59,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
-	exists, err = utils.SubnetConfigExists(utils.SubnetName)
+	exists, err = utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -72,14 +72,14 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 
 func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	cmdArgs := []string{
 		"blockchain",
 		"create",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--evm",
 		"--validator-manager-owner",
 		ewoqEVMAddress,
@@ -105,21 +105,21 @@ func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
-	exists, err = utils.SubnetConfigExists(utils.SubnetName)
+	exists, err = utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
 func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	cmdArgs := []string{
 		"blockchain",
 		"create",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--evm",
 		"--validator-manager-owner",
 		ewoqEVMAddress,
@@ -147,21 +147,21 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
-	exists, err = utils.SubnetConfigExists(utils.SubnetName)
+	exists, err = utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
 func createEtnaSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
 	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	cmdArgs := []string{
 		"blockchain",
 		"create",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--evm",
 		"--validator-manager-owner",
 		ewoqPChainAddress,
@@ -213,7 +213,7 @@ func destroyLocalNode() {
 
 func deployEtnaSubnetEtnaFlag() {
 	// Check config exists
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -222,7 +222,7 @@ func deployEtnaSubnetEtnaFlag() {
 		CLIBinary,
 		"blockchain",
 		"deploy",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--local",
 		"--num-bootstrap-validators=1",
 		"--ewoq",
@@ -241,7 +241,7 @@ func deployEtnaSubnetEtnaFlag() {
 
 func deployEtnaSubnetEtnaFlagConvertOnly() {
 	// Check config exists
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -250,7 +250,7 @@ func deployEtnaSubnetEtnaFlagConvertOnly() {
 		CLIBinary,
 		"blockchain",
 		"deploy",
-		utils.SubnetName,
+		utils.BlockchainName,
 		"--local",
 		"--num-bootstrap-validators=1",
 		"--convert-only",
@@ -270,7 +270,7 @@ func deployEtnaSubnetEtnaFlagConvertOnly() {
 
 func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
 	// Check config exists
-	exists, err := utils.SubnetConfigExists(utils.SubnetName)
+	exists, err := utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -279,7 +279,7 @@ func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
 		CLIBinary,
 		"blockchain",
 		"deploy",
-		utils.SubnetName,
+		utils.BlockchainName,
 		fmt.Sprintf("--cluster=%s", clusterName),
 		"--convert-only",
 		"--ewoq",
@@ -355,13 +355,13 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
-		_ = utils.DeleteConfigs(utils.SubnetName)
+		_ = utils.DeleteConfigs(utils.BlockchainName)
 		destroyLocalNode()
 	})
 
 	ginkgo.AfterEach(func() {
 		destroyLocalNode()
-		commands.DeleteSubnetConfig(utils.SubnetName)
+		commands.DeleteSubnetConfig(utils.BlockchainName)
 		_ = utils.DeleteKey(keyName)
 		commands.CleanNetwork()
 	})
@@ -390,9 +390,9 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		_, err := commands.CreateLocalEtnaNode(avagoVersion, utils.TestLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		deployEtnaSubnetClusterFlagConvertOnly(utils.TestLocalNodeName)
-		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
+		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		err = initValidatorManagerClusterFlag(utils.SubnetName, utils.TestLocalNodeName)
+		err = initValidatorManagerClusterFlag(utils.BlockchainName, utils.TestLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -402,17 +402,17 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		_, err := commands.CreateLocalEtnaNode(avagoVersion, utils.TestLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		deployEtnaSubnetClusterFlagConvertOnly(utils.TestLocalNodeName)
-		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
+		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initValidatorManagerEtnaFlag(utils.SubnetName)
+		_, err = initValidatorManagerEtnaFlag(utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.It("Mix and match network and cluster flags test 2", func() {
 		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetEtnaFlagConvertOnly()
-		_, err := commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
+		_, err := commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		err = initValidatorManagerClusterFlag(utils.SubnetName, utils.TestLocalNodeName)
+		err = initValidatorManagerClusterFlag(utils.BlockchainName, utils.TestLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })
@@ -428,7 +428,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV With Errors]", func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
-		_ = utils.DeleteConfigs(utils.SubnetName)
+		_ = utils.DeleteConfigs(utils.BlockchainName)
 		destroyLocalNode()
 	})
 
