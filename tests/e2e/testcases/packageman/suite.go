@@ -144,8 +144,51 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(secondSubnetName)
 	})
 
+	ginkgo.It("can deploy multiple subnet-evm versions SOV", func() {
+		// check subnet-evm install precondition
+		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2])).Should(gomega.BeFalse())
+
+		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey1])
+		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey2])
+
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
+		rpcs1, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs1).Should(gomega.HaveLen(1))
+
+		deployOutput = commands.DeploySubnetLocallySOV(secondSubnetName)
+		rpcs2, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs2).Should(gomega.HaveLen(1))
+
+		err = utils.SetHardhatRPC(rpcs1[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.SetHardhatRPC(rpcs2[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// check subnet-evm install
+		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2])).Should(gomega.BeTrue())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteSubnetConfig(secondSubnetName)
+	})
+
 	ginkgo.It("can deploy with multiple avalanchego versions non SOV", func() {
-		ginkgo.Skip("skipped until two consecutive avago version with dynamic fees are available")
 		// check avago install precondition
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago1Key])).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago2Key])).Should(gomega.BeFalse())
@@ -205,7 +248,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with multiple avalanchego versions SOV", func() {
-		ginkgo.Skip("skipped until two consecutive avago version with fortuna support are available")
+		ginkgo.Skip("this needs two avalanchego compatible at signature aggregation level, which currently is prone to issues")
 		evmVersion := binaryToVersion[utils.MultiAvagoSubnetEVMKey]
 		avagoVersion1 := binaryToVersion[utils.MultiAvago1Key]
 		avagoVersion2 := binaryToVersion[utils.MultiAvago2Key]

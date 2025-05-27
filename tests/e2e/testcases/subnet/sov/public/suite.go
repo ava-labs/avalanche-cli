@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -39,7 +38,7 @@ func deploySubnetToFujiSOV() (string, map[string]utils.NodeInfo) {
 	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
-	nodeInfos, err := utils.GetNodesInfo()
+	nodeInfos, err := utils.GetLocalNetworkNodesInfo()
 	gomega.Expect(err).Should(gomega.BeNil())
 	for _, nodeInfo := range nodeInfos {
 		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
@@ -112,7 +111,7 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
-		nodeInfos, err := utils.GetNodesInfo()
+		nodeInfos, err := utils.GetLocalNetworkNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeIdx := 1
 		for _, nodeInfo := range nodeInfos {
@@ -178,14 +177,14 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		// confirm current validator set
 		subnetID, err := ids.FromString(subnetIDStr)
 		gomega.Expect(err).Should(gomega.BeNil())
-		validators, err := subnet.GetSubnetValidators(subnetID)
+		validators, err := utils.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(validators)).Should(gomega.Equal(5))
 
 		// Check that the validatorToRemove is in the subnet validator set
 		var found bool
 		for _, validator := range validators {
-			if validator.NodeID.String() == validatorToRemove {
+			if validator == validatorToRemove {
 				found = true
 				break
 			}
@@ -196,14 +195,14 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		_ = commands.SimulateFujiRemoveValidator(subnetName, keyName, validatorToRemove)
 
 		// confirm current validator set
-		validators, err = subnet.GetSubnetValidators(subnetID)
+		validators, err = utils.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(validators)).Should(gomega.Equal(4))
 
 		// Check that the validatorToRemove is NOT in the subnet validator set
 		found = false
 		for _, validator := range validators {
-			if validator.NodeID.String() == validatorToRemove {
+			if validator == validatorToRemove {
 				found = true
 				break
 			}

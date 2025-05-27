@@ -31,7 +31,7 @@ var (
 var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
-			utils.SubnetName,
+			utils.BlockchainName,
 			ewoqEVMAddress,
 			commands.PoS,
 		)
@@ -57,7 +57,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 
 	ginkgo.It("Deploy Etna Subnet", func() {
 		output, err := commands.DeployEtnaBlockchain(
-			utils.SubnetName,
+			utils.BlockchainName,
 			utils.TestLocalNodeName,
 			[]string{
 				localClusterUris[0],
@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can make cluster track a subnet", func() {
-		output, err := commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
+		output, err := commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// parse blockchainID from output
@@ -91,7 +91,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can initialize a PoS Manager contract", func() {
-		output, err := commands.InitValidatorManager(utils.SubnetName,
+		output, err := commands.InitValidatorManager(utils.BlockchainName,
 			utils.TestLocalNodeName,
 			localClusterUris[0],
 			blockchainID,
@@ -103,7 +103,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Can add validator", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			utils.TestLocalNodeName,
-			utils.SubnetName,
+			utils.BlockchainName,
 			localClusterUris[5],
 			ewoqPChainAddress,
 			1,
@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Can add second validator", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			utils.TestLocalNodeName,
-			utils.SubnetName,
+			utils.BlockchainName,
 			localClusterUris[6],
 			ewoqPChainAddress,
 			1,
@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can get status of thecluster", func() {
-		output, err := commands.GetLocalClusterStatus(utils.TestLocalNodeName, utils.SubnetName)
+		output, err := commands.GetLocalClusterStatus(utils.TestLocalNodeName, utils.BlockchainName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// make sure we can find string with "http://127.0.0.1:port" and "L1:Validating" string in the output
@@ -152,7 +152,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Can remove bootstrap validator", func() {
 		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
 			utils.TestLocalNodeName,
-			utils.SubnetName,
+			utils.BlockchainName,
 			localClusterUris[2],
 			keyName,
 			0,
@@ -172,6 +172,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can remove Etna Subnet Config", func() {
-		commands.DeleteSubnetConfig(utils.SubnetName)
+		commands.DeleteSubnetConfig(utils.BlockchainName)
 	})
 })

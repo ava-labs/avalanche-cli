@@ -325,6 +325,23 @@ func (client Client) GetChainID() (*big.Int, error) {
 	return chainID, err
 }
 
+// returns the chain conf
+// supports [repeatsOnFailure] failures
+func (client Client) ChainConfig() (*params.ChainConfigWithUpgradesJSON, error) {
+	conf, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*params.ChainConfigWithUpgradesJSON, error) {
+			return client.EthClient.ChainConfig(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure getting chain config from %s: %w", client.URL, err)
+	}
+	return conf, err
+}
+
 // sends [tx]
 // supports [repeatsOnFailure] failures
 func (client Client) SendTransaction(

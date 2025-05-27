@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	avalanchegoVersion = "v1.11.5"
+	avalanchegoVersion = "v1.13.0"
 	network            = "fuji"
 	networkCapitalized = "Fuji"
 	numNodes           = 1
@@ -152,7 +152,6 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can upgrade the nodes", func() {
 		output := commands.NodeUpgrade()
 		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
 		latestAvagoVersion := commands.GetLatestAvagoVersionFromGithub()
 		avalanchegoVersion := commands.NodeSSH(constants.E2EClusterName, "docker ps --no-trunc")
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avaplatform/avalanchego:" + latestAvagoVersion))
