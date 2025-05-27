@@ -31,7 +31,7 @@ func checkConvertOnlyOutput(output string, generateNodeID bool) {
 	}
 }
 
-var _ = ginkgo.Describe("[Blockchain Convert Flags]", ginkgo.Ordered, func() {
+var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 	blockchainCmdArgs := []string{subnetName}
 	_ = ginkgo.BeforeEach(func() {
 		// Create test subnet config
