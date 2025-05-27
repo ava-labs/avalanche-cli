@@ -26,10 +26,10 @@ const (
 
 const ewoqEVMAddress = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 
-func checkConvertOnlyOutput(output string, generateNodeID bool) {
+func checkConvertOnlyOutput(output string, generateNodeID bool, subnetName string) {
 	gomega.Expect(output).Should(gomega.ContainSubstring("Converted blockchain successfully generated"))
 	gomega.Expect(output).Should(gomega.ContainSubstring("Have the Avalanche node(s) track the blockchain"))
-	gomega.Expect(output).Should(gomega.ContainSubstring("Call `avalanche contract initValidatorManager testSubnet`"))
+	gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("Call `avalanche contract initValidatorManager %s`", subnetName)))
 	gomega.Expect(output).Should(gomega.ContainSubstring("Ensure that the P2P port is exposed and 'public-ip' config value is set"))
 	gomega.Expect(output).ShouldNot(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 	if generateNodeID {
@@ -94,7 +94,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 			"convert-only": true,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		checkConvertOnlyOutput(output, false)
+		checkConvertOnlyOutput(output, false, blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		// check that validator manager type is undefined
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 			"num-bootstrap-validators": 1,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		checkConvertOnlyOutput(output, true)
+		checkConvertOnlyOutput(output, true, blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -151,7 +151,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 		}
 		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
-		checkConvertOnlyOutput(output, false)
+		checkConvertOnlyOutput(output, false, blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
