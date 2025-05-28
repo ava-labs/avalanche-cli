@@ -455,7 +455,7 @@ func intraEvmSend(
 	}
 	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+		evm.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 	return err
 }
 
@@ -597,7 +597,7 @@ func interEvmSend(
 	}
 	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+		evm.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 
 	if receipt2 != nil {
 		chainName, err := contract.GetBlockchainDesc(receiverChain)
@@ -606,7 +606,7 @@ func interEvmSend(
 		}
 		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 			chainName,
-			utils.CalculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+			evm.CalculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
 	}
 
 	return nil

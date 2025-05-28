@@ -6,7 +6,6 @@ import (
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 )
 
 /* #nosec G204 */
@@ -159,22 +158,4 @@ func KeyTransferReceive(keyName string, amount string, recoveryStep string) (str
 
 	out, err := cmd.CombinedOutput()
 	return string(out), err
-}
-
-/* #nosec G204 */
-func FundKeyOnCchain(senderKeyName, destinationKeyName string, amount int, testFlags utils.TestFlags) (string, error) {
-	// Create config
-	args := []string{
-		"--local",
-		"--c-chain-sender",
-		"--c-chain-receiver",
-		"--" + constants.SkipUpdateFlag,
-	}
-	return utils.TestCommand(KeyCmd, "transfer", args, utils.GlobalFlags{
-		"key":               senderKeyName,
-		"destination-key":   destinationKeyName,
-		"amount":            amount,
-		"local":             true,
-		"skip-update-check": true,
-	}, testFlags)
 }

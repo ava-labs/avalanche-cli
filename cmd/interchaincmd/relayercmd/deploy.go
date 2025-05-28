@@ -426,7 +426,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				}
 				ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 					destination.blockchainDesc,
-					utils.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+					evm.CalculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 			}
 		}
 	}
