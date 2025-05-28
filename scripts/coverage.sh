@@ -5,7 +5,7 @@ if ! [[ "$0" =~ scripts/coverage.sh ]]; then
   exit 1
 fi
 
-coverage_dir=$(PWD)/coverage
+coverage_dir=$PWD/coverage
 merged_coverage_dir=$coverage_dir/merged
 merged_coverage_file=$merged_coverage_dir/merged.txt
 
