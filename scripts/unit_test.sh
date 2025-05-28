@@ -13,5 +13,5 @@ echo "Re-creating unit test coverage directory: $coverage_dir"
 rm -rf $coverage_dir
 mkdir -p $coverage_dir
 
-go test -cover -v  $(go list ./... | grep -v /tests/ | grep -v '/sdk/') -args -test.gocoverdir=$coverage_dir
+go test -cover -coverprofile=./coverage/ut/c.out -v  $(go list ./... | grep -v /tests/ | grep -v '/sdk/') -args 
 
