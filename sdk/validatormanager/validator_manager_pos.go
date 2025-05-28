@@ -18,6 +18,7 @@ import (
 func PoSValidatorManagerInitialize(
 	rpcURL string,
 	managerAddress common.Address,
+	specializedManagerAddress common.Address,
 	privateKey string,
 	subnetID [32]byte,
 	posParams PoSParams,
@@ -31,6 +32,28 @@ func PoSValidatorManagerInitialize(
 		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
 	)
 	if useACP99 {
+		return contract.TxToMethod(
+			rpcURL,
+			false,
+			common.Address{},
+			privateKey,
+			specializedManagerAddress,
+			nil,
+			"initialize Native Token PoS manager",
+			ErrorSignatureToError,
+			"initialize((address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
+			NativeTokenValidatorManagerSettingsV2_0_0{
+				Manager:                  managerAddress,
+				MinimumStakeAmount:       posParams.MinimumStakeAmount,
+				MaximumStakeAmount:       posParams.MaximumStakeAmount,
+				MinimumStakeDuration:     posParams.MinimumStakeDuration,
+				MinimumDelegationFeeBips: posParams.MinimumDelegationFee,
+				MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
+				WeightToValueFactor:      posParams.WeightToValueFactor,
+				RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
+				UptimeBlockchainID:       posParams.UptimeBlockchainID,
+			},
+		)
 	}
 	return contract.TxToMethod(
 		rpcURL,
@@ -42,7 +65,7 @@ func PoSValidatorManagerInitialize(
 		"initialize Native Token PoS manager",
 		ErrorSignatureToError,
 		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
-		NativeTokenValidatorManagerSettings{
+		NativeTokenValidatorManagerSettingsV1_0_0{
 			BaseSettings: ValidatorManagerSettings{
 				SubnetID:               subnetID,
 				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,

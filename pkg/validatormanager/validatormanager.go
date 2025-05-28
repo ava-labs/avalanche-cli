@@ -20,7 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_validator_messages_bytecode_v2.0.0.txt
+//go:embed smart_contracts/deployed_validator_messages_bytecode_v2.0.0.txt
 var deployedValidatorMessagesV2_0_0Bytecode []byte
 
 func AddValidatorMessagesV2_0_0ContractToAllocations(
@@ -42,13 +42,13 @@ func fillValidatorMessagesAddressPlaceholder(contract string) string {
 	)
 }
 
-//go:embed deployed_poa_validator_manager_bytecode_v1.0.0.txt
-var deployedPoAValidatorManagerBytecode []byte
+//go:embed smart_contracts/deployed_poa_validator_manager_bytecode_v1.0.0.txt
+var deployedPoAValidatorManagerV1_0_0Bytecode []byte
 
-func AddPoAValidatorManagerContractToAllocations(
+func AddPoAValidatorManagerV1_0_0ContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerBytecode))
+	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerV1_0_0Bytecode))
 	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
 	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
@@ -58,23 +58,64 @@ func AddPoAValidatorManagerContractToAllocations(
 	}
 }
 
-//go:embed deployed_validator_manager_bytecode_v2.0.0.txt
-var deployedPoAValidatorManagerV2_0_0Bytecode []byte
+//go:embed smart_contracts/deployed_validator_manager_bytecode_v2.0.0.txt
+var deployedValidatorManagerV2_0_0Bytecode []byte
 
-func AddPoAValidatorManagerV2_0_0ContractToAllocations(
+func AddValidatorManagerV2_0_0ContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerV2_0_0Bytecode))
-	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
-	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
+	deployedValidatorManagerString := strings.TrimSpace(string(deployedValidatorManagerV2_0_0Bytecode))
+	deployedValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedValidatorManagerString)
+	deployedValidatorManagerBytes := common.FromHex(deployedValidatorManagerString)
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
-		Code:    deployedPoaValidatorManagerBytes,
+		Code:    deployedValidatorManagerBytes,
 		Nonce:   1,
 	}
 }
 
-//go:embed native_token_staking_manager_bytecode_v1.0.0.txt
+//go:embed smart_contracts/validator_manager_bytecode_v2.0.0.txt
+var validatorManagerV2_0_0Bytecode []byte
+
+func DeployValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+) (common.Address, error) {
+	validatorManagerString := strings.TrimSpace(string(validatorManagerV2_0_0Bytecode))
+	validatorManagerString = fillValidatorMessagesAddressPlaceholder(validatorManagerString)
+	validatorManagerBytes := []byte(validatorManagerString)
+	return contract.DeployContract(
+		rpcURL,
+		privateKey,
+		validatorManagerBytes,
+		"(uint8)",
+		uint8(0),
+	)
+}
+
+func DeployAndRegisterValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+	proxyOwnerPrivateKey string,
+) (common.Address, error) {
+	validatorManagerAddress, err := DeployValidatorManagerV2_0_0Contract(
+		rpcURL,
+		privateKey,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, _, err := SetupValidatorProxyImplementation(
+		rpcURL,
+		proxyOwnerPrivateKey,
+		validatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	return validatorManagerAddress, nil
+}
+
+//go:embed smart_contracts/native_token_staking_manager_bytecode_v1.0.0.txt
 var posValidatorManagerV1_0_0Bytecode []byte
 
 func DeployPoSValidatorManagerV1_0_0Contract(
@@ -115,7 +156,7 @@ func DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
 	return posValidatorManagerAddress, nil
 }
 
-//go:embed native_token_staking_manager_bytecode_v2.0.0.txt
+//go:embed smart_contracts/native_token_staking_manager_bytecode_v2.0.0.txt
 var posValidatorManagerV2_0_0Bytecode []byte
 
 func DeployPoSValidatorManagerV2_0_0Contract(
@@ -146,7 +187,7 @@ func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 	if err != nil {
 		return common.Address{}, err
 	}
-	if _, _, err := SetupValidatorProxyImplementation(
+	if _, _, err := SetupSpecializationProxyImplementation(
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
@@ -156,10 +197,10 @@ func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 	return posValidatorManagerAddress, nil
 }
 
-//go:embed deployed_transparent_proxy_bytecode.txt
+//go:embed smart_contracts/deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 
-//go:embed deployed_proxy_admin_bytecode.txt
+//go:embed smart_contracts/deployed_proxy_admin_bytecode.txt
 var deployedProxyAdminBytecode []byte
 
 func AddValidatorTransparentProxyContractToAllocations(
@@ -190,7 +231,7 @@ func AddValidatorTransparentProxyContractToAllocations(
 		Code:    deployedTransparentProxy,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
-			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(validatorManagerSDK.ValidatorContractAddress),  // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(validatorManagerSDK.ValidatorContractAddress),           // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
 			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.ValidatorProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
 			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
 		},
@@ -225,14 +266,14 @@ func AddSpecializationTransparentProxyContractToAllocations(
 		Code:    deployedTransparentProxy,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
-			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.Hash{}, // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(validatorManagerSDK.ValidatorContractAddress),                // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
 			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.SpecializationProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
 			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
 		},
 	}
 }
 
-//go:embed deployed_example_reward_calculator_bytecode_v2.0.0.txt
+//go:embed smart_contracts/deployed_example_reward_calculator_bytecode_v2.0.0.txt
 var deployedRewardCalculatorV2_0_0Bytecode []byte
 
 func AddRewardCalculatorV2_0_0ToAllocations(

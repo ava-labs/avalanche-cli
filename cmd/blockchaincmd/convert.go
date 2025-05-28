@@ -377,6 +377,13 @@ func InitializeValidatorManager(
 				return tracked, err
 			}
 			if useACP99 {
+				if _, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return tracked, err
+				}
 				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 					rpcURL,
 					genesisPrivateKey,

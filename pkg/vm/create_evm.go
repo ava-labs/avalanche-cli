@@ -135,9 +135,9 @@ func CreateEVMGenesis(
 		// valid for both v2.0.0 and v1.0.0
 		validatormanager.AddValidatorMessagesV2_0_0ContractToAllocations(params.initialTokenAllocation)
 		if useV2_0_0 {
-			validatormanager.AddPoAValidatorManagerV2_0_0ContractToAllocations(params.initialTokenAllocation)
+			validatormanager.AddValidatorManagerV2_0_0ContractToAllocations(params.initialTokenAllocation)
 		} else {
-			validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+			validatormanager.AddPoAValidatorManagerV1_0_0ContractToAllocations(params.initialTokenAllocation)
 		}
 	} else if params.UsePoSValidatorManager {
 		validatormanager.AddValidatorTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
@@ -146,7 +146,6 @@ func CreateEVMGenesis(
 		validatormanager.AddRewardCalculatorV2_0_0ToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		params.enableNativeMinterPrecompile = true
 		if useV2_0_0 {
-			validatormanager.AddPoAValidatorManagerV2_0_0ContractToAllocations(params.initialTokenAllocation)
 			validatormanager.AddSpecializationTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		}
 	}

@@ -26,7 +26,7 @@ func SetupValidatorProxyImplementation(
 		proxyManagerPrivateKey,
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress),
 		big.NewInt(0),
-		"set proxy to PoS",
+		"set validator proxy implementation",
 		validatorManagerSDK.ErrorSignatureToError,
 		"upgrade(address,address)",
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress),
@@ -62,5 +62,25 @@ func ValidatorProxyHasImplementationSet(
 	}
 	return client.ContractAlreadyDeployed(
 		validatorManagerAddress.Hex(),
+	)
+}
+
+func SetupSpecializationProxyImplementation(
+	rpcURL string,
+	proxyManagerPrivateKey string,
+	validatorManager common.Address,
+) (*types.Transaction, *types.Receipt, error) {
+	return contract.TxToMethod(
+		rpcURL,
+		false,
+		common.Address{},
+		proxyManagerPrivateKey,
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
+		big.NewInt(0),
+		"set specialization proxy implementation",
+		validatorManagerSDK.ErrorSignatureToError,
+		"upgrade(address,address)",
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
+		validatorManager,
 	)
 }
