@@ -5,11 +5,12 @@ package convert
 
 import (
 	"fmt"
+	"runtime"
+
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"runtime"
 )
 
 const (
@@ -34,17 +35,6 @@ func checkConvertOnlyOutput(output string, generateNodeID bool) {
 var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 	blockchainCmdArgs := []string{subnetName}
 	_ = ginkgo.BeforeEach(func() {
-		// Create test subnet config
-		//testFlags := utils.TestFlags{
-		//	"evm":               true,
-		//	"test-defaults":     true,
-		//	"evm-chain-id":      99999,
-		//	"evm-token":         "TOK",
-		//	"sovereign":         false,
-		//	"icm":               false,
-		//	"skip-update-check": true,
-		//	"genesis":           utils.SubnetEvmGenesisPoaPath,
-		//}
 		testFlags := utils.TestFlags{
 			"latest":            true,
 			"evm":               true,
