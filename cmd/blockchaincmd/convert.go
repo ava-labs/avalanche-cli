@@ -259,7 +259,7 @@ func InitializeValidatorManager(
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
 	pos bool,
-	convertValidatorManagerAddrStr string,
+	managerAddress string,
 	proxyContractOwner string,
 	useACP99 bool,
 	useLocalMachine bool,
@@ -330,12 +330,6 @@ func InitializeValidatorManager(
 
 	ownerAddress := common.HexToAddress(validatorManagerOwner)
 
-	var (
-		validatorManagerAddrStr      string
-		specializedManagerAddressStr string
-		managerOwnerPrivateKey       string
-	)
-
 	if pos {
 		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
 		if err != nil {
@@ -354,20 +348,7 @@ func InitializeValidatorManager(
 				return tracked, err
 			}
 			if useACP99 {
-				var found bool
-				found, _, _, managerOwnerPrivateKey, err = contract.SearchForManagedKey(
-					app,
-					network,
-					ownerAddress,
-					true,
-				)
-				if err != nil {
-					return tracked, err
-				}
-				if !found {
-					return tracked, fmt.Errorf("could not find validator manager owner private key")
-				}
-				managerAddress, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -377,7 +358,7 @@ func InitializeValidatorManager(
 				}
 				tx, _, err := validatormanagerSDK.PoAValidatorManagerInitialize(
 					rpcURL,
-					common.HexToAddress(convertValidatorManagerAddrStr),
+					common.HexToAddress(managerAddress),
 					genesisPrivateKey,
 					subnetID,
 					ownerAddress,
@@ -388,7 +369,7 @@ func InitializeValidatorManager(
 						return tracked, evm.TransactionError(tx, err, "failure initializing validator manager")
 					}
 				}
-				specializedManagerAddress, err := validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -396,8 +377,6 @@ func InitializeValidatorManager(
 				if err != nil {
 					return tracked, err
 				}
-				validatorManagerAddrStr = managerAddress.String()
-				specializedManagerAddressStr = specializedManagerAddress.String()
 			} else {
 				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
 					rpcURL,
@@ -434,6 +413,18 @@ func InitializeValidatorManager(
 	defer aggregatorCancel()
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
+			app,
+			network,
+			ownerAddress,
+			true,
+		)
+		if err != nil {
+			return tracked, err
+		}
+		if !found {
+			return tracked, fmt.Errorf("could not find validator manager owner private key")
+		}
 		if err := subnetSDK.InitializeProofOfStake(
 			aggregatorCtx,
 			app.Log,
@@ -451,9 +442,8 @@ func InitializeValidatorManager(
 				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			convertValidatorManagerAddrStr,
-			validatorManagerAddrStr,
-			specializedManagerAddressStr,
+			managerAddress,
+			validatormanagerSDK.SpecializationProxyContractAddress,
 			managerOwnerPrivateKey,
 			useACP99,
 		); err != nil {
@@ -469,7 +459,7 @@ func InitializeValidatorManager(
 			genesisPrivateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			convertValidatorManagerAddrStr,
+			managerAddress,
 			useACP99,
 		); err != nil {
 			return tracked, err
@@ -790,25 +780,12 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
-			chainSpec := contract.ChainSpec{
-				BlockchainName: blockchainName,
-			}
-			rpcURL, _, err := contract.GetBlockchainEndpoints(
-				app,
-				network,
-				chainSpec,
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			specialization, err := validatormanager.GetSpecializedValidatorProxyImplementation(rpcURL)
+			sidecar, err := app.LoadSidecar(chain)
 			if err != nil {
 				return err
 			}
 			networkInfo := sidecar.Networks[network.Name()]
-			networkInfo.ValidatorManagerAddress = specialization.String()
+			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
 			sidecar.Networks[network.Name()] = networkInfo
 			if err := app.UpdateSidecar(&sidecar); err != nil {
 				return err

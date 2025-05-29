@@ -432,9 +432,8 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
-	convertManagerAddressStr string,
-	managerAddressStr string,
-	specializedManagerAddressStr string,
+	managerAddress string,
+	specializedManagerAddress string,
 	managerOwnerPrivateKey string,
 	useACP99 bool,
 ) error {
@@ -446,17 +445,10 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		client.Close()
 	}
-	managerAddress := common.HexToAddress(managerAddressStr)
-	convertManagerAddress := common.HexToAddress(convertManagerAddressStr)
-	specializedManagerAddress := common.Address{}
-	if useACP99 {
-		specializedManagerAddress = common.HexToAddress(specializedManagerAddressStr)
-	}
-	_ = managerAddress
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		c.RPC,
-		convertManagerAddress,
-		specializedManagerAddress,
+		common.HexToAddress(managerAddress),
+		common.HexToAddress(specializedManagerAddress),
 		managerOwnerPrivateKey,
 		privateKey,
 		c.SubnetID,
@@ -477,16 +469,15 @@ func (c *Subnet) InitializeProofOfStake(
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
-		convertManagerAddress,
+		common.HexToAddress(managerAddress),
 		c.BootstrapValidators,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
-		convertManagerAddress,
+		common.HexToAddress(managerAddress),
 		privateKey,
 		c.SubnetID,
 		c.BlockchainID,

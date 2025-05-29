@@ -490,6 +490,8 @@ func InitValidatorRegistration(
 				}
 				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
+			} else {
+				ux.Logger.PrintToUser("Validator registration initialized. InitiateTxHash: %s", tx.Hash())
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 		} else {

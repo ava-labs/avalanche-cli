@@ -280,15 +280,17 @@ func InitValidatorRemoval(
 			force,
 			useACP99,
 		)
-		if err != nil {
+		switch {
+		case err != nil:
 			if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
 				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
 			}
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
-		} else if generateRawTxOnly {
+		case generateRawTxOnly:
 			return nil, ids.Empty, tx, nil
+		default:
+			ux.Logger.PrintToUser("Validator removal initialized. InitiateTxHash: %s", tx.Hash())
 		}
-		ux.Logger.PrintToUser("Validator removal initialized. InitiateTxHash: %s", tx.Hash())
 	} else {
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
 	}
@@ -413,7 +415,6 @@ func FinishValidatorRemoval(
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
-	// managerAddress = common.HexToAddress(validatormanager.SpecializationProxyContractAddress)
 	tx, _, err := CompleteValidatorRemoval(
 		rpcURL,
 		managerAddress,

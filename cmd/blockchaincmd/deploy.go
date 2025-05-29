@@ -30,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	validatormanager "github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -874,29 +873,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
-			chainSpec := contract.ChainSpec{
-				BlockchainName: chain,
-			}
-			rpcURL, _, err := contract.GetBlockchainEndpoints(
-				app,
-				network,
-				chainSpec,
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			specialization, err := validatormanager.GetSpecializedValidatorProxyImplementation(rpcURL)
-			if err != nil {
-				return err
-			}
 			sidecar, err := app.LoadSidecar(chain)
 			if err != nil {
 				return err
 			}
 			networkInfo := sidecar.Networks[network.Name()]
-			networkInfo.ValidatorManagerAddress = specialization.String()
+			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
 			sidecar.Networks[network.Name()] = networkInfo
 			if err := app.UpdateSidecar(&sidecar); err != nil {
 				return err
