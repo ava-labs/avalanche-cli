@@ -19,6 +19,7 @@ func PoSValidatorManagerInitialize(
 	rpcURL string,
 	managerAddress common.Address,
 	specializedManagerAddress common.Address,
+	managerOwnerPrivateKey string,
 	privateKey string,
 	subnetID [32]byte,
 	posParams PoSParams,
@@ -32,7 +33,7 @@ func PoSValidatorManagerInitialize(
 		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
 	)
 	if useACP99 {
-		return contract.TxToMethod(
+		if tx, receipt, err := contract.TxToMethod(
 			rpcURL,
 			false,
 			common.Address{},
@@ -53,7 +54,34 @@ func PoSValidatorManagerInitialize(
 				RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
 				UptimeBlockchainID:       posParams.UptimeBlockchainID,
 			},
+		); err != nil {
+			return tx, receipt, err
+		}
+		out, err := contract.CallToMethod(
+			rpcURL,
+			specializedManagerAddress,
+			"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
 		)
+		if err != nil {
+			return nil, nil, err
+		}
+		fmt.Printf("%#v\n", out)
+		out, err = contract.CallToMethod(
+			rpcURL,
+			common.HexToAddress(SpecializationProxyContractAddress),
+			"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+		fmt.Printf("%#v\n", out)
+		err = contract.TransferOwnership(
+			rpcURL,
+			managerAddress,
+			managerOwnerPrivateKey,
+			specializedManagerAddress,
+		)
+		return nil, nil, err
 	}
 	return contract.TxToMethod(
 		rpcURL,

@@ -333,7 +333,10 @@ func SetupPoS(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
-	validatorManagerAddressStr string,
+	convertManagerAddressStr string,
+	managerAddressStr string,
+	specializedManagerAddressStr string,
+	managerOwnerPrivateKey string,
 	v2_0_0 bool,
 ) error {
 	return subnet.InitializeProofOfStake(
@@ -344,7 +347,10 @@ func SetupPoS(
 		aggregatorExtraPeerEndpoints,
 		aggregatorLogger,
 		posParams,
-		validatorManagerAddressStr,
+		convertManagerAddressStr,
+		managerAddressStr,
+		specializedManagerAddressStr,
+		managerOwnerPrivateKey,
 		v2_0_0,
 	)
 }

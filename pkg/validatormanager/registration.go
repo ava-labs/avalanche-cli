@@ -47,6 +47,8 @@ func InitializeValidatorRegistrationPoSNative(
 	delegationFeeBips uint16,
 	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
+	rewardRecipient common.Address,
+	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
@@ -73,12 +75,27 @@ func InitializeValidatorRegistrationPoSNative(
 			return common.BytesToAddress(addr[:])
 		}),
 	}
-	validatorRegistrationInput := ValidatorRegistrationInput{
-		NodeID:                nodeID[:],
-		BlsPublicKey:          blsPublicKey,
-		RegistrationExpiry:    expiry,
-		RemainingBalanceOwner: balanceOwnersAux,
-		DisableOwner:          disableOwnersAux,
+
+	if useACP99 {
+		fmt.Println("ESTOY ACA EHH")
+		return contract.TxToMethod(
+			rpcURL,
+			false,
+			common.Address{},
+			managerOwnerPrivateKey,
+			managerAddress,
+			stakeAmount,
+			"initialize validator registration with stake",
+			validatormanager.ErrorSignatureToError,
+			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,address)",
+			nodeID[:],
+			blsPublicKey,
+			balanceOwnersAux,
+			disableOwnersAux,
+			delegationFeeBips,
+			uint64(minStakeDuration.Seconds()),
+			rewardRecipient,
+		)
 	}
 
 	return contract.TxToMethod(
@@ -91,7 +108,13 @@ func InitializeValidatorRegistrationPoSNative(
 		"initialize validator registration with stake",
 		validatormanager.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
-		validatorRegistrationInput,
+		ValidatorRegistrationInput{
+			NodeID:                nodeID[:],
+			BlsPublicKey:          blsPublicKey,
+			RegistrationExpiry:    expiry,
+			RemainingBalanceOwner: balanceOwnersAux,
+			DisableOwner:          disableOwnersAux,
+		},
 		delegationFeeBips,
 		uint64(minStakeDuration.Seconds()),
 	)
@@ -395,6 +418,7 @@ func InitValidatorRegistration(
 	isPos bool,
 	delegationFee uint16,
 	stakeDuration time.Duration,
+	rewardRecipient common.Address,
 	validatorManagerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
@@ -418,6 +442,7 @@ func InitValidatorRegistration(
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
+	fmt.Println("HOLA", managerAddress)
 	alreadyInitialized := initiateTxHash != ""
 	if validationID, err := validator.GetValidationID(
 		rpcURL,
@@ -458,6 +483,8 @@ func InitValidatorRegistration(
 				delegationFee,
 				stakeDuration,
 				stakeAmount,
+				rewardRecipient,
+				useACP99,
 			)
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {

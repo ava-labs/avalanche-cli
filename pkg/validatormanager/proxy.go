@@ -65,6 +65,21 @@ func ValidatorProxyHasImplementationSet(
 	)
 }
 
+func GetSpecializedValidatorProxyImplementation(
+	rpcURL string,
+) (common.Address, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
+		"getProxyImplementation(address)->(address)",
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
+}
+
 func SetupSpecializationProxyImplementation(
 	rpcURL string,
 	proxyManagerPrivateKey string,

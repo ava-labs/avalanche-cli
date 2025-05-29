@@ -175,6 +175,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			localEndpoint = endpoint
 		}
 		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
+		if data.ValidatorManagerAddress != "" {
+			t.AppendRow(table.Row{net, "Manager", data.ValidatorManagerAddress})
+		}
 	}
 	ux.Logger.PrintToUser(t.Render())
 

@@ -390,6 +390,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
+		fmt.Println("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 		log.Info("the PoA contract is already initialized, skipping initializing Proof of Authority contract")
 	}
 
@@ -432,7 +433,10 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
-	validatorManagerAddressStr string,
+	convertManagerAddressStr string,
+	managerAddressStr string,
+	specializedManagerAddressStr string,
+	managerOwnerPrivateKey string,
 	useACP99 bool,
 ) error {
 	if client, err := evm.GetClient(c.RPC); err != nil {
@@ -443,10 +447,18 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		client.Close()
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
+	convertManagerAddress := common.HexToAddress(convertManagerAddressStr)
+	specializedManagerAddress := common.Address{}
+	if useACP99 {
+		specializedManagerAddress = common.HexToAddress(specializedManagerAddressStr)
+	}
+	_ = managerAddress
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		c.RPC,
-		managerAddress,
+		convertManagerAddress,
+		specializedManagerAddress,
+		managerOwnerPrivateKey,
 		privateKey,
 		c.SubnetID,
 		posParams,
@@ -466,16 +478,18 @@ func (c *Subnet) InitializeProofOfStake(
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
-		managerAddress,
+		convertManagerAddress,
 		c.BootstrapValidators,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
+	fmt.Println(convertManagerAddress)
+
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
-		managerAddress,
+		convertManagerAddress,
 		privateKey,
 		c.SubnetID,
 		c.BlockchainID,

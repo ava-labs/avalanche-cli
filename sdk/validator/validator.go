@@ -4,6 +4,7 @@ package validator
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -80,7 +81,19 @@ func GetValidationID(
 	managerAddress common.Address,
 	nodeID ids.NodeID,
 ) (ids.ID, error) {
+	fmt.Println(managerAddress)
 	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
+	)
+	if err == nil && len(out) == 9 {
+		validatorManager, ok := out[0].(common.Address)
+		if ok {
+			managerAddress = validatorManager
+		}
+	}
+	out, err = contract.CallToMethod(
 		rpcURL,
 		managerAddress,
 		"registeredValidators(bytes)->(bytes32)",

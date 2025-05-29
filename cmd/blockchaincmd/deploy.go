@@ -10,18 +10,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-	"github.com/spf13/pflag"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
@@ -33,9 +30,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	validatormanager "github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -51,6 +49,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const skipRelayerFlagName = "skip-relayer"
@@ -810,7 +809,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerStr := validatorManagerSDK.ValidatorProxyContractAddress
+		validatorManagerStr := validatormanagerSDK.ValidatorProxyContractAddress
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
@@ -860,6 +859,36 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		)
 		if err != nil {
 			return err
+		}
+		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			chainSpec := contract.ChainSpec{
+				BlockchainName: chain,
+			}
+			rpcURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				chainSpec,
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			specialization, err := validatormanager.GetSpecializedValidatorProxyImplementation(rpcURL)
+			if err != nil {
+				return err
+			}
+			sidecar, err := app.LoadSidecar(chain)
+			if err != nil {
+				return err
+			}
+			networkInfo := sidecar.Networks[network.Name()]
+			networkInfo.ValidatorManagerAddress = specialization.String()
+			fmt.Println(networkInfo)
+			sidecar.Networks[network.Name()] = networkInfo
+			if err := app.UpdateSidecar(&sidecar); err != nil {
+				return err
+			}
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
