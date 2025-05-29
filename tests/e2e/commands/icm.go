@@ -12,7 +12,7 @@ const (
 
 /* #nosec G204 */
 func SendICMMessage(args []string, testFlags utils.TestFlags) (string, error) {
-	return utils.TestCommand(utils.ICMCmd, "sendMsg", args, utils.GlobalFlags{
+	return utils.TestCommand(ICMCmd, "sendMsg", args, utils.GlobalFlags{
 		"local":             true,
 		"skip-update-check": true,
 	}, testFlags)
