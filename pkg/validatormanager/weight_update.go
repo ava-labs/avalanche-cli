@@ -134,10 +134,13 @@ func InitValidatorWeightChange(
 			validationID,
 			weight,
 		)
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator weight change")
-		} else if generateRawTxOnly {
+		case generateRawTxOnly:
 			return nil, ids.Empty, tx, nil
+		default:
+			ux.Logger.PrintToUser("Validator weight change initialized. InitiateTxHash: %s", tx.Hash())
 		}
 	} else {
 		printFunc(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))

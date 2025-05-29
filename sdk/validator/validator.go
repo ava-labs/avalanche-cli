@@ -80,7 +80,20 @@ func GetValidationID(
 	managerAddress common.Address,
 	nodeID ids.NodeID,
 ) (ids.ID, error) {
+	// if specialized, need to retrieve underlying manager
+	// needs to directly access the manager, does not work with a proxy
 	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
+	)
+	if err == nil && len(out) == 9 {
+		validatorManager, ok := out[0].(common.Address)
+		if ok {
+			managerAddress = validatorManager
+		}
+	}
+	out, err = contract.CallToMethod(
 		rpcURL,
 		managerAddress,
 		"registeredValidators(bytes)->(bytes32)",

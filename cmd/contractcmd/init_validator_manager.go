@@ -20,7 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -40,7 +40,6 @@ type POSManagerSpecFlags struct {
 
 var (
 	initPOSManagerFlags       POSManagerSpecFlags
-	validatorManagerAddress   string
 	network                   networkoptions.NetworkFlags
 	privateKeyFlags           contract.PrivateKeyFlags
 	initValidatorManagerFlags ContractInitValidatorManagerFlags
@@ -141,7 +140,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	managerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 	scNetwork := sc.Networks[network.Name()]
 	if scNetwork.BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())
@@ -202,14 +201,14 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			validatorManagerAddress,
+			managerAddress,
 			sc.UseACP99,
 		); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(initValidatorManagerFlags.RPC)
+		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(initValidatorManagerFlags.RPC)
 		if err != nil {
 			return err
 		}
@@ -225,17 +224,48 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				initValidatorManagerFlags.RPC,
-				genesisPrivateKey,
-				proxyOwnerPrivateKey,
-			); err != nil {
-				return err
+			if sc.UseACP99 {
+				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+					initValidatorManagerFlags.RPC,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					initValidatorManagerFlags.RPC,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+			} else {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					initValidatorManagerFlags.RPC,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return err
+				}
 			}
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
-			initPOSManagerFlags.rewardCalculatorAddress = validatorManagerSDK.RewardCalculatorAddress
+			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
+		}
+		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
+			app,
+			network,
+			ownerAddress,
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return fmt.Errorf("could not find validator manager owner private key")
 		}
 		if err := validatormanager.SetupPoS(
 			aggregatorCtx,
@@ -245,7 +275,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			validatorManagerSDK.PoSParams{
+			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
 				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
 				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
@@ -255,8 +285,21 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			validatorManagerAddress,
+			managerAddress,
+			validatormanagerSDK.SpecializationProxyContractAddress,
+			managerOwnerPrivateKey,
+			sc.UseACP99,
 		); err != nil {
+			return err
+		}
+		sidecar, err := app.LoadSidecar(blockchainName)
+		if err != nil {
+			return err
+		}
+		networkInfo := sidecar.Networks[network.Name()]
+		networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
+		sidecar.Networks[network.Name()] = networkInfo
+		if err := app.UpdateSidecar(&sidecar); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)

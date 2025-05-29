@@ -42,6 +42,40 @@ func InitializeValidatorRemoval(
 	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
+		if useACP99 {
+			if force {
+				return contract.TxToMethod(
+					rpcURL,
+					false,
+					common.Address{},
+					privateKey,
+					managerAddress,
+					big.NewInt(0),
+					"force POS validator removal",
+					validatormanager.ErrorSignatureToError,
+					"forceInitiateValidatorRemoval(bytes32,bool,uint32)",
+					validationID,
+					false, // no uptime proof if force
+					uint32(0),
+				)
+			}
+			// remove PoS validator with uptime proof
+			return contract.TxToMethodWithWarpMessage(
+				rpcURL,
+				false,
+				common.Address{},
+				privateKey,
+				managerAddress,
+				uptimeProofSignedMessage,
+				big.NewInt(0),
+				"POS validator removal with uptime proof",
+				validatormanager.ErrorSignatureToError,
+				"initiateValidatorRemoval(bytes32,bool,uint32)",
+				validationID,
+				true, // submit uptime proof
+				uint32(0),
+			)
+		}
 		if force {
 			return contract.TxToMethod(
 				rpcURL,
@@ -246,13 +280,16 @@ func InitValidatorRemoval(
 			force,
 			useACP99,
 		)
-		if err != nil {
+		switch {
+		case err != nil:
 			if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
 				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
 			}
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
-		} else if generateRawTxOnly {
+		case generateRawTxOnly:
 			return nil, ids.Empty, tx, nil
+		default:
+			ux.Logger.PrintToUser("Validator removal initialized. InitiateTxHash: %s", tx.Hash())
 		}
 	} else {
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
@@ -308,7 +345,7 @@ func CompleteValidatorRemoval(
 			managerAddress,
 			subnetValidatorRegistrationSignedMessage,
 			big.NewInt(0),
-			"complete poa validator removal",
+			"complete validator removal",
 			validatormanager.ErrorSignatureToError,
 			"completeValidatorRemoval(uint32)",
 			uint32(0),
@@ -322,7 +359,7 @@ func CompleteValidatorRemoval(
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
-		"complete poa validator removal",
+		"complete validator removal",
 		validatormanager.ErrorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),

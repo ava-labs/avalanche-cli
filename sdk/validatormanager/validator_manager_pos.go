@@ -18,36 +18,53 @@ import (
 func PoSValidatorManagerInitialize(
 	rpcURL string,
 	managerAddress common.Address,
+	specializedManagerAddress common.Address,
+	managerOwnerPrivateKey string,
 	privateKey string,
 	subnetID [32]byte,
 	posParams PoSParams,
+	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if err := posParams.Verify(); err != nil {
 		return nil, nil, err
 	}
-	var (
+	const (
 		defaultChurnPeriodSeconds     = uint64(0) // no churn period
 		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
 	)
-
-	baseSettings := ValidatorManagerSettings{
-		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	if useACP99 {
+		if tx, receipt, err := contract.TxToMethod(
+			rpcURL,
+			false,
+			common.Address{},
+			privateKey,
+			specializedManagerAddress,
+			nil,
+			"initialize Native Token PoS manager",
+			ErrorSignatureToError,
+			"initialize((address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
+			NativeTokenValidatorManagerSettingsV2_0_0{
+				Manager:                  managerAddress,
+				MinimumStakeAmount:       posParams.MinimumStakeAmount,
+				MaximumStakeAmount:       posParams.MaximumStakeAmount,
+				MinimumStakeDuration:     posParams.MinimumStakeDuration,
+				MinimumDelegationFeeBips: posParams.MinimumDelegationFee,
+				MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
+				WeightToValueFactor:      posParams.WeightToValueFactor,
+				RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
+				UptimeBlockchainID:       posParams.UptimeBlockchainID,
+			},
+		); err != nil {
+			return tx, receipt, err
+		}
+		err := contract.TransferOwnership(
+			rpcURL,
+			managerAddress,
+			managerOwnerPrivateKey,
+			specializedManagerAddress,
+		)
+		return nil, nil, err
 	}
-
-	params := NativeTokenValidatorManagerSettings{
-		BaseSettings:             baseSettings,
-		MinimumStakeAmount:       posParams.MinimumStakeAmount,
-		MaximumStakeAmount:       posParams.MaximumStakeAmount,
-		MinimumStakeDuration:     posParams.MinimumStakeDuration,
-		MinimumDelegationFeeBips: posParams.MinimumDelegationFee,
-		MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
-		WeightToValueFactor:      posParams.WeightToValueFactor,
-		RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
-		UptimeBlockchainID:       posParams.UptimeBlockchainID,
-	}
-
 	return contract.TxToMethod(
 		rpcURL,
 		false,
@@ -58,7 +75,21 @@ func PoSValidatorManagerInitialize(
 		"initialize Native Token PoS manager",
 		ErrorSignatureToError,
 		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
-		params,
+		NativeTokenValidatorManagerSettingsV1_0_0{
+			BaseSettings: ValidatorManagerSettings{
+				SubnetID:               subnetID,
+				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+				MaximumChurnPercentage: defaultMaximumChurnPercentage,
+			},
+			MinimumStakeAmount:       posParams.MinimumStakeAmount,
+			MaximumStakeAmount:       posParams.MaximumStakeAmount,
+			MinimumStakeDuration:     posParams.MinimumStakeDuration,
+			MinimumDelegationFeeBips: posParams.MinimumDelegationFee,
+			MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
+			WeightToValueFactor:      posParams.WeightToValueFactor,
+			RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
+			UptimeBlockchainID:       posParams.UptimeBlockchainID,
+		},
 	)
 }
 

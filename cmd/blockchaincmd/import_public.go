@@ -214,6 +214,7 @@ func importBlockchain(
 
 	if !subnetInfo.IsPermissioned {
 		sc.Sovereign = true
+		sc.UseACP99 = true
 		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 		e := sc.Networks[network.Name()]
 		e.ValidatorManagerAddress = validatorManagerAddress

@@ -56,6 +56,7 @@ var (
 	pop                                 string
 	remainingBalanceOwnerAddr           string
 	disableOwnerAddr                    string
+	rewardsRecipientAddr                string
 	delegationFee                       uint16
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -114,6 +115,9 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
+	cmd.Flags().StringVar(&rewardsRecipientAddr, "rewards-recipient", "", "EVM address that will receive the validation rewards")
+	cmd.Flags().BoolVar(&createLocalValidator, "create-local-validator", false, "create additional local validator and add it to existing running local node")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
@@ -441,6 +445,21 @@ func CallAddValidator(
 				return nil
 			}
 		}
+		if rewardsRecipientAddr == "" {
+			rewardsRecipientAddr, err = prompts.PromptAddress(
+				app.Prompt,
+				"receive the validation rewards",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				network,
+				prompts.EVMFormat,
+				"Address",
+			)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	if sc.UseACP99 {
@@ -563,6 +582,7 @@ func CallAddValidator(
 		pos,
 		delegationFee,
 		duration,
+		common.HexToAddress(rewardsRecipientAddr),
 		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,

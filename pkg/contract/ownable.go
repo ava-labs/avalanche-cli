@@ -19,3 +19,24 @@ func GetContractOwner(
 	}
 	return GetSmartContractCallResult[common.Address]("owner", out)
 }
+
+func TransferOwnership(
+	rpcURL string,
+	contractAddress common.Address,
+	ownerPrivateKey string,
+	newOwner common.Address,
+) error {
+	_, _, err := TxToMethod(
+		rpcURL,
+		false,
+		common.Address{},
+		ownerPrivateKey,
+		contractAddress,
+		nil,
+		"transfer ownership",
+		nil,
+		"transferOwnership(address)",
+		newOwner,
+	)
+	return err
+}
