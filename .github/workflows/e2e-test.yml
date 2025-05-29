@@ -19,6 +19,7 @@ jobs:
             "\\[Error handling\\]",
             "\\[Key\\]",
             "\\[ICM\\]",
+            "\\[Relayer\\]",
             "\\[Local Network\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
@@ -38,6 +39,8 @@ jobs:
             "\\[Node create\\]",
             "\\[Node devnet\\]",
             "\\[Docker\\]",
+            "\\[Blockchain Deploy\\]",
+            "\\[Blockchain Convert\\]",
           ]
         os: [ubuntu-24.04, macos-14]
         exclude:

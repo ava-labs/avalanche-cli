@@ -20,6 +20,9 @@ import (
 	"strings"
 	"time"
 
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -53,11 +56,6 @@ const (
 	blockchainIDPos               = 5
 	subnetEVMName                 = "subnet-evm"
 )
-
-var defaultLocalNetworkNodeIDs = []string{
-	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-}
 
 func GetBaseDir() string {
 	usr, err := user.Current()
@@ -996,7 +994,7 @@ func GetPluginBinaries() ([]string, error) {
 	return pluginFiles, nil
 }
 
-func getSideCar(subnetName string) (models.Sidecar, error) {
+func GetSideCar(subnetName string) (models.Sidecar, error) {
 	exists, err := sidecarExists(subnetName)
 	if err != nil {
 		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
@@ -1021,7 +1019,7 @@ func getSideCar(subnetName string) (models.Sidecar, error) {
 }
 
 func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return 0, err
 	}
@@ -1029,25 +1027,11 @@ func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
 }
 
 func IsCustomVM(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
+	sc, err := GetSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
 	return sc.VM == models.CustomVM, nil
-}
-
-// Get NodeIDs of all validators on the blockchain
-func GetBlockchainValidators(subnetName string) ([]string, error) {
-	network := models.NewLocalNetwork()
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return nil, errors.New("no subnet id")
-	}
-	return GetSubnetValidators(subnetID)
 }
 
 // Get NodeIDs of all validators on the subnet
@@ -1062,55 +1046,6 @@ func GetSubnetValidators(subnetID ids.ID) ([]string, error) {
 		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
 	}
 	return nodeIDsList, nil
-}
-
-func GetCurrentSupply(subnetName string) error {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.GetCurrentSupply(subnetID)
-}
-
-func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.CheckNodeIsInSubnetValidators(subnetID, nodeID)
-}
-
-func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-
-	api := constants.LocalAPIEndpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
-	if err != nil {
-		return false, err
-	}
-
-	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		currentValidator := false
-		for _, validator := range validators {
-			if validator.NodeID.String() == nodeIDstr {
-				currentValidator = true
-			}
-		}
-		if !currentValidator {
-			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
-		}
-	}
-	return true, nil
 }
 
 func GetTmpFilePath(fnamePrefix string) (string, error) {
@@ -1269,6 +1204,62 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 	}
 
 	return homeAddress, remoteAddress, nil
+}
+
+type CurrentValidatorInfo struct {
+	Weight       avalanchegojson.Uint64 `json:"weight"`
+	NodeID       ids.NodeID             `json:"nodeID"`
+	ValidationID ids.ID                 `json:"validationID"`
+	Balance      avalanchegojson.Uint64 `json:"balance"`
+}
+
+func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetCurrentValidatorsReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getCurrentValidators",
+		&platformvm.GetCurrentValidatorsArgs{
+			SubnetID: subnetID,
+			NodeIDs:  nil,
+		},
+		res,
+	); err != nil {
+		return nil, err
+	}
+	validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	for _, vI := range res.Validators {
+		vBytes, err := json.Marshal(vI)
+		if err != nil {
+			return nil, err
+		}
+		var v CurrentValidatorInfo
+		if err := json.Unmarshal(vBytes, &v); err != nil {
+			return nil, err
+		}
+		validators = append(validators, v)
+	}
+	return validators, nil
+}
+
+func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetL1ValidatorReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getL1Validator",
+		&platformvm.GetL1ValidatorArgs{
+			ValidationID: validationID,
+		},
+		res,
+	); err != nil {
+		return *res, err
+	}
+	return *res, nil
 }
 
 // clean up avalanchego logs for the given [nodesInfo]

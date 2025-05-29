@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
@@ -653,7 +654,7 @@ func formatCChainBalance(balance *big.Int) (string, error) {
 		return fmt.Sprintf("%d", balance), nil
 	}
 
-	result := utils.ConvertToNanoAvax(balance)
+	result := evm.ConvertToNanoAvax(balance)
 	if result.Cmp(big.NewInt(0)) == 0 {
 		return "0", nil
 	}
