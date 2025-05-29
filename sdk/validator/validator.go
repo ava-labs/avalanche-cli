@@ -81,7 +81,8 @@ func GetValidationID(
 	managerAddress common.Address,
 	nodeID ids.NodeID,
 ) (ids.ID, error) {
-	fmt.Println(managerAddress)
+	// if specialized, need to retrieve underlying manager
+	// needs to directly access the manager, does not work with a proxy
 	out, err := contract.CallToMethod(
 		rpcURL,
 		managerAddress,
