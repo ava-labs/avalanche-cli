@@ -1,11 +1,8 @@
 name: Code Coverage
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-    branches: ['tonyz/add_cov_report', 'main']
   push:
-    branches: ['tonyz/add_cov_report', 'main']
+    branches: ['main']
   workflow_dispatch:
     inputs:
       branch:
@@ -16,15 +13,20 @@ env:
 
 jobs:
   code_coverage:
-    name: Code Coverage
-    if: github.event_name == 'pull_request' 
+    name: Code Coverage Main
     runs-on: ubuntu-24.04
-    permissions:
-      pull-requests: write
+    strategy:
+      matrix:
+        suite:
+          [
+            "\\[APM\\]",
+          ]
           
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: main
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -71,7 +73,7 @@ jobs:
       - name: Run E2E tests with coverage
         working-directory: ${{ github.workspace }}
         shell: bash
-        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh
+        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
 
       - name: Run Unit tests
         working-directory: ${{ github.workspace }}
@@ -82,9 +84,10 @@ jobs:
       - name: Generate coverage report
         run: scripts/coverage.sh
 
-      - uses: mshick/add-pr-comment@v2
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
         with:
-          message: |
-            **Hello from a test**
+          name: code-coverage
+          path: coverage/merged/merged.txt
 
   
