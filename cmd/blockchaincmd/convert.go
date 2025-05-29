@@ -336,42 +336,6 @@ func InitializeValidatorManager(
 		managerOwnerPrivateKey       string
 	)
 
-	// SACAR
-	/*
-		proxyOwnerPrivateKey, err := GetProxyOwnerPrivateKey(
-			app,
-			network,
-			proxyContractOwner,
-			ux.Logger.PrintToUser,
-		)
-		if err != nil {
-			return tracked, err
-		}
-		managerAddress, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
-			rpcURL,
-			genesisPrivateKey,
-			proxyOwnerPrivateKey,
-		)
-		if err != nil {
-			return tracked, err
-		}
-		fmt.Println("Validator Manager deployed into %s", managerAddress)
-		tx, _, err := validatormanagerSDK.PoAValidatorManagerInitialize(
-			rpcURL,
-			common.HexToAddress(convertValidatorManagerAddrStr),
-			genesisPrivateKey,
-			subnetID,
-			ownerAddress,
-			useACP99,
-		)
-		if err != nil {
-			if !errors.Is(err, validatormanagerSDK.ErrAlreadyInitialized) {
-				return tracked, evm.TransactionError(tx, err, "failure initializing validator manager")
-			}
-		}
-	*/
-	// FIN SACAR
-
 	if pos {
 		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
 		if err != nil {
@@ -826,9 +790,25 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			chainSpec := contract.ChainSpec{
+				BlockchainName: blockchainName,
+			}
+			rpcURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				chainSpec,
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			specialization, err := validatormanager.GetSpecializedValidatorProxyImplementation(rpcURL)
+			if err != nil {
+				return err
+			}
 			networkInfo := sidecar.Networks[network.Name()]
-			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
-			fmt.Println(networkInfo)
+			networkInfo.ValidatorManagerAddress = specialization.String()
 			sidecar.Networks[network.Name()] = networkInfo
 			if err := app.UpdateSidecar(&sidecar); err != nil {
 				return err

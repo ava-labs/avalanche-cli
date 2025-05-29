@@ -390,7 +390,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
-		fmt.Println("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 		log.Info("the PoA contract is already initialized, skipping initializing Proof of Authority contract")
 	}
 
@@ -484,8 +483,6 @@ func (c *Subnet) InitializeProofOfStake(
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-
-	fmt.Println(convertManagerAddress)
 
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,

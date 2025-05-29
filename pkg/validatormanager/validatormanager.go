@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -189,6 +189,14 @@ func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 	}
 	if _, _, err := SetupSpecializationProxyImplementation(
 		rpcURL,
+		proxyOwnerPrivateKey,
+		posValidatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	if err := precompiles.SetEnabled(
+		rpcURL,
+		precompiles.NativeMinterPrecompile,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
 	); err != nil {

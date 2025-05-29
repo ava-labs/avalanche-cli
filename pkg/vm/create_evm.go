@@ -144,10 +144,14 @@ func CreateEVMGenesis(
 		// valid for both v2.0.0 and v1.0.0
 		validatormanager.AddValidatorMessagesV2_0_0ContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddRewardCalculatorV2_0_0ToAllocations(params.initialTokenAllocation, rewardBasisPoints)
-		params.enableNativeMinterPrecompile = true
 		if useV2_0_0 {
 			validatormanager.AddSpecializationTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		}
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
+			params.nativeMinterPrecompileAllowList.AdminAddresses,
+			common.HexToAddress(proxyOwner),
+		)
 	}
 
 	if params.UseExternalGasToken {
