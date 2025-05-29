@@ -119,7 +119,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), rpcURL)
 	}
 
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(

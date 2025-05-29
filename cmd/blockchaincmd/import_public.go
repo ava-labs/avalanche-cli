@@ -99,7 +99,6 @@ func importPublic(*cobra.Command, []string) error {
 
 	sc.TokenName = constants.DefaultTokenName
 	sc.TokenSymbol = constants.DefaultTokenSymbol
-
 	sc.VM, err = vm.PromptVMType(app, useSubnetEvm, useCustomVM)
 	if err != nil {
 		return err
@@ -235,6 +234,8 @@ func importBlockchain(
 			}
 		}
 	}
-
+	// TODO: we are currently assuming that all remote L1s are ACP99
+	// we should drop support for non acp 99 L1s, and once that's done remove the line below
+	sc.UseACP99 = true
 	return sc, genBytes, err
 }

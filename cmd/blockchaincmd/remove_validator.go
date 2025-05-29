@@ -311,7 +311,7 @@ func removeValidatorSOV(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), rpcURL)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)

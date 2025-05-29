@@ -219,7 +219,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
-	// TODO: will estimate fee in subsecuent PR
+	// TODO: will estimate fee in subsequent PR
 	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -239,20 +239,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if nodeEndpoint != "" {
 		nodeIDStr, publicKey, pop, err = utils.GetNodeID(nodeEndpoint)
+		fmt.Printf("obtained nodeIDStr %s \n", nodeIDStr)
 		if err != nil {
 			return err
-		}
-	}
-
-	if sovereign {
-		if !cmd.Flags().Changed(validatorWeightFlag) {
-			weight, err = app.Prompt.CaptureWeight(
-				"What weight would you like to assign to the validator?",
-				func(uint64) error { return nil },
-			)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -465,7 +454,7 @@ func CallAddValidator(
 		}
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), rpcURL)
 
 	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
@@ -474,6 +463,9 @@ func CallAddValidator(
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
 	if float64(weight) > allowedChange {
 		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	}
+	if float64(weight) <= 0 {
+		return fmt.Errorf("weight has to be greater than 0")
 	}
 
 	if balanceAVAX == 0 {
@@ -488,6 +480,9 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
+	}
+	if balanceAVAX <= 0 {
+		return fmt.Errorf("balance has to be greater than 0 AVAX")
 	}
 	// convert to nanoAVAX
 	balance := uint64(balanceAVAX * float64(units.Avax))

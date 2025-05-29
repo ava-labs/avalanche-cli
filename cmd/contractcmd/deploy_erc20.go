@@ -88,7 +88,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), deployERC20Flags.rpcEndpoint)
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), deployERC20Flags.rpcEndpoint)
 	}
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,

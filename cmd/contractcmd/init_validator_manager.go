@@ -108,7 +108,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initValidatorManagerFlags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), initValidatorManagerFlags.RPC)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
