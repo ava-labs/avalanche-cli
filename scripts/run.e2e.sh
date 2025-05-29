@@ -65,10 +65,9 @@ ACK_GINKGO_RC=true ~/go/bin/ginkgo build $extra_build_args ./tests/e2e
 
 if [ "${COVERAGE_MODE:-}" == true ]
 then
-    export GOCOVERDIR=$(PWD)/coverage/e2e
+	export GOCOVERDIR=$(PWD)/coverage/e2e
 	echo 'Coverage mode enabled - re-creating coverage dir $GOCOVERDIR'
 	echo 'It requires the CLI binary to be built by build.sh with COVERAGE_MODE=true too'
-	rm -rf ${GOCOVERDIR}
 	mkdir -p ${GOCOVERDIR}
 fi
 

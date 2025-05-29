@@ -20,6 +20,9 @@ import (
 	"strings"
 	"time"
 
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -53,11 +56,6 @@ const (
 	blockchainIDPos               = 5
 	subnetEVMName                 = "subnet-evm"
 )
-
-var defaultLocalNetworkNodeIDs = []string{
-	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-}
 
 func GetBaseDir() string {
 	usr, err := user.Current()
@@ -339,6 +337,22 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
+func ParseBlockchainIDFromOutput(output string) (string, error) {
+	rpcs, err := ParseRPCsFromOutput(output)
+	if err != nil {
+		return "", err
+	}
+	if len(rpcs) == 0 {
+		return "", fmt.Errorf("deploy output has no rpc info")
+	}
+	rpc := rpcs[0]
+	rpcParts := strings.Split(rpc, "/")
+	if len(rpcParts) != 7 {
+		return "", fmt.Errorf("rpc at deploy output has inconsistent format: %s", rpc)
+	}
+	return rpcParts[5], nil
+}
+
 func ParseRPCsFromOutput(output string) ([]string, error) {
 	rpcs := []string{}
 	blockchainIDs := map[string]struct{}{}
@@ -602,7 +616,9 @@ func RunHardhatScript(script string) (string, string, error) {
 func PrintStdErr(err error) {
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		fmt.Println(string(exitErr.Stderr))
+		if string(exitErr.Stderr) != "" {
+			fmt.Println(string(exitErr.Stderr))
+		}
 	}
 }
 
@@ -740,11 +756,44 @@ func GetLocalNetwork() (*tmpnet.Network, error) {
 	return localnet.GetLocalNetwork(app)
 }
 
-func GetNodesInfo() (map[string]NodeInfo, error) {
+func GetLocalNetworkNodesInfo() (map[string]NodeInfo, error) {
 	network, err := GetLocalNetwork()
 	if err != nil {
 		return nil, err
 	}
+	return getNodesInfo(network)
+}
+
+func GetLocalClusterName() (string, error) {
+	app := GetApp()
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return "", err
+	}
+	if len(clusters) != 1 {
+		return "", fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
+	}
+	return clusters[0], nil
+}
+
+func GetLocalCluster() (*tmpnet.Network, error) {
+	app := GetApp()
+	clusterName, err := GetLocalClusterName()
+	if err != nil {
+		return nil, err
+	}
+	return localnet.GetLocalCluster(app, clusterName)
+}
+
+func GetLocalClusterNodesInfo() (map[string]NodeInfo, error) {
+	network, err := GetLocalCluster()
+	if err != nil {
+		return nil, err
+	}
+	return getNodesInfo(network)
+}
+
+func getNodesInfo(network *tmpnet.Network) (map[string]NodeInfo, error) {
 	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return nil, err
@@ -765,14 +814,10 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 
 func GetLocalClusterUris() ([]string, error) {
 	app := GetApp()
-	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	clusterName, err := GetLocalClusterName()
 	if err != nil {
 		return nil, err
 	}
-	if len(clusters) != 1 {
-		return nil, fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
-	}
-	clusterName := clusters[0]
 	return localnet.GetLocalClusterURIs(app, clusterName)
 }
 
@@ -989,17 +1034,10 @@ func IsCustomVM(subnetName string) (bool, error) {
 	return sc.VM == models.CustomVM, nil
 }
 
-func GetValidators(subnetName string) ([]string, error) {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	if subnetID == ids.Empty {
-		return nil, errors.New("no subnet id")
-	}
-	// Get NodeIDs of all validators on the subnet
-	validators, err := subnet.GetSubnetValidators(subnetID)
+// Get NodeIDs of all validators on the subnet
+func GetSubnetValidators(subnetID ids.ID) ([]string, error) {
+	network := models.NewLocalNetwork()
+	validators, err := subnet.GetSubnetValidators(network, subnetID)
 	if err != nil {
 		return nil, err
 	}
@@ -1008,55 +1046,6 @@ func GetValidators(subnetName string) ([]string, error) {
 		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
 	}
 	return nodeIDsList, nil
-}
-
-func GetCurrentSupply(subnetName string) error {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.GetCurrentSupply(subnetID)
-}
-
-func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.CheckNodeIsInSubnetValidators(subnetID, nodeID)
-}
-
-func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-
-	api := constants.LocalAPIEndpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
-	if err != nil {
-		return false, err
-	}
-
-	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		currentValidator := false
-		for _, validator := range validators {
-			if validator.NodeID.String() == nodeIDstr {
-				currentValidator = true
-			}
-		}
-		if !currentValidator {
-			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
-		}
-	}
-	return true, nil
 }
 
 func GetTmpFilePath(fnamePrefix string) (string, error) {
@@ -1071,6 +1060,21 @@ func GetTmpFilePath(fnamePrefix string) (string, error) {
 	}
 	err = os.Remove(path)
 	return path, err
+}
+
+func CreateTmpFile(fnamePrefix string, data []byte) (string, error) {
+	file, err := os.CreateTemp("", fnamePrefix+"*")
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(file.Name(), data, constants.DefaultPerms755); err != nil {
+		return "", err
+	}
+	path := file.Name()
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected bool) string {
@@ -1200,4 +1204,109 @@ func GetTokenTransferrerAddresses(output string) (string, string, error) {
 	}
 
 	return homeAddress, remoteAddress, nil
+}
+
+type CurrentValidatorInfo struct {
+	Weight       avalanchegojson.Uint64 `json:"weight"`
+	NodeID       ids.NodeID             `json:"nodeID"`
+	ValidationID ids.ID                 `json:"validationID"`
+	Balance      avalanchegojson.Uint64 `json:"balance"`
+}
+
+func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetCurrentValidatorsReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getCurrentValidators",
+		&platformvm.GetCurrentValidatorsArgs{
+			SubnetID: subnetID,
+			NodeIDs:  nil,
+		},
+		res,
+	); err != nil {
+		return nil, err
+	}
+	validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	for _, vI := range res.Validators {
+		vBytes, err := json.Marshal(vI)
+		if err != nil {
+			return nil, err
+		}
+		var v CurrentValidatorInfo
+		if err := json.Unmarshal(vBytes, &v); err != nil {
+			return nil, err
+		}
+		validators = append(validators, v)
+	}
+	return validators, nil
+}
+
+func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
+	res := &platformvm.GetL1ValidatorReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getL1Validator",
+		&platformvm.GetL1ValidatorArgs{
+			ValidationID: validationID,
+		},
+		res,
+	); err != nil {
+		return *res, err
+	}
+	return *res, nil
+}
+
+// clean up avalanchego logs for the given [nodesInfo]
+// clean main.log and [blockchainID].log
+func CleanupLogs(nodesInfo map[string]NodeInfo, blockchainID string) {
+	for _, nodeInfo := range nodesInfo {
+		logFile := path.Join(nodeInfo.LogDir, "main.log")
+		err := os.Remove(logFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		if blockchainID != "" {
+			logFile = path.Join(nodeInfo.LogDir, blockchainID+".log")
+			err = os.Remove(logFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+	}
+}
+
+func ParseICMContractAddressesFromOutput(subnet, output string) (string, string, error) {
+	var messengerAddress string
+	var registryAddress string
+
+	// split output by newline
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		if strings.Contains(line, "ICM Messenger successfully deployed to "+subnet) {
+			startIndex := strings.Index(line, "(")
+			endIndex := strings.Index(line, ")")
+			if startIndex == -1 || endIndex == -1 || startIndex >= endIndex {
+				return "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			messengerAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+
+		if strings.Contains(line, "ICM Registry successfully deployed to "+subnet) {
+			startIndex := strings.Index(line, "(")
+			endIndex := strings.Index(line, ")")
+			if startIndex == -1 || endIndex == -1 || startIndex >= endIndex {
+				return "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			registryAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+	}
+
+	if messengerAddress == "" && registryAddress == "" {
+		return "", "", fmt.Errorf("messenger address not found in output")
+	}
+
+	return messengerAddress, registryAddress, nil
 }

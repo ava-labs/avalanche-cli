@@ -18,7 +18,11 @@ jobs:
             "\\[APM\\]",
             "\\[Error handling\\]",
             "\\[Key\\]",
+            "\\[ICM\\]",
+            "\\[Relayer\\]",
+            "\\[Local Network\\]",
             "\\[Network\\]",
+            "\\[Blockchain Configure\\]",
             "\\[Package Management\\]",
             "\\[Root\\]",
             "\\[Local Subnet non SOV\\]",
@@ -29,19 +33,17 @@ jobs:
             "\\[Etna AddRemove Validator SOV PoS\\]",
             "\\[Etna Add Validator SOV Local\\]",
             "\\[Subnet\\]",
-            "\\[Upgrade expect network failure\\]",
-            "\\[Upgrade public network\\]",
+            "\\[Upgrade expect network failure",
+            "\\[Upgrade public network",
             "\\[Upgrade local network\\]",
             "\\[Node create\\]",
             "\\[Node devnet\\]",
             "\\[Docker\\]",
-            "\\[Blockchain Deploy Flags\\]",
-            "\\[Blockchain Convert Flags\\]",
+            "\\[Blockchain Deploy\\]",
+            "\\[Blockchain Convert\\]",
           ]
         os: [ubuntu-24.04, macos-14]
         exclude:
-          - os: ubuntu-24.04
-            suite: "\\[Etna Subnet SOV\\]"
           - os: macos-14
             suite: "\\[Node create\\]"
           - os: macos-14
@@ -50,12 +52,6 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet non SOV\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna AddRemove Validator SOV PoA\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna AddRemove Validator SOV PoS\\]"
-          - os: ubuntu-24.04
-            suite: "\\[Etna Add Validator SOV Local\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -90,7 +86,7 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet non SOV\\]') }}
+        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\[Public Subnet non SOV\]') }}
         run: |
           brew install docker
           brew install colima
