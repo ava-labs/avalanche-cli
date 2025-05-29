@@ -5,7 +5,9 @@ package evm
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -75,4 +77,24 @@ func PrivateKeyToAddress(privateKey string) (common.Address, error) {
 		return common.Address{}, err
 	}
 	return crypto.PubkeyToAddress(pk.PublicKey), nil
+}
+
+// ConvertToNanoAvax converts a balance in Avax to NanoAvax.
+// It adds 0.5 to the balance before dividing by 1e9 to round
+// it to the nearest whole number.
+func ConvertToNanoAvax(balance *big.Int) *big.Int {
+	divisor := big.NewInt(int64(units.Avax))
+	half := new(big.Int).Div(divisor, big.NewInt(2))
+	adjusted := new(big.Int).Add(balance, half)
+	return new(big.Int).Div(adjusted, divisor)
+}
+
+func CalculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
+	gasUsedBig := new(big.Int).SetUint64(gasUsed)
+	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
+
+	totalCostInNanoAvax := ConvertToNanoAvax(totalCost)
+
+	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
+	return result / float64(units.Avax)
 }
