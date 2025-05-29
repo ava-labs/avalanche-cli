@@ -4,7 +4,6 @@ package validator
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
