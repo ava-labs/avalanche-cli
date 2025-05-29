@@ -1,11 +1,8 @@
 name: Code Coverage
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-    branches: ['tonyz/add_cov_report', 'main']
   push:
-    branches: ['tonyz/add_cov_report', 'main']
+    branches: ['main']
   workflow_dispatch:
     inputs:
       branch:
@@ -16,14 +13,8 @@ env:
 
 jobs:
   code_coverage:
-    name: Code Coverage
-    if: github.event_name == 'pull_request' 
+    name: Code Coverage Main
     runs-on: ubuntu-24.04
-    permissions:
-      contents:      read
-      actions:       read 
-      pull-requests: write
-
     strategy:
       matrix:
         suite:
@@ -34,6 +25,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: main
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -96,14 +89,5 @@ jobs:
         with:
           name: code-coverage
           path: coverage/merged/merged.txt
-
-      - name: Coverage report
-        uses: fgrosse/go-coverage-report@v1.2.0
-        with:
-          coverage-artifact-name: "code-coverage"
-          coverage-file-name: "merged.txt"
-          github-baseline-workflow-ref: "coverage_base.yml"
-        continue-on-error: true
-        if: github.event_name == 'pull_request'
 
   
