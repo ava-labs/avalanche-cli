@@ -260,7 +260,7 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local &&
 		network.Kind != models.Devnet &&
-		!simulatedPublicNetwork() {
+		!utils.SimulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
@@ -652,7 +652,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// TODO: will estimate fee in subsecuent PR
+	// TODO: will estimate fee in subsequent PR
 	// !subnetonly: add blockchain fee
 	// createSubnet: add subnet fee
 	fee := uint64(0)
@@ -682,8 +682,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	} else if network.Kind == models.Local {
-		sameControlKey = true
+		//} else if network.Kind == models.Local {
+		//	sameControlKey = true
 	}
 
 	// from here on we are assuming a public deploy
@@ -888,13 +888,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		if network.Kind == models.Local && !simulatedPublicNetwork() {
+		if network.Kind == models.Local && !utils.SimulatedPublicNetwork() && !savePartialTx {
 			ux.Logger.PrintToUser("")
 			if err := localnet.LocalNetworkTrackSubnet(
 				app,
 				ux.Logger.PrintToUser,
 				blockchainName,
 			); err != nil {
+				fmt.Printf("we have err here")
 				return err
 			}
 			tracked = true
@@ -905,7 +906,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
-
 	var icmErr, relayerErr error
 	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
 		chainSpec := contract.ChainSpec{
@@ -997,7 +997,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(app, flags, nil)
 
-	if network.Kind == models.Local && !simulatedPublicNetwork() {
+	if network.Kind == models.Local && !utils.SimulatedPublicNetwork() && !savePartialTx {
 		ux.Logger.PrintToUser("")
 		_ = PrintSubnetInfo(blockchainName, true)
 	}
@@ -1278,8 +1278,4 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 		}
 	}
 	return aggregatorPeers, nil
-}
-
-func simulatedPublicNetwork() bool {
-	return os.Getenv(constants.SimulatePublicNetwork) != ""
 }
