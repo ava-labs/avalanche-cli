@@ -115,7 +115,7 @@ Validator Manager Contract on the L1
 If using your own Avalanche Nodes as bootstrap validators: 
 - Avalanche-CLI will call CreateSubnetTx, CreateChainTx, ConvertSubnetToL1Tx 
 - You will have to sync your bootstrap validators to the L1 
-- Next, Initialize Validator Manager contract on the L1 using avalanche contract initValidatorManager <L1_Name>
+- Next, Initialize Validator Manager contract on the L1 using avalanche contract initValidatorManager [L1_Name]
 
 Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
 attempts to deploy the same Blockchain to the same network (Local Network, Fuji, Mainnet) aren't

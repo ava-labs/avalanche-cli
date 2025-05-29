@@ -98,19 +98,6 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
 	})
 
-	ginkgo.It("HAPPY PATH: multisig", func() {
-		testFlags := utils.TestFlags{
-			"convert-only": true,
-		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
-		checkConvertOnlyOutput(output, false)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// verify that we have a local machine created that is now a bootstrap validator
-		localClusterUris, err := utils.GetLocalClusterUris()
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-	})
-
 	ginkgo.It("HAPPY PATH: convert only", func() {
 		testFlags := utils.TestFlags{
 			"convert-only": true,

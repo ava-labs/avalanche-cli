@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/big"
 	"math/rand"
 	"net"
 	"net/http"
@@ -31,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
@@ -654,16 +652,6 @@ func PointersSlice[T any](input []T) []*T {
 		output = append(output, &e)
 	}
 	return output
-}
-
-// ConvertToNanoAvax converts a balance in Avax to NanoAvax.
-// It adds 0.5 to the balance before dividing by 1e9 to round
-// it to the nearest whole number.
-func ConvertToNanoAvax(balance *big.Int) *big.Int {
-	divisor := big.NewInt(int64(units.Avax))
-	half := new(big.Int).Div(divisor, big.NewInt(2))
-	adjusted := new(big.Int).Add(balance, half)
-	return new(big.Int).Div(adjusted, divisor)
 }
 
 func SimulatedPublicNetwork() bool {
