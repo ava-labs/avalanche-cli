@@ -57,11 +57,6 @@ const (
 	subnetEVMName                 = "subnet-evm"
 )
 
-var defaultLocalNetworkNodeIDs = []string{
-	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-}
-
 func GetBaseDir() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -1051,55 +1046,6 @@ func GetSubnetValidators(subnetID ids.ID) ([]string, error) {
 		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
 	}
 	return nodeIDsList, nil
-}
-
-func GetCurrentSupply(subnetName string) error {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.GetCurrentSupply(subnetID)
-}
-
-func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.CheckNodeIsInSubnetValidators(subnetID, nodeID)
-}
-
-func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
-	sc, err := GetSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-
-	api := constants.LocalAPIEndpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
-	if err != nil {
-		return false, err
-	}
-
-	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		currentValidator := false
-		for _, validator := range validators {
-			if validator.NodeID.String() == nodeIDstr {
-				currentValidator = true
-			}
-		}
-		if !currentValidator {
-			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
-		}
-	}
-	return true, nil
 }
 
 func GetTmpFilePath(fnamePrefix string) (string, error) {
