@@ -48,7 +48,7 @@ func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
 	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
-	mockInstaller.On("GetArch").Return("amd64", "darwin")
+	mockInstaller.On("GetArch").Return("arm64", "darwin")
 
 	githubDownloader := NewAvagoDownloader()
 
@@ -104,7 +104,7 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
-	mockInstaller.On("GetArch").Return("amd64", "darwin")
+	mockInstaller.On("GetArch").Return("arm64", "darwin")
 
 	downloader := NewAvagoDownloader()
 	url1, _, err := downloader.GetDownloadURL(version1, mockInstaller)
