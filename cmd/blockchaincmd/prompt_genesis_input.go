@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
