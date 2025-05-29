@@ -665,3 +665,7 @@ func ConvertToNanoAvax(balance *big.Int) *big.Int {
 	adjusted := new(big.Int).Add(balance, half)
 	return new(big.Int).Div(adjusted, divisor)
 }
+
+func SimulatedPublicNetwork() bool {
+	return os.Getenv(constants.SimulatePublicNetwork) != ""
+}

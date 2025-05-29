@@ -4,6 +4,8 @@ package transactioncmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
@@ -75,12 +77,12 @@ func commitTx(_ *cobra.Command, args []string) error {
 	)
 	if len(args) > 0 {
 		blockchainName = args[0]
+		sc, err = app.LoadSidecar(blockchainName)
+		if err != nil {
+			return err
+		}
 		// subnet ID from tx is always preferred
 		if subnetID == ids.Empty {
-			sc, err = app.LoadSidecar(blockchainName)
-			if err != nil {
-				return err
-			}
 			subnetID = sc.Networks[network.Name()].SubnetID
 			if subnetID == ids.Empty {
 				return constants.ErrNoSubnetID
@@ -145,7 +147,31 @@ func commitTx(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if blockchainName != "" {
-			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "", "")
+			sc.Name = blockchainName
+			fmt.Printf("currrent sc %s \n", sc)
+			fmt.Printf("currrent sc vm %s \n", sc.VM)
+			if err = app.UpdateSidecarNetworks(
+				&sc,
+				network,
+				subnetID,
+				txID,
+				"",
+				"",
+				sc.Networks[network.Name()].BootstrapValidators,
+				"",
+				""); err != nil {
+				return err
+			}
+			if network.Kind == models.Local && !utils.SimulatedPublicNetwork() {
+				ux.Logger.PrintToUser("")
+				if err := localnet.LocalNetworkTrackSubnet(
+					app,
+					ux.Logger.PrintToUser,
+					blockchainName,
+				); err != nil {
+					return err
+				}
+			}
 		}
 		ux.Logger.PrintToUser("This CLI instance will not locally preserve blockchain metadata.")
 		ux.Logger.PrintToUser("Please keep a manual record of the subnet ID and blockchain ID information.")

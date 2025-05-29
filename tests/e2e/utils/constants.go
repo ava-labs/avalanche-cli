@@ -30,7 +30,6 @@ const (
 	OnlyAvagoValue         = "latest"
 
 	SubnetEvmGenesisPoaPath   = "tests/e2e/assets/test_subnet_evm_poa_genesis.json"
-	SubnetEvmGenesisPoa2Path  = "tests/e2e/assets/test_subnet_evm_poa_genesis_2.json"
 	SubnetEvmGenesisPath      = "tests/e2e/assets/test_subnet_evm_genesis.json"
 	SubnetEvmGenesis2Path     = "tests/e2e/assets/test_subnet_evm_genesis_2.json"
 	EwoqKeyPath               = "tests/e2e/assets/ewoq_key.pk"

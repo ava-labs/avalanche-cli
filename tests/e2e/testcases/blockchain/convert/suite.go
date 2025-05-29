@@ -5,11 +5,12 @@ package convert
 
 import (
 	"fmt"
+	"runtime"
+
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"runtime"
 )
 
 const (
@@ -34,17 +35,6 @@ func checkConvertOnlyOutput(output string, generateNodeID bool) {
 var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 	blockchainCmdArgs := []string{subnetName}
 	_ = ginkgo.BeforeEach(func() {
-		// Create test subnet config
-		//testFlags := utils.TestFlags{
-		//	"evm":               true,
-		//	"test-defaults":     true,
-		//	"evm-chain-id":      99999,
-		//	"evm-token":         "TOK",
-		//	"sovereign":         false,
-		//	"icm":               false,
-		//	"skip-update-check": true,
-		//	"genesis":           utils.SubnetEvmGenesisPoaPath,
-		//}
 		testFlags := utils.TestFlags{
 			"latest":            true,
 			"evm":               true,
@@ -101,6 +91,19 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("AvalancheGo path: %s", avalanchegoPath)))
 		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		// verify that we have a local machine created that is now a bootstrap validator
+		localClusterUris, err := utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
+	})
+
+	ginkgo.It("HAPPY PATH: multisig", func() {
+		testFlags := utils.TestFlags{
+			"convert-only": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// verify that we have a local machine created that is now a bootstrap validator
 		localClusterUris, err := utils.GetLocalClusterUris()
