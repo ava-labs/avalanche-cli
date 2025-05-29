@@ -64,7 +64,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		localClusterUris, err := utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-		// check that validator manager type is proof of authoiryt
+		// check that validator manager type is proof of authority
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		subnetInfo, _ := blockchain.GetSubnet(sc.Networks["Local Network"].SubnetID, models.NewLocalNetwork())

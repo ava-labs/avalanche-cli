@@ -776,6 +776,15 @@ func GetLocalClusterName() (string, error) {
 	return clusters[0], nil
 }
 
+func GetAllLocalClusterNames() ([]string, error) {
+	app := GetApp()
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return nil, err
+	}
+	return clusters, nil
+}
+
 func GetLocalCluster() (*tmpnet.Network, error) {
 	app := GetApp()
 	clusterName, err := GetLocalClusterName()

@@ -205,7 +205,14 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, ids.Empty, ux.Logger.PrintToUser)
+		blockchainID := ids.Empty
+		if blockchainIDStr != "" {
+			blockchainID, err = ids.FromString(blockchainIDStr)
+			if err != nil {
+				return err
+			}
+		}
+		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, blockchainID, ux.Logger.PrintToUser)
 		if err != nil {
 			return err
 		}
@@ -417,7 +424,7 @@ func CallAddValidator(
 			return err
 		}
 		if !ownerPrivateKeyFound {
-			return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
+			return fmt.Errorf("private key for validator manager owner %s is not found", validatorManagerOwner)
 		}
 	}
 
