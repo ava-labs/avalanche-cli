@@ -5,14 +5,15 @@ package addValidator
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+
 	utilsPkg "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"os"
-	"os/exec"
-	"path/filepath"
 )
 
 const (
@@ -39,7 +40,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			localClusterUris, err := utils.GetLocalClusterUris()
 			gomega.Expect(err).Should(gomega.BeNil())
 			fmt.Printf("localClusterUris %s \n", localClusterUris)
-			//gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
+			// gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
 
 			fmt.Printf("before each localClusterUris[0] %s \n", localClusterUris[0])
 			nodeIDStr, publicKey, pop, err = utilsPkg.GetNodeID(localClusterUris[0])
@@ -108,7 +109,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"node-endpoint": currentLocalMachineURI,
 		}
 		_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-		//checkConvertOnlyOutput(output, false)
+		// checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// we should have two local machine instances
@@ -144,7 +145,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"create-local-validator": true,
 		}
 		_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-		//checkConvertOnlyOutput(output, false)
+		// checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// we should have two local machine instances

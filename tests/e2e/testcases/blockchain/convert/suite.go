@@ -5,7 +5,6 @@ package convert
 
 import (
 	"fmt"
-
 	"runtime"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
