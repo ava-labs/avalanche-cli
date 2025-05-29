@@ -77,7 +77,6 @@ func InitializeValidatorRegistrationPoSNative(
 	}
 
 	if useACP99 {
-		fmt.Println("ESTOY ACA EHH")
 		return contract.TxToMethod(
 			rpcURL,
 			false,
@@ -442,7 +441,6 @@ func InitValidatorRegistration(
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
-	fmt.Println("HOLA", managerAddress)
 	alreadyInitialized := initiateTxHash != ""
 	if validationID, err := validator.GetValidationID(
 		rpcURL,

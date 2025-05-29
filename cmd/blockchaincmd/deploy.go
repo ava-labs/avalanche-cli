@@ -884,7 +884,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			networkInfo := sidecar.Networks[network.Name()]
 			networkInfo.ValidatorManagerAddress = specialization.String()
-			fmt.Println(networkInfo)
 			sidecar.Networks[network.Name()] = networkInfo
 			if err := app.UpdateSidecar(&sidecar); err != nil {
 				return err

@@ -57,25 +57,7 @@ func PoSValidatorManagerInitialize(
 		); err != nil {
 			return tx, receipt, err
 		}
-		out, err := contract.CallToMethod(
-			rpcURL,
-			specializedManagerAddress,
-			"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-		fmt.Printf("%#v\n", out)
-		out, err = contract.CallToMethod(
-			rpcURL,
-			common.HexToAddress(SpecializationProxyContractAddress),
-			"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-		fmt.Printf("%#v\n", out)
-		err = contract.TransferOwnership(
+		err := contract.TransferOwnership(
 			rpcURL,
 			managerAddress,
 			managerOwnerPrivateKey,

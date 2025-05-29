@@ -255,7 +255,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				}
 				tx, _, err := validatormanagerSDK.PoAValidatorManagerInitialize(
 					initValidatorManagerFlags.RPC,
-					managerAddress,
+					common.HexToAddress(convertValidatorManagerAddress),
 					genesisPrivateKey,
 					subnetID,
 					ownerAddress,
