@@ -3,7 +3,6 @@
 package contractcmd
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
@@ -142,7 +140,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	convertValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	managerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 	scNetwork := sc.Networks[network.Name()]
 	if scNetwork.BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())
@@ -203,7 +201,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			convertValidatorManagerAddress,
+			managerAddress,
 			sc.UseACP99,
 		); err != nil {
 			return err
@@ -234,19 +232,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				)
 				if err != nil {
 					return err
-				}
-				tx, _, err := validatormanagerSDK.PoAValidatorManagerInitialize(
-					initValidatorManagerFlags.RPC,
-					common.HexToAddress(convertValidatorManagerAddress),
-					genesisPrivateKey,
-					subnetID,
-					ownerAddress,
-					sc.UseACP99,
-				)
-				if err != nil {
-					if !errors.Is(err, validatormanagerSDK.ErrAlreadyInitialized) {
-						return evm.TransactionError(tx, err, "failure initializing validator manager")
-					}
 				}
 				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 					initValidatorManagerFlags.RPC,
@@ -300,7 +285,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			convertValidatorManagerAddress,
+			managerAddress,
 			validatormanagerSDK.SpecializationProxyContractAddress,
 			managerOwnerPrivateKey,
 			sc.UseACP99,

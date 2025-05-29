@@ -445,6 +445,26 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		client.Close()
 	}
+	if useACP99 {
+		managerOwnerAddress, err := evm.PrivateKeyToAddress(managerOwnerPrivateKey)
+		if err != nil {
+			return fmt.Errorf("could not generate manager owner address from manager owner private key: %w", err)
+		}
+		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+			c.RPC,
+			common.HexToAddress(managerAddress),
+			privateKey,
+			c.SubnetID,
+			managerOwnerAddress,
+			useACP99,
+		)
+		if err != nil {
+			if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+				return evm.TransactionError(tx, err, "failure initializing validator manager")
+			}
+			log.Info("the Validator Manager contract is already initialized, skipping initializing it")
+		}
+	}
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		c.RPC,
 		common.HexToAddress(managerAddress),

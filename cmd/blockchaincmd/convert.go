@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -355,19 +354,6 @@ func InitializeValidatorManager(
 				)
 				if err != nil {
 					return tracked, err
-				}
-				tx, _, err := validatormanagerSDK.PoAValidatorManagerInitialize(
-					rpcURL,
-					common.HexToAddress(managerAddress),
-					genesisPrivateKey,
-					subnetID,
-					ownerAddress,
-					useACP99,
-				)
-				if err != nil {
-					if !errors.Is(err, validatormanagerSDK.ErrAlreadyInitialized) {
-						return tracked, evm.TransactionError(tx, err, "failure initializing validator manager")
-					}
 				}
 				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 					rpcURL,
