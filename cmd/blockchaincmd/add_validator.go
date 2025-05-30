@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -28,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -99,7 +99,7 @@ Testnet or Mainnet.`,
 	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app, &addValidatorFlags.RPC)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
 		"balance",
@@ -119,7 +119,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 
 	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", true, func(set *pflag.FlagSet) {
-		set.StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
+		set.StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided in command argument)")
+		set.StringVar(&addValidatorFlags.RPC, "rpc", "", "blockchain rpc endpoint (only if blockchain name is not provided in command argument)")
 	})
 
 	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (Non-SOV) Flags", "show-non-sov-flags", false, func(set *pflag.FlagSet) {
@@ -157,6 +158,9 @@ Testnet or Mainnet.`,
 func preAddChecks(args []string) error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
+	}
+	if nodeEndpoint != "" && (nodeIDStr != "" || publicKey != "" || pop != "") {
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint used")
 	}
 	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
 		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
@@ -204,7 +208,14 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, ids.Empty, ux.Logger.PrintToUser)
+		blockchainID := ids.Empty
+		if blockchainIDStr != "" {
+			blockchainID, err = ids.FromString(blockchainIDStr)
+			if err != nil {
+				return err
+			}
+		}
+		sc, _, err = importBlockchain(network, addValidatorFlags.RPC, blockchainID, ux.Logger.PrintToUser)
 		if err != nil {
 			return err
 		}
@@ -218,7 +229,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
-	// TODO: will estimate fee in subsecuent PR
+	// TODO: will estimate fee in subsequent PR
 	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -238,20 +249,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if nodeEndpoint != "" {
 		nodeIDStr, publicKey, pop, err = utils.GetNodeID(nodeEndpoint)
+		fmt.Printf("obtained nodeIDStr %s \n", nodeIDStr)
 		if err != nil {
 			return err
-		}
-	}
-
-	if sovereign {
-		if !cmd.Flags().Changed(validatorWeightFlag) {
-			weight, err = app.Prompt.CaptureWeight(
-				"What weight would you like to assign to the validator?",
-				func(uint64) error { return nil },
-			)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -427,7 +427,7 @@ func CallAddValidator(
 			return err
 		}
 		if !ownerPrivateKeyFound {
-			return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
+			return fmt.Errorf("private key for validator manager owner %s is not found", validatorManagerOwner)
 		}
 	}
 
@@ -464,7 +464,7 @@ func CallAddValidator(
 		}
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), rpcURL)
 
 	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
@@ -473,6 +473,9 @@ func CallAddValidator(
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
 	if float64(weight) > allowedChange {
 		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	}
+	if float64(weight) <= 0 {
+		return fmt.Errorf("weight has to be greater than 0")
 	}
 
 	if balanceAVAX == 0 {
@@ -487,6 +490,9 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
+	}
+	if balanceAVAX <= 0 {
+		return fmt.Errorf("balance has to be greater than 0 AVAX")
 	}
 	// convert to nanoAVAX
 	balance := uint64(balanceAVAX * float64(units.Avax))

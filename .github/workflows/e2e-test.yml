@@ -41,6 +41,7 @@ jobs:
             "\\[Docker\\]",
             "\\[Blockchain Deploy\\]",
             "\\[Blockchain Convert\\]",
+            "\\[Blockchain Add Validator\\]",
           ]
         os: [ubuntu-24.04, macos-14]
         exclude:

@@ -357,7 +357,7 @@ func changeWeightACP99(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), changeWeightFlags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("L1 RPC Endpoint: %s"), changeWeightFlags.RPC)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)

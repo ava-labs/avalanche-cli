@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/addValidator"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/configure"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/convert"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/deploy"
