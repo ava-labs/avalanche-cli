@@ -159,6 +159,9 @@ func preAddChecks(args []string) error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
+	if nodeEndpoint != "" && (nodeIDStr != "" || publicKey != "" || pop != "") {
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint used")
+	}
 	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
 		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
 	}

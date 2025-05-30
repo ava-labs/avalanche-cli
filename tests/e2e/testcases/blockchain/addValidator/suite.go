@@ -74,7 +74,33 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		"remaining-balance-owner": "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
 		"disable-owner":           "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
 	}
+
 	ginkgo.It("HAPPY PATH: add validator default", func() {
+		ginkgo.It("HAPPY PATH: add validator using rpc flag (remote L1)", func() {
+			deployLocalMachineURI, err := localnet.GetLocalClusterURIs(utils.GetApp(), fmt.Sprintf("%s-local-node-local-network", subnetName))
+			fmt.Printf("deployLocalMachineURI %s \n", deployLocalMachineURI[0])
+			gomega.Expect(err).Should(gomega.BeNil())
+			sc, err := utils.GetSideCar(blockchainCmdArgs[0])
+			gomega.Expect(err).Should(gomega.BeNil())
+			testFlags := utils.TestFlags{
+				"blockchain-id":           sc.Networks["Local Network"].BlockchainID.String(),
+				"rpc":                     fmt.Sprintf("%s/ext/bc/%s/rpc ", deployLocalMachineURI[0], sc.Networks["Local Network"].BlockchainID.String()),
+				"node-id":                 nodeIDStr,
+				"bls-public-key":          publicKey,
+				"bls-proof-of-possession": pop,
+			}
+			_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", nil, globalFlags, testFlags)
+			if err != nil {
+				fmt.Printf("err %s \n", err.Error())
+			}
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			numValidators := len(sc.Networks["Local Network"].BootstrapValidators)
+			gomega.Expect(numValidators).Should(gomega.BeEquivalentTo(1))
+			gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].NodeID).ShouldNot(gomega.BeNil())
+			gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].BLSProofOfPossession).ShouldNot(gomega.BeNil())
+			gomega.Expect(sc.Networks["Local Network"].BootstrapValidators[0].BLSPublicKey).ShouldNot(gomega.BeNil())
+		})
 		fmt.Printf("HAPPYnodeIDStr %s \n", nodeIDStr)
 		fmt.Printf("HAPPYpublicKey %s \n", publicKey)
 		fmt.Printf("HAPPYpop %s \n", pop)
@@ -227,31 +253,37 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("private key for validator manager owner 0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf is not found"))
 	})
-
-	//ginkgo.It("ERROR PATH: add validator with both node endpoint and create local validator", func() {
-	//	testFlags := utils.TestFlags{
-	//		"validator-manager-owner": "0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf",
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("failure initializing validator registration: unauthorized owner (tx failed to be submitted)"))
-	//})
-	//ginkgo.It("ERROR PATH: add validator with node id, bls info provided and create local validator", func() {
-	//	testFlags := utils.TestFlags{
-	//		"validator-manager-owner": "0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf",
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("failure initializing validator registration: unauthorized owner (tx failed to be submitted)"))
-	//})
-	//ginkgo.It("ERROR PATH: add validator with node id, bls info provided and node endpoint", func() {
-	//	testFlags := utils.TestFlags{
-	//		"validator-manager-owner": "0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf",
-	//	}
-	//	output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
-	//	gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	gomega.Expect(output).Should(gomega.ContainSubstring("failure initializing validator registration: unauthorized owner (tx failed to be submitted)"))
-	//})
+	ginkgo.It("ERROR PATH: add validator with both node endpoint and create local validator", func() {
+		testFlags := utils.TestFlags{
+			"node-endpoint":          "http://127.0.0.1:63283",
+			"create-local-validator": true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set both --node-endpoint and --create-local-validator"))
+	})
+	ginkgo.It("ERROR PATH: add validator with node id, bls info provided and create local validator", func() {
+		testFlags := utils.TestFlags{
+			"node-id":                 nodeIDStr,
+			"bls-public-key":          publicKey,
+			"bls-proof-of-possession": pop,
+			"create-local-validator":  true,
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used"))
+	})
+	ginkgo.It("ERROR PATH: add validator with node id, bls info provided and node endpoint", func() {
+		testFlags := utils.TestFlags{
+			"node-id":                 nodeIDStr,
+			"bls-public-key":          publicKey,
+			"bls-proof-of-possession": pop,
+			"node-endpoint":           "http://127.0.0.1:63283",
+		}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint used"))
+	})
 	//ginkgo.It("ERROR PATH: add validator with sov flags to a non sov remote blockchain", func() {
 	//	testFlags := utils.TestFlags{
 	//		"avalanchego-version": "invalid_version",
