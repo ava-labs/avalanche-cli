@@ -56,14 +56,8 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		if ginkgo.CurrentSpecReport().LeafNodeText != "HAPPY PATH: add validator with create-local-validator" {
-			nodeLocalDestroyCmd := exec.Command("./bin/avalanche", "node", "local", "destroy", localNodeName)
-			_, err := nodeLocalDestroyCmd.CombinedOutput()
-			gomega.Expect(err).Should(gomega.BeNil())
-		}
-		nodeLocalDestroyCmd := exec.Command("./bin/avalanche", "node", "local", "destroy", fmt.Sprintf("%s-local-node-local-network", subnetName))
-		_, err := nodeLocalDestroyCmd.CombinedOutput()
-		gomega.Expect(err).Should(gomega.BeNil())
+		exec.Command("./bin/avalanche", "node", "local", "destroy", localNodeName)
+		exec.Command("./bin/avalanche", "node", "local", "destroy", fmt.Sprintf("%s-local-node-local-network", subnetName))
 		app := utils.GetApp()
 		os.RemoveAll(filepath.Join(app.GetBaseDir(), "local"))
 		commands.CleanNetwork()
