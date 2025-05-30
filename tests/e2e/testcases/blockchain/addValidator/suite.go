@@ -56,11 +56,13 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		nodeLocalDestroyCmd := exec.Command("./bin/avalanche", "node", "local", "destroy", localNodeName)
+		if ginkgo.CurrentSpecReport().LeafNodeText != "HAPPY PATH: add validator with create-local-validator" {
+			nodeLocalDestroyCmd := exec.Command("./bin/avalanche", "node", "local", "destroy", localNodeName)
+			_, err := nodeLocalDestroyCmd.CombinedOutput()
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+		nodeLocalDestroyCmd := exec.Command("./bin/avalanche", "node", "local", "destroy", fmt.Sprintf("%s-local-node-local-network", subnetName))
 		_, err := nodeLocalDestroyCmd.CombinedOutput()
-		gomega.Expect(err).Should(gomega.BeNil())
-		nodeLocalDestroyCmd = exec.Command("./bin/avalanche", "node", "local", "destroy", fmt.Sprintf("%s-local-node-local-network", subnetName))
-		_, err = nodeLocalDestroyCmd.CombinedOutput()
 		gomega.Expect(err).Should(gomega.BeNil())
 		app := utils.GetApp()
 		os.RemoveAll(filepath.Join(app.GetBaseDir(), "local"))
@@ -231,6 +233,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("private key for validator manager owner 0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf is not found"))
 	})
+
 	//ginkgo.It("ERROR PATH: add validator with both node endpoint and create local validator", func() {
 	//	testFlags := utils.TestFlags{
 	//		"validator-manager-owner": "0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf",
