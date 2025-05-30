@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		testFlags := utils.TestFlags{
 			"blockchain-id":           sc.Networks["Local Network"].BlockchainID.String(),
-			"rpc":                     fmt.Sprintf("%s/ext/bc/%s/rpc ", deployLocalMachineURI[0], sc.Networks["Local Network"].BlockchainID.String()),
+			"rpc":                     fmt.Sprintf("%s/ext/bc/%s/rpc", deployLocalMachineURI[0], sc.Networks["Local Network"].BlockchainID.String()),
 			"node-id":                 nodeIDStr,
 			"bls-public-key":          publicKey,
 			"bls-proof-of-possession": pop,
