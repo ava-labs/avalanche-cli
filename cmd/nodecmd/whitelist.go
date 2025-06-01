@@ -17,10 +17,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/pingcap/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -87,7 +89,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 	}
 	if userIPAddress == "" && userPubKey == "" {
 		// prompt for ssh key
-		userPubKey, err = utils.ReadLongString("Enter SSH public key to whitelist (leave empty to skip):\n")
+		userPubKey, err = prompts.PromptLongString("Enter SSH public key to whitelist (leave empty to skip):\n")
 		if err != nil {
 			return err
 		}

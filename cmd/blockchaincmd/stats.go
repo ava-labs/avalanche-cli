@@ -3,10 +3,10 @@
 package blockchaincmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -70,7 +70,8 @@ func stats(_ *cobra.Command, args []string) error {
 		return errors.New("failed to create a client to an API endpoint")
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	rows, err := buildCurrentValidatorStats(pClient, infoClient, table, subnetID)
 	if err != nil {
 		return err
@@ -79,6 +80,7 @@ func stats(_ *cobra.Command, args []string) error {
 		table.Append(row)
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 
 	return nil
 }

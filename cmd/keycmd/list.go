@@ -3,9 +3,9 @@
 package keycmd
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -620,7 +620,8 @@ func getEvmBasedChainAddrInfo(
 
 func printAddrInfos(addrInfos []addressInfo) {
 	header := []string{"Kind", "Name", "Subnet", "Address", "Token", "Balance", "Network"}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
@@ -636,6 +637,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 		})
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 }
 
 func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {

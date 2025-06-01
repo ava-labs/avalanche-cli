@@ -4,12 +4,13 @@
 package vm
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -25,17 +26,19 @@ type AllowList struct {
 }
 
 func preview(allowList AllowList) {
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	addRoleToPreviewTable(table, "Admins", allowList.AdminAddresses)
 	addRoleToPreviewTable(table, "Manager", allowList.ManagerAddresses)
 	addRoleToPreviewTable(table, "Enabled", allowList.EnabledAddresses)
 	table.Render()
-	fmt.Println()
+	ux.Logger.Print(tableBuf.String())
+	ux.Logger.PrintToUser("")
 	if len(allowList.AdminAddresses) == 0 && len(allowList.ManagerAddresses) == 0 && len(allowList.EnabledAddresses) == 0 {
-		fmt.Println(logging.Red.Wrap("Caution: Allow lists are empty. You will not be able to easily change the precompile settings in the future."))
-		fmt.Println()
+		ux.Logger.PrintToUser(logging.Red.Wrap("Caution: Allow lists are empty. You will not be able to easily change the precompile settings in the future."))
+		ux.Logger.PrintToUser("")
 	}
 }
 
@@ -60,11 +63,11 @@ func getNewAddresses(
 	for _, address := range addresses {
 		switch {
 		case sdkutils.Belongs(allowList.AdminAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as admin role")
+			ux.Logger.PrintToUser(address.Hex() + " is already allowed as admin role")
 		case sdkutils.Belongs(allowList.ManagerAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as manager role")
+			ux.Logger.PrintToUser(address.Hex() + " is already allowed as manager role")
 		case sdkutils.Belongs(allowList.EnabledAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as enabled role")
+			ux.Logger.PrintToUser(address.Hex() + " is already allowed as enabled role")
 		default:
 			newAddresses = append(newAddresses, address)
 		}
@@ -78,8 +81,8 @@ func removeAddress(
 	kind string,
 ) ([]common.Address, bool, error) {
 	if len(addresses) == 0 {
-		fmt.Printf("There are no %s addresses to remove from\n", kind)
-		fmt.Println()
+		ux.Logger.PrintToUser("There are no %s addresses to remove from\n", kind)
+		ux.Logger.PrintToUser("")
 		return addresses, true, nil
 	}
 	cancelOption := "Cancel"
@@ -123,8 +126,8 @@ func GenerateAllowList(
 	explainOption := "Explain the difference"
 
 	if len(allowList.AdminAddresses) != 0 || len(allowList.ManagerAddresses) != 0 || len(allowList.EnabledAddresses) != 0 {
-		fmt.Println()
-		fmt.Printf(logging.Bold.Wrap("Addresses automatically allowed to %s\n"), action)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Bold.Wrap("Addresses automatically allowed to %s"), action)
 		preview(allowList)
 	}
 
@@ -169,8 +172,8 @@ func GenerateAllowList(
 					}
 					allowList.EnabledAddresses = append(allowList.EnabledAddresses, addresses...)
 				case explainOption:
-					fmt.Println("Enabled addresses can perform the permissioned behavior (issuing transactions, deploying contracts,\netc.), but cannot modify other roles.\nManager addresses can perform the permissioned behavior and can change enabled/disable addresses.\nAdmin addresses can perform the permissioned behavior, but can also add/remove other Admins, Managers\nand Enabled addresses.")
-					fmt.Println()
+					ux.Logger.PrintToUser("Enabled addresses can perform the permissioned behavior (issuing transactions, deploying contracts,\netc.), but cannot modify other roles.\nManager addresses can perform the permissioned behavior and can change enabled/disable addresses.\nAdmin addresses can perform the permissioned behavior, but can also add/remove other Admins, Managers\nand Enabled addresses.")
+					ux.Logger.PrintToUser("")
 					continue
 				case cancelOption:
 				}

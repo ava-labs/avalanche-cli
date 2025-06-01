@@ -3,8 +3,8 @@
 package nodecmd
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -263,7 +263,8 @@ func printOutput(
 	if blockchainName != "" {
 		header = append(header, "Subnet "+blockchainName)
 	}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	for i, cloudID := range cloudIDs {
@@ -310,6 +311,7 @@ func printOutput(
 		table.Append(row)
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 }
 
 func removeColors(s string) string {

@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,7 +15,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +58,8 @@ func listBlockchains(cmd *cobra.Command, args []string) error {
 		return listDeployInfo(cmd, args)
 	}
 	header := []string{"subnet", "chain", "chainID", "vmID", "type", "vm version", "from repo"}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -103,6 +107,7 @@ func listBlockchains(cmd *cobra.Command, args []string) error {
 		table.Append(row)
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 	return nil
 }
 
@@ -140,7 +145,8 @@ func getSidecars(app *application.Avalanche) ([]*models.Sidecar, error) {
 
 func listDeployInfo(*cobra.Command, []string) error {
 	header := []string{"subnet", "chain", "vm ID", "Local Network", "Fuji (testnet)", "Mainnet"}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3, 4})
 	table.SetAutoMergeCells(true)
@@ -228,6 +234,7 @@ func listDeployInfo(*cobra.Command, []string) error {
 		table.Append(row)
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 
 	return nil
 }
