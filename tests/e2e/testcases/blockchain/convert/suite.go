@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -44,14 +45,14 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"skip-update-check": true,
 			"genesis":           utils.SubnetEvmGenesisPoaPath,
 		}
-		_, err := utils.TestCommand(utils.BlockchainCmd, "create", blockchainCmdArgs, nil, testFlags)
+		_, err := utils.TestCommand(cmd.BlockchainCmd, "create", blockchainCmdArgs, nil, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		globalFlags := utils.GlobalFlags{
 			"local":             true,
 			"skip-update-check": true,
 		}
-		_, err = utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
+		_, err = utils.TestCommand(cmd.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -71,7 +72,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 	}
 	ginkgo.It("HAPPY PATH: local convert default", func() {
 		testFlags := utils.TestFlags{}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		// verify that we have a local machine created that is now a bootstrap validator
@@ -88,7 +89,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"avalanchego-path": avalanchegoPath,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("AvalancheGo path: %s", avalanchegoPath)))
 		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -102,7 +103,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"convert-only": true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// verify that we have a local machine created that is now a bootstrap validator
@@ -116,7 +117,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"generate-node-id":         true,
 			"num-bootstrap-validators": 1,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		checkConvertOnlyOutput(output, true)
 		gomega.Expect(err).Should(gomega.BeNil())
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
@@ -132,7 +133,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"balance": 0.2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
 		gomega.Expect(err).Should(gomega.BeNil())
 
@@ -143,7 +144,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"local":         true,
 			"validation-id": sc.Networks["Local Network"].BootstrapValidators[0].ValidationID,
 		}
-		output, err = utils.TestCommand(utils.ValidatorCmd, "getBalance", nil, nil, testFlags)
+		output, err = utils.TestCommand(cmd.ValidatorCmd, "getBalance", nil, nil, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.20000 AVAX"))
 	})
@@ -152,7 +153,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 
@@ -164,7 +165,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 				"local":         true,
 				"validation-id": sc.Networks["Local Network"].BootstrapValidators[i].ValidationID,
 			}
-			output, err = utils.TestCommand(utils.ValidatorCmd, "getBalance", nil, nil, testFlags)
+			output, err = utils.TestCommand(cmd.ValidatorCmd, "getBalance", nil, nil, testFlags)
 			gomega.Expect(err).Should(gomega.BeNil())
 			if i == 0 {
 				sc.Networks["Local Network"].BootstrapValidators[i].NodeID = "NodeID-144PM69m93kSFyfTHMwULTmoGZSWzQ4C1"
@@ -190,7 +191,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"change-owner-address": "P-custom1y5ku603lh583xs9v50p8kk0awcqzgeq0mezkqr",
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -199,7 +200,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"num-bootstrap-validators": 2,
 		}
-		_, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		_, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
@@ -216,7 +217,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"avalanchego-version": "invalid_version",
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
 	})
@@ -226,7 +227,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"avalanchego-path": avalancheGoPath,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring(fmt.Sprintf("avalancheGo binary %s does not exist", avalancheGoPath)))
 	})
@@ -235,7 +236,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"balance": 0,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap validator balance must be greater than 0 AVAX"))
 	})
@@ -244,7 +245,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"balance": -1.0,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("bootstrap validator balance must be greater than 0 AVAX"))
 	})
@@ -254,7 +255,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"bootstrap-filepath": fileName,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("file path \"%s\" doesn't exist", fileName))
 	})
@@ -263,7 +264,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"change-owner-address": ewoqEVMAddress,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("failure parsing change owner address: no separator found in address"))
 	})
@@ -273,7 +274,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"generate-node-id": true,
 			"convert-only":     false,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --generate-node-id=true"))
 	})
@@ -282,7 +283,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"generate-node-id":  true,
 			"use-local-machine": true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --generate-node-id=true"))
 	})
@@ -292,7 +293,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath,
 			"convert-only":       false,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-filepath is not empty"))
 	})
@@ -301,7 +302,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath,
 			"use-local-machine":  true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --bootstrap-filepath is not empty"))
 	})
@@ -310,7 +311,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-endpoints": "127.0.0.1:9650",
 			"convert-only":        false,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --convert-only=false if --bootstrap-endpoints is not empty"))
 	})
@@ -319,7 +320,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-endpoints": "127.0.0.1:9650",
 			"use-local-machine":   true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use local machine as bootstrap validator if --bootstrap-endpoints is not empty"))
 	})
@@ -328,7 +329,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 			"generate-node-id":   true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use --generate-node-id=true and a non-empty --bootstrap-filepath at the same time"))
 	})
@@ -337,7 +338,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath":       utils.BootstrapValidatorPath2,
 			"num-bootstrap-validators": 2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-filepath at the same time"))
 	})
@@ -346,7 +347,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath": utils.BootstrapValidatorPath2,
 			"balance":            0.2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --balance and a non-empty --bootstrap-filepath at the same time"))
 	})
@@ -355,7 +356,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-filepath":  utils.BootstrapValidatorPath2,
 			"bootstrap-endpoints": "127.0.0.1:9650",
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --bootstrap-endpoints and a non-empty --bootstrap-filepath at the same time"))
 	})
@@ -364,7 +365,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-endpoints": utils.BootstrapValidatorPath2,
 			"generate-node-id":    true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use --generate-node-id=true and a non-empty --bootstrap-endpoints at the same time"))
 	})
@@ -373,7 +374,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"bootstrap-endpoints":      utils.BootstrapValidatorPath2,
 			"num-bootstrap-validators": 2,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot use a non-empty --num-bootstrap-validators and a non-empty --bootstrap-endpoints at the same time"))
 	})
