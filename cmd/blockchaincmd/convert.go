@@ -8,13 +8,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -30,7 +29,7 @@ import (
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -259,7 +258,7 @@ func InitializeValidatorManager(
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
 	pos bool,
-	validatorManagerAddrStr string,
+	managerAddress string,
 	proxyContractOwner string,
 	useACP99 bool,
 	useLocalMachine bool,
@@ -328,8 +327,10 @@ func InitializeValidatorManager(
 		return tracked, err
 	}
 
+	ownerAddress := common.HexToAddress(validatorManagerOwner)
+
 	if pos {
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)
+		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
 		if err != nil {
 			return tracked, err
 		}
@@ -345,12 +346,31 @@ func InitializeValidatorManager(
 			if err != nil {
 				return tracked, err
 			}
-			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				rpcURL,
-				genesisPrivateKey,
-				proxyOwnerPrivateKey,
-			); err != nil {
-				return tracked, err
+			if useACP99 {
+				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				)
+				if err != nil {
+					return tracked, err
+				}
+				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				)
+				if err != nil {
+					return tracked, err
+				}
+			} else {
+				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					rpcURL,
+					genesisPrivateKey,
+					proxyOwnerPrivateKey,
+				); err != nil {
+					return tracked, err
+				}
 			}
 		}
 	}
@@ -360,7 +380,6 @@ func InitializeValidatorManager(
 		return tracked, err
 	}
 
-	ownerAddress := common.HexToAddress(validatorManagerOwner)
 	subnetSDK := blockchainSDK.Subnet{
 		SubnetID:            subnetID,
 		BlockchainID:        blockchainID,
@@ -380,6 +399,18 @@ func InitializeValidatorManager(
 	defer aggregatorCancel()
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
+			app,
+			network,
+			ownerAddress,
+			true,
+		)
+		if err != nil {
+			return tracked, err
+		}
+		if !found {
+			return tracked, fmt.Errorf("could not find validator manager owner private key")
+		}
 		if err := subnetSDK.InitializeProofOfStake(
 			aggregatorCtx,
 			app.Log,
@@ -387,17 +418,20 @@ func InitializeValidatorManager(
 			genesisPrivateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			validatorManagerSDK.PoSParams{
+			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
 				MaximumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MaximumStakeAmount)),
 				MinimumStakeDuration:    proofOfStakeFlags.MinimumStakeDuration,
 				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
 				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
 				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
-				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
+				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			validatorManagerAddrStr,
+			managerAddress,
+			validatormanagerSDK.SpecializationProxyContractAddress,
+			managerOwnerPrivateKey,
+			useACP99,
 		); err != nil {
 			return tracked, err
 		}
@@ -411,7 +445,7 @@ func InitializeValidatorManager(
 			genesisPrivateKey,
 			extraAggregatorPeers,
 			aggregatorLogger,
-			validatorManagerAddrStr,
+			managerAddress,
 			useACP99,
 		); err != nil {
 			return tracked, err
@@ -730,6 +764,18 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			convertFlags.ProofOfStakeFlags,
 		); err != nil {
 			return err
+		}
+		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			sidecar, err := app.LoadSidecar(chain)
+			if err != nil {
+				return err
+			}
+			networkInfo := sidecar.Networks[network.Name()]
+			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
+			sidecar.Networks[network.Name()] = networkInfo
+			if err := app.UpdateSidecar(&sidecar); err != nil {
+				return err
+			}
 		}
 	} else {
 		printSuccessfulConvertOnlyOutput(blockchainName, subnetID.String(), convertFlags.BootstrapValidatorFlags.GenerateNodeID)
