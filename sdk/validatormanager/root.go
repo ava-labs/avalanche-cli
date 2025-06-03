@@ -315,13 +315,6 @@ func GetPChainSubnetToL1ConversionUnsignedMessage(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("subnetConversionUnsignedMessage %s \n", subnetConversionUnsignedMessage)
-	fmt.Printf("subnetID %s \n", subnetID.String())
-	fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
-	fmt.Printf("aggregatorExtraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
-
-	fmt.Printf("network endpoint %s \n", network.Endpoint)
-	fmt.Printf("extraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
 
 	binPath, err := signatureaggregator.InstallSignatureAggregator(signatureAggregatorBinDir, "latest")
 	if err != nil {
@@ -329,24 +322,7 @@ func GetPChainSubnetToL1ConversionUnsignedMessage(
 	}
 	fmt.Printf("binPath %s \n", binPath)
 
-	fmt.Printf("msg %s \n", subnetConversionUnsignedMessage)
-	fmt.Printf("msg id %s \n", subnetConversionUnsignedMessage.ID())
-	fmt.Printf("msg id string %s \n", subnetConversionUnsignedMessage.ID().String())
 	return subnetConversionUnsignedMessage, nil
-	//signatureAggregator, err := interchain.NewSignatureAggregator(
-	//	ctx,
-	//	network,
-	//	aggregatorLogger,
-	//	subnetID,
-	//	aggregatorQuorumPercentage,
-	//	aggregatorExtraPeerEndpoints,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//fmt.Printf("subnetConversionUnsignedMessage 2 %s \n", subnetConversionUnsignedMessage)
-	//fmt.Printf("subnetID[:] 2 %s \n", subnetID[:])
-	//return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
 // InitializeValidatorsSet calls poa manager validators set init method,

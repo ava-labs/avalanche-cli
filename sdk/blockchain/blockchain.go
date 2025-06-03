@@ -402,21 +402,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 		log.Info("the PoA contract is already initialized, skipping initializing Proof of Authority contract")
 	}
 
-	//subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
-	//	ctx,
-	//	network,
-	//	aggregatorLogger,
-	//	0,
-	//	aggregatorExtraPeerEndpoints,
-	//	c.SubnetID,
-	//	c.BlockchainID,
-	//	managerAddress,
-	//	c.BootstrapValidators,
-	//	signatureAggregatorBinDir,
-	//)
-	//fmt.Printf("subnetConversionSignedMessage %s \n", subnetConversionSignedMessage)
-
-	//subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
 		network,
 		0,
