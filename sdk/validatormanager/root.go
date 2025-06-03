@@ -6,6 +6,9 @@ package validatormanager
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -14,8 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
-	"math/big"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
@@ -270,8 +271,6 @@ func GetPChainSubnetToL1ConversionMessage(
 
 func GetPChainSubnetToL1ConversionUnsignedMessage(
 	network network.Network,
-	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,

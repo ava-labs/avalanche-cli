@@ -296,7 +296,6 @@ func AddRewardCalculatorV2_0_0ToAllocations(
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func SetupPoA(
-	ctx context.Context,
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
@@ -307,7 +306,6 @@ func SetupPoA(
 	v2_0_0 bool,
 ) error {
 	return subnet.InitializeProofOfAuthority(
-		ctx,
 		log,
 		network.SDKNetwork(),
 		privateKey,

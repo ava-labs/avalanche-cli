@@ -4,15 +4,16 @@ package signatureaggregator
 
 import (
 	"fmt"
+	"path/filepath"
+	"runtime"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"path/filepath"
-	"runtime"
-	"strings"
 )
 
 func NewSignatureAggregatorLogger(

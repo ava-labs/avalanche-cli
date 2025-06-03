@@ -439,7 +439,6 @@ func InitializeValidatorManager(
 	} else {
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
-			aggregatorCtx,
 			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,

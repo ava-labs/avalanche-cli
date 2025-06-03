@@ -404,8 +404,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
 		network,
-		0,
-		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
 		managerAddress,
@@ -417,10 +415,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	// Create config file for signature aggregator
-	config, err := createSignatureAggregatorConfig(c.SubnetID.String(), network.Endpoint, aggregatorExtraPeerEndpoints)
-	if err != nil {
-		return fmt.Errorf("failed to create signature aggregator config: %w", err)
-	}
+	config := createSignatureAggregatorConfig(c.SubnetID.String(), network.Endpoint, aggregatorExtraPeerEndpoints)
 
 	configPath := filepath.Join(signatureAggregatorBinDir, "config.json")
 	if err := writeSignatureAggregatorConfig(config, configPath); err != nil {
@@ -475,8 +470,8 @@ func startSignatureAggregator(binPath string, configPath string, logFile string,
 	killExistingProcess := func() error {
 		// Try pkill first
 		cmd := exec.Command("pkill", "-f", "signature-aggregator")
-		if err := cmd.Run(); err == nil {
-			return nil
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to kill existing signature-aggregator process: %w", err)
 		}
 		return nil
 	}
@@ -517,7 +512,11 @@ func startSignatureAggregator(binPath string, configPath string, logFile string,
 		cmd.Stderr = logWriter
 
 		if err := cmd.Start(); err != nil {
-			logWriter.Close()
+			if closeErr := logWriter.Close(); closeErr != nil {
+				logger.Warn("Failed to close log writer",
+					zap.Error(closeErr),
+				)
+			}
 			if i == maxRetries-1 {
 				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
 			}
@@ -690,7 +689,7 @@ type PeerConfig struct {
 	IP string `json:"ip"`
 }
 
-func createSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer) (*SignatureAggregatorConfig, error) {
+func createSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer) *SignatureAggregatorConfig {
 	config := &SignatureAggregatorConfig{
 		LogLevel:             "debug",
 		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
@@ -713,7 +712,7 @@ func createSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 		})
 	}
 
-	return config, nil
+	return config
 }
 
 func writeSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
@@ -722,7 +721,7 @@ func writeSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, configBytes, 0600); err != nil {
+	if err := os.WriteFile(configPath, configBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -769,7 +768,13 @@ func SignMessage(message, justification, signingSubnetID string, quorumPercentag
 		)
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			logger.Warn("Failed to close response body",
+				zap.Error(closeErr),
+			)
+		}
+	}()
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
