@@ -289,9 +289,7 @@ func GetPChainSubnetToL1ConversionMessage(
 }
 
 func GetPChainSubnetToL1ConversionUnsignedMessage(
-	ctx context.Context,
 	network network.Network,
-	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,

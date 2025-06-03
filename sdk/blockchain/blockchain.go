@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -419,9 +418,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 	//subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
-		ctx,
 		network,
-		aggregatorLogger,
 		0,
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
@@ -445,28 +442,18 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 
-	logPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator.log")
 	binPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator-v0.4.3", "signature-aggregator")
-	if _, err := startSignatureAggregator(binPath, configPath, logPath); err != nil {
+	if _, err := startSignatureAggregator(binPath, configPath, aggregatorLogger); err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
-	//unsignedMessage, err := warp.NewUnsignedMessage(1337, sourceChainID, payloadBytes)
-	//if err != nil {
-	//	fmt.Printf("Error creating unsigned message: %v\n", err)
-	//	return
-	//}
-	fmt.Printf("c.SubnetID %s \n", c.SubnetID)
 
-	// Convert to hex
 	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
-	fmt.Printf("messageHexStr %s \n", messageHexStr)
-	signedMessage, err := CallSignatureAggregator(messageHexStr, chainIDHexStr, c.SubnetID.String(), constants.DefaultQuorumPercentage, logPath)
+
+	signedMessage, err := SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), constants.DefaultQuorumPercentage, aggregatorLogger)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
-	fmt.Printf("signed message: %s\n", signedMessage)
-	fmt.Printf("Got signed message: %s\n", signedMessage.ID())
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		managerAddress,
@@ -483,7 +470,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	return nil
 }
 
-func startSignatureAggregator(binPath string, configPath string, logFile string) (int, error) {
+func startSignatureAggregator(binPath string, configPath string, logger logging.Logger) (int, error) {
 	// Function to check if port is in use
 	isPortInUse := func() bool {
 		conn, err := net.Dial("tcp", "localhost:8080")
@@ -508,31 +495,29 @@ func startSignatureAggregator(binPath string, configPath string, logFile string)
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
 		if isPortInUse() {
-			fmt.Printf("Port 8080 is in use, attempt %d/%d to kill existing process...\n", i+1, maxRetries)
+			logger.Info("Port 8080 is in use, attempting to kill existing process",
+				zap.Int("attempt", i+1),
+				zap.Int("max_attempts", maxRetries),
+			)
 			if err := killExistingProcess(); err != nil {
-				fmt.Printf("Warning: Failed to kill existing process: %v\n", err)
+				logger.Warn("Failed to kill existing process",
+					zap.Error(err),
+				)
 			}
 			// Wait for port to be released
 			time.Sleep(2 * time.Second)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
-			return 0, err
-		}
-
-		logWriter, err := os.Create(logFile)
-		if err != nil {
-			return 0, err
-		}
-
-		fmt.Printf("Starting Signature Aggregator (attempt %d/%d)\n", i+1, maxRetries)
+		logger.Info("Starting Signature Aggregator",
+			zap.Int("attempt", i+1),
+			zap.Int("max_attempts", maxRetries),
+		)
 
 		cmd := exec.Command(binPath, "--config-file", configPath)
-		cmd.Stdout = logWriter
-		cmd.Stderr = logWriter
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
 		if err := cmd.Start(); err != nil {
-			logWriter.Close()
 			if i == maxRetries-1 {
 				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
 			}
@@ -566,7 +551,9 @@ func startSignatureAggregator(binPath string, configPath string, logFile string)
 			continue
 		}
 
-		fmt.Printf("Signature Aggregator started successfully on attempt %d\n", i+1)
+		logger.Info("Signature Aggregator started successfully",
+			zap.Int("attempt", i+1),
+		)
 		return cmd.Process.Pid, nil
 	}
 
@@ -751,7 +738,7 @@ type AggregateSignaturesRequest struct {
 	QuorumPercentageBuffer int    `json:"quorum-percentage-buffer,omitempty"`
 }
 
-func CallSignatureAggregator(message, justification, signingSubnetID string, quorumPercentage int, logPath string) (*warp.Message, error) {
+func SignMessage(message, justification, signingSubnetID string, quorumPercentage int, logger logging.Logger) (*warp.Message, error) {
 	request := AggregateSignaturesRequest{
 		Message:          message,
 		Justification:    justification,
@@ -764,22 +751,13 @@ func CallSignatureAggregator(message, justification, signingSubnetID string, quo
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	fmt.Printf("Calling signature aggregator with command:\ncurl -X POST http://localhost:8080/aggregate-signatures -H \"Content-Type: application/json\" -d '%s' --max-time 30\n", string(requestBody))
+	logger.Info("Calling signature aggregator",
+		zap.String("request", string(requestBody)),
+	)
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-
-	// Open log file for appending
-	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log file: %w", err)
-	}
-	defer logFile.Close()
-
-	// Write request details to log
-	logFile.WriteString(fmt.Sprintf("\n[%s] Making request to signature aggregator:\n", time.Now().Format(time.RFC3339)))
-	logFile.WriteString(fmt.Sprintf("Request body: %s\n", string(requestBody)))
 
 	resp, err := client.Post(
 		"http://localhost:8080/aggregate-signatures",
@@ -787,7 +765,9 @@ func CallSignatureAggregator(message, justification, signingSubnetID string, quo
 		bytes.NewBuffer(requestBody),
 	)
 	if err != nil {
-		logFile.WriteString(fmt.Sprintf("Error making request: %v\n", err))
+		logger.Error("Error making request to signature aggregator",
+			zap.Error(err),
+		)
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
@@ -795,13 +775,16 @@ func CallSignatureAggregator(message, justification, signingSubnetID string, quo
 	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logFile.WriteString(fmt.Sprintf("Error reading response body: %v\n", err))
+		logger.Error("Error reading response body",
+			zap.Error(err),
+		)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// Write response to log
-	logFile.WriteString(fmt.Sprintf("Response status: %d\n", resp.StatusCode))
-	logFile.WriteString(fmt.Sprintf("Response body: %s\n", string(body)))
+	logger.Info("Received response from signature aggregator",
+		zap.Int("status_code", resp.StatusCode),
+		zap.String("response", string(body)),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("signature aggregator returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))

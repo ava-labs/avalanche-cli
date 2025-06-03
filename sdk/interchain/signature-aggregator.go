@@ -64,8 +64,6 @@ func createAppRequestNetwork(
 		AllowPrivateIPs:  true,
 		TrackedSubnetIDs: trackedSubnetIDs,
 	}
-	fmt.Printf("network config %s \n", networkConfig)
-	fmt.Printf("extraPeerEndpoints %s \n", extraPeerEndpoints)
 	if err := networkConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate peer network config: %w", err)
 	}
