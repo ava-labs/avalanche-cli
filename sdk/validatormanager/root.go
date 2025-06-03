@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/api/info"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -215,7 +216,6 @@ func GetPChainSubnetToL1ConversionMessage(
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
-	signatureAggregatorBinDir string,
 ) (*warp.Message, error) {
 	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
@@ -254,38 +254,18 @@ func GetPChainSubnetToL1ConversionMessage(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("subnetConversionUnsignedMessage %s \n", subnetConversionUnsignedMessage)
-	fmt.Printf("subnetID %s \n", subnetID.String())
-	fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
-	fmt.Printf("aggregatorExtraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
-
-	fmt.Printf("network endpoint %s \n", network.Endpoint)
-	fmt.Printf("extraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
-
-	binPath, err := signatureaggregator.InstallSignatureAggregator(signatureAggregatorBinDir, "latest")
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
+		network,
+		aggregatorLogger,
+		subnetID,
+		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
+	)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("binPath %s \n", binPath)
-
-	fmt.Printf("msg %s \n", subnetConversionUnsignedMessage)
-	fmt.Printf("msg id %s \n", subnetConversionUnsignedMessage.ID())
-	fmt.Printf("msg id string %s \n", subnetConversionUnsignedMessage.ID().String())
-	return nil, nil
-	//signatureAggregator, err := interchain.NewSignatureAggregator(
-	//	ctx,
-	//	network,
-	//	aggregatorLogger,
-	//	subnetID,
-	//	aggregatorQuorumPercentage,
-	//	aggregatorExtraPeerEndpoints,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//fmt.Printf("subnetConversionUnsignedMessage 2 %s \n", subnetConversionUnsignedMessage)
-	//fmt.Printf("subnetID[:] 2 %s \n", subnetID[:])
-	//return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
 func GetPChainSubnetToL1ConversionUnsignedMessage(

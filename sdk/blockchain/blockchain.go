@@ -442,8 +442,9 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 
+	logPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator.log")
 	binPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator-v0.4.3", "signature-aggregator")
-	if _, err := startSignatureAggregator(binPath, configPath, aggregatorLogger); err != nil {
+	if _, err := startSignatureAggregator(binPath, configPath, logPath, aggregatorLogger); err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
 
@@ -470,12 +471,16 @@ func (c *Subnet) InitializeProofOfAuthority(
 	return nil
 }
 
-func startSignatureAggregator(binPath string, configPath string, logger logging.Logger) (int, error) {
+func startSignatureAggregator(binPath string, configPath string, logFile string, logger logging.Logger) (int, error) {
 	// Function to check if port is in use
 	isPortInUse := func() bool {
 		conn, err := net.Dial("tcp", "localhost:8080")
 		if err == nil {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				logger.Warn("Failed to close connection while checking port",
+					zap.Error(err),
+				)
+			}
 			return true
 		}
 		return false
@@ -508,16 +513,26 @@ func startSignatureAggregator(binPath string, configPath string, logger logging.
 			time.Sleep(2 * time.Second)
 		}
 
+		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+			return 0, err
+		}
+
+		logWriter, err := os.Create(logFile)
+		if err != nil {
+			return 0, err
+		}
+
 		logger.Info("Starting Signature Aggregator",
 			zap.Int("attempt", i+1),
 			zap.Int("max_attempts", maxRetries),
 		)
 
 		cmd := exec.Command(binPath, "--config-file", configPath)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = logWriter
+		cmd.Stderr = logWriter
 
 		if err := cmd.Start(); err != nil {
+			logWriter.Close()
 			if i == maxRetries-1 {
 				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
 			}
@@ -652,7 +667,6 @@ func (c *Subnet) InitializeProofOfStake(
 		c.BlockchainID,
 		common.HexToAddress(managerAddress),
 		c.BootstrapValidators,
-		"",
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
@@ -723,7 +737,7 @@ func writeSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(configPath, configBytes, 0644); err != nil {
+	if err := os.WriteFile(configPath, configBytes, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
