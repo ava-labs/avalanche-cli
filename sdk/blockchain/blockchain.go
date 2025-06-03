@@ -576,7 +576,9 @@ func waitForAggregatorReady(url string, timeout time.Duration) error {
 			}
 			if err == nil && resp.StatusCode == http.StatusBadRequest {
 				// A 400 means the service is up but received a malformed request
-				resp.Body.Close()
+				if closeErr := resp.Body.Close(); closeErr != nil {
+					fmt.Printf("Failed to close response body: %v\n", closeErr)
+				}
 				return nil
 			}
 		}

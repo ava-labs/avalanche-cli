@@ -114,9 +114,6 @@ func initSignatureAggregator(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
 	}
-	fmt.Printf("sa.quorumPercentage %s \n", sa.quorumPercentage)
-	fmt.Printf("sa %s \n", sa)
-	fmt.Printf("DefaultSignatureCacheSize %s \n", DefaultSignatureCacheSize)
 
 	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
