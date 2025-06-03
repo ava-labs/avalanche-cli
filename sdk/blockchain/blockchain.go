@@ -348,7 +348,6 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
-	ctx context.Context,
 	log logging.Logger,
 	network network.Network,
 	privateKey string,
