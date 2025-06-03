@@ -12,15 +12,14 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -414,16 +413,15 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	// Create config file for signature aggregator
-	config := createSignatureAggregatorConfig(c.SubnetID.String(), network.Endpoint, aggregatorExtraPeerEndpoints)
+	config := interchain.CreateSignatureAggregatorConfig(c.SubnetID.String(), network.Endpoint, aggregatorExtraPeerEndpoints)
 
 	configPath := filepath.Join(signatureAggregatorBinDir, "config.json")
-	if err := writeSignatureAggregatorConfig(config, configPath); err != nil {
+	if err := interchain.WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 
-	logPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator.log")
 	binPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator-v0.4.3", "signature-aggregator")
-	if _, err := startSignatureAggregator(binPath, configPath, logPath, aggregatorLogger); err != nil {
+	if _, err := interchain.StartSignatureAggregator(binPath, configPath, aggregatorLogger); err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
 
@@ -448,141 +446,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	return nil
-}
-
-func startSignatureAggregator(binPath string, configPath string, logFile string, logger logging.Logger) (int, error) {
-	// Function to check if port is in use
-	isPortInUse := func() bool {
-		conn, err := net.Dial("tcp", "localhost:8080")
-		if err == nil {
-			if err := conn.Close(); err != nil {
-				logger.Warn("Failed to close connection while checking port",
-					zap.Error(err),
-				)
-			}
-			return true
-		}
-		return false
-	}
-
-	// Function to kill existing process
-	killExistingProcess := func() error {
-		// Try pkill first
-		cmd := exec.Command("pkill", "-f", "signature-aggregator")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to kill existing signature-aggregator process: %w", err)
-		}
-		return nil
-	}
-
-	// Try to start the aggregator with retries
-	maxRetries := 3
-	for i := 0; i < maxRetries; i++ {
-		if isPortInUse() {
-			logger.Info("Port 8080 is in use, attempting to kill existing process",
-				zap.Int("attempt", i+1),
-				zap.Int("max_attempts", maxRetries),
-			)
-			if err := killExistingProcess(); err != nil {
-				logger.Warn("Failed to kill existing process",
-					zap.Error(err),
-				)
-			}
-			// Wait for port to be released
-			time.Sleep(2 * time.Second)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
-			return 0, err
-		}
-
-		logWriter, err := os.Create(logFile)
-		if err != nil {
-			return 0, err
-		}
-
-		logger.Info("Starting Signature Aggregator",
-			zap.Int("attempt", i+1),
-			zap.Int("max_attempts", maxRetries),
-		)
-
-		cmd := exec.Command(binPath, "--config-file", configPath)
-		cmd.Stdout = logWriter
-		cmd.Stderr = logWriter
-
-		if err := cmd.Start(); err != nil {
-			if closeErr := logWriter.Close(); closeErr != nil {
-				logger.Warn("Failed to close log writer",
-					zap.Error(closeErr),
-				)
-			}
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
-			}
-			continue
-		}
-
-		ch := make(chan struct{})
-		go func() {
-			_ = cmd.Wait()
-			ch <- struct{}{}
-		}()
-
-		// Allow time for the aggregator to initialize
-		time.Sleep(2 * time.Second)
-
-		select {
-		case <-ch:
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("signature-aggregator exited during startup after %d attempts", maxRetries)
-			}
-			continue
-		default:
-		}
-
-		// Check if the aggregator is ready
-		if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
-			_ = cmd.Process.Kill()
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("signature-aggregator not ready after %d attempts: %w", maxRetries, err)
-			}
-			continue
-		}
-
-		logger.Info("Signature Aggregator started successfully",
-			zap.Int("attempt", i+1),
-		)
-		return cmd.Process.Pid, nil
-	}
-
-	return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts", maxRetries)
-}
-
-func waitForAggregatorReady(url string, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(300 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return errors.New("timeout waiting for signature-aggregator readiness")
-		case <-ticker.C:
-			resp, err := http.Get(url)
-			if err != nil {
-				fmt.Printf("obtained error %s \n", err)
-			}
-			if err == nil && resp.StatusCode == http.StatusBadRequest {
-				// A 400 means the service is up but received a malformed request
-				if closeErr := resp.Body.Close(); closeErr != nil {
-					fmt.Printf("Failed to close response body: %v\n", closeErr)
-				}
-				return nil
-			}
-		}
-	}
 }
 
 func (c *Subnet) InitializeProofOfStake(
@@ -714,19 +577,6 @@ func createSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 	}
 
 	return config
-}
-
-func writeSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
-	configBytes, err := json.MarshalIndent(config, "", "    ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, configBytes, 0o600); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
 }
 
 type AggregateSignaturesRequest struct {

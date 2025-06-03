@@ -5,7 +5,13 @@ package interchain
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -24,6 +30,7 @@ import (
 	awmUtils "github.com/ava-labs/icm-services/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
 const (
@@ -248,4 +255,214 @@ func (s *SignatureAggregator) Sign(
 		s.subnetID,
 		s.quorumPercentage,
 	)
+}
+
+// logWriter is a custom writer that forwards output to a logger
+type logWriter struct {
+	logger logging.Logger
+	level  logging.Level
+}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	// Remove trailing newline if present
+	msg := string(p)
+	if len(msg) > 0 && msg[len(msg)-1] == '\n' {
+		msg = msg[:len(msg)-1]
+	}
+	switch w.level {
+	case logging.Info:
+		w.logger.Info(msg)
+	case logging.Error:
+		w.logger.Error(msg)
+	default:
+		w.logger.Info(msg)
+	}
+	return len(p), nil
+}
+
+// StartSignatureAggregator starts the signature aggregator process.
+// It handles port conflicts and retries if necessary.
+func StartSignatureAggregator(binPath string, configPath string, logger logging.Logger) (int, error) {
+	// Function to check if port is in use
+	isPortInUse := func() bool {
+		conn, err := net.Dial("tcp", "localhost:8080")
+		if err == nil {
+			if err := conn.Close(); err != nil {
+				logger.Warn("Failed to close connection while checking port",
+					zap.Error(err),
+				)
+			}
+			return true
+		}
+		return false
+	}
+
+	// Function to kill existing process
+	killExistingProcess := func() error {
+		// Try pkill first
+		cmd := exec.Command("pkill", "-f", "signature-aggregator")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to kill existing signature-aggregator process: %w", err)
+		}
+		return nil
+	}
+
+	// Try to start the aggregator with retries
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		if isPortInUse() {
+			logger.Info("Port 8080 is in use, attempting to kill existing process",
+				zap.Int("attempt", i+1),
+				zap.Int("max_attempts", maxRetries),
+			)
+			if err := killExistingProcess(); err != nil {
+				logger.Warn("Failed to kill existing process",
+					zap.Error(err),
+				)
+			}
+			// Wait for port to be released
+			time.Sleep(2 * time.Second)
+		}
+
+		logger.Info("Starting Signature Aggregator",
+			zap.Int("attempt", i+1),
+			zap.Int("max_attempts", maxRetries),
+		)
+
+		cmd := exec.Command(binPath, "--config-file", configPath)
+		cmd.Stdout = &logWriter{logger: logger, level: logging.Info}
+		cmd.Stderr = &logWriter{logger: logger, level: logging.Error}
+
+		if err := cmd.Start(); err != nil {
+			if i == maxRetries-1 {
+				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
+			}
+			continue
+		}
+
+		ch := make(chan struct{})
+		go func() {
+			_ = cmd.Wait()
+			ch <- struct{}{}
+		}()
+
+		// Allow time for the aggregator to initialize
+		time.Sleep(2 * time.Second)
+
+		select {
+		case <-ch:
+			if i == maxRetries-1 {
+				return 0, fmt.Errorf("signature-aggregator exited during startup after %d attempts", maxRetries)
+			}
+			continue
+		default:
+		}
+
+		// Check if the aggregator is ready
+		if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
+			_ = cmd.Process.Kill()
+			if i == maxRetries-1 {
+				return 0, fmt.Errorf("signature-aggregator not ready after %d attempts: %w", maxRetries, err)
+			}
+			continue
+		}
+
+		logger.Info("Signature Aggregator started successfully",
+			zap.Int("attempt", i+1),
+		)
+		return cmd.Process.Pid, nil
+	}
+
+	return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts", maxRetries)
+}
+
+// waitForAggregatorReady waits for the signature aggregator to be ready by checking its health endpoint.
+func waitForAggregatorReady(url string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("timeout waiting for signature-aggregator readiness")
+		case <-ticker.C:
+			resp, err := http.Get(url)
+			if err != nil {
+				fmt.Printf("obtained error %s \n", err)
+			}
+			if err == nil && resp.StatusCode == http.StatusBadRequest {
+				// A 400 means the service is up but received a malformed request
+				if closeErr := resp.Body.Close(); closeErr != nil {
+					fmt.Printf("Failed to close response body: %v\n", closeErr)
+				}
+				return nil
+			}
+		}
+	}
+}
+
+// CreateSignatureAggregatorConfig creates a configuration for the signature aggregator.
+func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer) *SignatureAggregatorConfig {
+	config := &SignatureAggregatorConfig{
+		LogLevel:             "debug",
+		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
+		InfoAPI:              APIConfig{BaseURL: networkEndpoint},
+		SignatureCacheSize:   1048576,
+		AllowPrivateIPs:      true,
+		TrackedSubnetIDs:     []string{subnetID},
+		ManuallyTrackedPeers: make([]PeerConfig, 0),
+	}
+
+	for _, peer := range peers {
+		// Skip peers with invalid IP addresses
+		if !peer.Info.PublicIP.IsValid() {
+			continue
+		}
+		fmt.Printf("peer.Info.PublicIP.String() %s \n", peer.Info.PublicIP.String())
+		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, PeerConfig{
+			ID: peer.Info.ID.String(),
+			IP: peer.Info.PublicIP.String(),
+		})
+	}
+
+	return config
+}
+
+// WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
+func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
+	configBytes, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, configBytes, 0o600); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// SignatureAggregatorConfig represents the configuration for the signature aggregator.
+type SignatureAggregatorConfig struct {
+	LogLevel             string       `json:"log-level"`
+	PChainAPI            APIConfig    `json:"p-chain-api"`
+	InfoAPI              APIConfig    `json:"info-api"`
+	SignatureCacheSize   int          `json:"signature-cache-size"`
+	AllowPrivateIPs      bool         `json:"allow-private-ips"`
+	TrackedSubnetIDs     []string     `json:"tracked-subnet-ids"`
+	ManuallyTrackedPeers []PeerConfig `json:"manually-tracked-peers"`
+}
+
+// APIConfig represents the configuration for an API endpoint.
+type APIConfig struct {
+	BaseURL string `json:"base-url"`
+}
+
+// PeerConfig represents the configuration for a peer.
+type PeerConfig struct {
+	ID string `json:"id"`
+	IP string `json:"ip"`
 }
