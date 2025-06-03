@@ -213,6 +213,7 @@ func SetupPoA(
 		aggregatorLogger,
 		validatorManagerAddressStr,
 		useACP99,
+		"",
 	)
 }
 

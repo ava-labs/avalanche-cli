@@ -1,0 +1,20 @@
+{
+    "log-level": "debug",
+    "p-chain-api": {
+        "base-url": "http://127.0.0.1:9650"
+    },
+    "info-api": {
+        "base-url": "http://127.0.0.1:9650"
+    },
+    "signature-cache-size": 1048576,
+    "allow-private-ips": true,
+    "tracked-subnet-ids": [
+        "2W9boARgCWL25z6pMFNtkCfNA5v28VGg9PmBgUJfuKndEdhrvw"
+    ],
+    "manually-tracked-peers": [
+        {
+            "id": "NodeID-Pa91gv5M6maSMC6aDJtEQiqTyvBPXWECx",
+            "ip": "127.0.0.1:51830"
+        }
+    ]
+}

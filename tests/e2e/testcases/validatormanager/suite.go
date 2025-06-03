@@ -226,6 +226,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 			logging.NoLog{},
 			ProxyContractAddress,
 			true,
+			"",
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})

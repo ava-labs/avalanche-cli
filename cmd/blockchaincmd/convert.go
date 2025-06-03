@@ -413,6 +413,7 @@ func InitializeValidatorManager(
 			aggregatorLogger,
 			validatorManagerAddrStr,
 			useACP99,
+			app.GetSignatureAggregatorBinDir(),
 		); err != nil {
 			return tracked, err
 		}

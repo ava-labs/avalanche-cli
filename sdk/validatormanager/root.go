@@ -6,22 +6,22 @@ package validatormanager
 import (
 	"context"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanchego/api/info"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"math/big"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
-	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -201,6 +201,7 @@ func GetPChainSubnetToL1ConversionMessage(
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
+	signatureAggregatorBinDir string,
 ) (*warp.Message, error) {
 	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
@@ -239,18 +240,121 @@ func GetPChainSubnetToL1ConversionMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network,
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
+	fmt.Printf("subnetConversionUnsignedMessage %s \n", subnetConversionUnsignedMessage)
+	fmt.Printf("subnetID %s \n", subnetID.String())
+	fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
+	fmt.Printf("aggregatorExtraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
+
+	fmt.Printf("network endpoint %s \n", network.Endpoint)
+	fmt.Printf("extraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
+
+	binPath, err := signatureaggregator.InstallSignatureAggregator(signatureAggregatorBinDir, "latest")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("binPath %s \n", binPath)
+
+	fmt.Printf("msg %s \n", subnetConversionUnsignedMessage)
+	fmt.Printf("msg id %s \n", subnetConversionUnsignedMessage.ID())
+	fmt.Printf("msg id string %s \n", subnetConversionUnsignedMessage.ID().String())
+	return nil, nil
+	//signatureAggregator, err := interchain.NewSignatureAggregator(
+	//	ctx,
+	//	network,
+	//	aggregatorLogger,
+	//	subnetID,
+	//	aggregatorQuorumPercentage,
+	//	aggregatorExtraPeerEndpoints,
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//fmt.Printf("subnetConversionUnsignedMessage 2 %s \n", subnetConversionUnsignedMessage)
+	//fmt.Printf("subnetID[:] 2 %s \n", subnetID[:])
+	//return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
+}
+
+func GetPChainSubnetToL1ConversionUnsignedMessage(
+	ctx context.Context,
+	network network.Network,
+	aggregatorLogger logging.Logger,
+	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	subnetID ids.ID,
+	managerBlockchainID ids.ID,
+	managerAddress common.Address,
+	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
+	signatureAggregatorBinDir string,
+) (*warp.UnsignedMessage, error) {
+	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
+	for _, convertSubnetValidator := range convertSubnetValidators {
+		validators = append(validators, warpMessage.SubnetToL1ConversionValidatorData{
+			NodeID:       convertSubnetValidator.NodeID[:],
+			BLSPublicKey: convertSubnetValidator.Signer.PublicKey,
+			Weight:       convertSubnetValidator.Weight,
+		})
+	}
+	subnetConversionData := warpMessage.SubnetToL1ConversionData{
+		SubnetID:       subnetID,
+		ManagerChainID: managerBlockchainID,
+		ManagerAddress: managerAddress.Bytes(),
+		Validators:     validators,
+	}
+	subnetConversionID, err := warpMessage.SubnetToL1ConversionID(subnetConversionData)
+	if err != nil {
+		return nil, err
+	}
+	addressedCallPayload, err := warpMessage.NewSubnetToL1Conversion(subnetConversionID)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
+		nil,
+		addressedCallPayload.Bytes(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
+	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		avagoconstants.PlatformChainID,
+		subnetConversionAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("subnetConversionUnsignedMessage %s \n", subnetConversionUnsignedMessage)
+	fmt.Printf("subnetID %s \n", subnetID.String())
+	fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
+	fmt.Printf("aggregatorExtraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
+
+	fmt.Printf("network endpoint %s \n", network.Endpoint)
+	fmt.Printf("extraPeerEndpoints %s \n", aggregatorExtraPeerEndpoints)
+
+	binPath, err := signatureaggregator.InstallSignatureAggregator(signatureAggregatorBinDir, "latest")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("binPath %s \n", binPath)
+
+	fmt.Printf("msg %s \n", subnetConversionUnsignedMessage)
+	fmt.Printf("msg id %s \n", subnetConversionUnsignedMessage.ID())
+	fmt.Printf("msg id string %s \n", subnetConversionUnsignedMessage.ID().String())
+	return subnetConversionUnsignedMessage, nil
+	//signatureAggregator, err := interchain.NewSignatureAggregator(
+	//	ctx,
+	//	network,
+	//	aggregatorLogger,
+	//	subnetID,
+	//	aggregatorQuorumPercentage,
+	//	aggregatorExtraPeerEndpoints,
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//fmt.Printf("subnetConversionUnsignedMessage 2 %s \n", subnetConversionUnsignedMessage)
+	//fmt.Printf("subnetID[:] 2 %s \n", subnetID[:])
+	//return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
 // InitializeValidatorsSet calls poa manager validators set init method,

@@ -215,6 +215,7 @@ const (
 	ICMRelayerInstallDir          = "icm-relayer"
 	ICMContractsInstallDir        = "icm-contracts"
 	ICMRelayerBin                 = "icm-relayer"
+	SignatureAggregatorBin        = "signature-aggregator"
 	LocalRelayerDir               = "local-relayer"
 	ICMRelayerConfigFilename      = "icm-relayer-config.json"
 	ICMRelayerStorageDir          = "icm-relayer-storage"
@@ -346,7 +347,8 @@ const (
 
 	// Aggregator
 	DefaultAggregatorLogLevel  = "Debug"
-	SignatureAggregatorLogName = "signature-aggregator"
+	SignatureAggregator        = "signature-aggregator"
 	MaxL1TotalWeightChange     = 0.2
 	SignatureAggregatorTimeout = 60 * time.Second
+	DefaultQuorumPercentage    = 67
 )

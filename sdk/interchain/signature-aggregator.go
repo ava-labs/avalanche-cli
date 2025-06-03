@@ -64,6 +64,8 @@ func createAppRequestNetwork(
 		AllowPrivateIPs:  true,
 		TrackedSubnetIDs: trackedSubnetIDs,
 	}
+	fmt.Printf("network config %s \n", networkConfig)
+	fmt.Printf("extraPeerEndpoints %s \n", extraPeerEndpoints)
 	if err := networkConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate peer network config: %w", err)
 	}
@@ -114,6 +116,9 @@ func initSignatureAggregator(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
 	}
+	fmt.Printf("sa.quorumPercentage %s \n", sa.quorumPercentage)
+	fmt.Printf("sa %s \n", sa)
+	fmt.Printf("DefaultSignatureCacheSize %s \n", DefaultSignatureCacheSize)
 
 	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
@@ -233,6 +238,13 @@ func (s *SignatureAggregator) Sign(
 	msg *warp.UnsignedMessage,
 	justification []byte,
 ) (*warp.Message, error) {
+	fmt.Printf("msg %s \n", msg)
+	fmt.Printf("msg id %s \n", msg.ID())
+	fmt.Printf("msg id string %s \n", msg.ID().String())
+	fmt.Printf("justificaiton %s \n", justification)
+	fmt.Printf("s.subnetID %s \n", s.subnetID)
+	fmt.Printf("s.quorumPercentage %s \n", s.quorumPercentage)
+
 	if signed, err := s.aggregator.CreateSignedMessage(
 		msg,
 		justification,
@@ -241,6 +253,7 @@ func (s *SignatureAggregator) Sign(
 	); err == nil {
 		return signed, nil
 	}
+	fmt.Printf("we have err here\n")
 	// many times first attempt just fails for connection timeouts (<= 10 secs spent there)
 	return s.aggregator.CreateSignedMessage(
 		msg,
