@@ -606,7 +606,10 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
-	validatorManagerAddressStr string,
+	managerAddress string,
+	specializedManagerAddress string,
+	managerOwnerPrivateKey string,
+	useACP99 bool,
 ) error {
 	if client, err := evm.GetClient(c.RPC); err != nil {
 		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
@@ -616,13 +619,35 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		client.Close()
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	if useACP99 {
+		managerOwnerAddress, err := evm.PrivateKeyToAddress(managerOwnerPrivateKey)
+		if err != nil {
+			return fmt.Errorf("could not generate manager owner address from manager owner private key: %w", err)
+		}
+		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+			c.RPC,
+			common.HexToAddress(managerAddress),
+			privateKey,
+			c.SubnetID,
+			managerOwnerAddress,
+			useACP99,
+		)
+		if err != nil {
+			if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+				return evm.TransactionError(tx, err, "failure initializing validator manager")
+			}
+			log.Info("the Validator Manager contract is already initialized, skipping initializing it")
+		}
+	}
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		c.RPC,
-		managerAddress,
+		common.HexToAddress(managerAddress),
+		common.HexToAddress(specializedManagerAddress),
+		managerOwnerPrivateKey,
 		privateKey,
 		c.SubnetID,
 		posParams,
+		useACP99,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
@@ -638,17 +663,16 @@ func (c *Subnet) InitializeProofOfStake(
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
-		managerAddress,
+		common.HexToAddress(managerAddress),
 		c.BootstrapValidators,
 		"",
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
-		managerAddress,
+		common.HexToAddress(managerAddress),
 		privateKey,
 		c.SubnetID,
 		c.BlockchainID,

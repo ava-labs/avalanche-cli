@@ -7,10 +7,9 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -184,11 +183,10 @@ func PromptSubnetEVMGenesisParams(
 
 	if sc.PoS() {
 		params.UsePoSValidatorManager = true
-
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.EnabledAddresses = append(
 			params.nativeMinterPrecompileAllowList.EnabledAddresses,
-			common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
+			common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
 		)
 		params.enableRewardManagerPrecompile = true
 	}

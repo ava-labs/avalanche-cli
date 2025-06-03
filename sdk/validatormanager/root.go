@@ -40,7 +40,7 @@ type ValidatorManagerSettings struct {
 	MaximumChurnPercentage uint8
 }
 
-type NativeTokenValidatorManagerSettings struct {
+type NativeTokenValidatorManagerSettingsV1_0_0 struct {
 	BaseSettings             ValidatorManagerSettings
 	MinimumStakeAmount       *big.Int
 	MaximumStakeAmount       *big.Int
@@ -52,12 +52,26 @@ type NativeTokenValidatorManagerSettings struct {
 	UptimeBlockchainID       [32]byte
 }
 
+type NativeTokenValidatorManagerSettingsV2_0_0 struct {
+	Manager                  common.Address
+	MinimumStakeAmount       *big.Int
+	MaximumStakeAmount       *big.Int
+	MinimumStakeDuration     uint64
+	MinimumDelegationFeeBips uint16
+	MaximumStakeMultiplier   uint8
+	WeightToValueFactor      *big.Int
+	RewardCalculator         common.Address
+	UptimeBlockchainID       [32]byte
+}
+
 const (
-	ValidatorMessagesContractAddress = "0x9C00629cE712B0255b17A4a657171Acd15720B8C"
-	ValidatorContractAddress         = "0x0C0DEBA5E0000000000000000000000000000000"
-	ProxyContractAddress             = "0x0FEEDC0DE0000000000000000000000000000000"
-	ProxyAdminContractAddress        = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	RewardCalculatorAddress          = "0x0DEADC0DE0000000000000000000000000000000"
+	ValidatorMessagesContractAddress        = "0x9C00629cE712B0255b17A4a657171Acd15720B8C"
+	ValidatorContractAddress                = "0x0C0DEBA5E0000000000000000000000000000000"
+	ValidatorProxyContractAddress           = "0x0FEEDC0DE0000000000000000000000000000000"
+	ValidatorProxyAdminContractAddress      = "0xA0AFFE1234567890aBcDEF1234567890AbCdEf34"
+	SpecializationProxyContractAddress      = "0x100C0DE1C0FFEE00000000000000000000000000"
+	SpecializationProxyAdminContractAddress = "0x97A35a4A2A8a56256de7A32160819c7B3F4C9DA6"
+	RewardCalculatorAddress                 = "0x0DEADC0DE0000000000000000000000000000000"
 
 	DefaultPoSMinimumStakeAmount     = 1
 	DefaultPoSMaximumStakeAmount     = 1000
