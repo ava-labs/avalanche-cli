@@ -368,42 +368,59 @@ func SaveSignatureAggregatorRunFile(runFilePath string, pid int) error {
 
 // StartSignatureAggregator starts the signature aggregator process.
 // It handles port conflicts and retries if necessary.
-func StartSignatureAggregator(binPath string, configPath string, logger logging.Logger) (int, error) {
+func StartSignatureAggregator(binPath string, configPath string, logFile string, logger logging.Logger) (int, error) {
 	// Try to start the aggregator with retries
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
+		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+			return 0, err
+		}
+
+		logWriter, err := os.Create(logFile)
+		if err != nil {
+			return 0, err
+		}
+
 		logger.Info("Starting Signature Aggregator",
 			zap.Int("attempt", i+1),
 			zap.Int("max_attempts", maxRetries),
 		)
 
-		// Use nohup to run the process in the background
-		cmd := exec.Command("nohup", binPath, "--config-file", configPath)
-		cmd.Stdout = &logWriter{logger: logger, level: logging.Info}
-		cmd.Stderr = &logWriter{logger: logger, level: logging.Error}
+		cmd := exec.Command(binPath, "--config-file", configPath)
+		cmd.Stdout = logWriter
+		cmd.Stderr = logWriter
 
-		// Start the process
 		if err := cmd.Start(); err != nil {
+			if closeErr := logWriter.Close(); closeErr != nil {
+				return 0, closeErr
+			}
 			if i == maxRetries-1 {
 				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
 			}
 			continue
 		}
 
-		// Start a goroutine to monitor the process
+		ch := make(chan struct{})
 		go func() {
-			if err := cmd.Wait(); err != nil {
-				logger.Error("Signature aggregator process exited",
-					zap.Error(err),
-				)
-			}
+			_ = cmd.Wait()
+			ch <- struct{}{}
 		}()
 
 		// Allow time for the aggregator to initialize
 		time.Sleep(2 * time.Second)
 
+		select {
+		case <-ch:
+			if i == maxRetries-1 {
+				return 0, fmt.Errorf("signature-aggregator exited during startup after %d attempts", maxRetries)
+			}
+			continue
+		default:
+		}
+
 		// Check if the aggregator is ready
-		if err := waitForAggregatorReady("http://localhost:8082/aggregate-signatures", 5*time.Second); err != nil {
+		if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
+			_ = cmd.Process.Kill()
 			if i == maxRetries-1 {
 				return 0, fmt.Errorf("signature-aggregator not ready after %d attempts: %w", maxRetries, err)
 			}
@@ -413,14 +430,12 @@ func StartSignatureAggregator(binPath string, configPath string, logger logging.
 		logger.Info("Signature Aggregator started successfully",
 			zap.Int("attempt", i+1),
 		)
-		fmt.Printf("cmd.Process.Pid %s \n", cmd.Process.Pid)
 		return cmd.Process.Pid, nil
 	}
 
 	return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts", maxRetries)
 }
 
-// waitForAggregatorReady waits for the signature aggregator to be ready by checking its health endpoint.
 func waitForAggregatorReady(url string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -466,7 +481,6 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 		if !peer.Info.PublicIP.IsValid() {
 			continue
 		}
-		fmt.Printf("peer.Info.PublicIP.String() %s \n", peer.Info.PublicIP.String())
 		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, PeerConfig{
 			ID: peer.Info.ID.String(),
 			IP: peer.Info.PublicIP.String(),
@@ -479,10 +493,9 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 // WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
 func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
 	// Set default API port if not specified
-	//if config.APIPort == 0 {
-	//	config.APIPort = 8080
-	//}
-	config.APIPort = 8082
+	if config.APIPort == 0 {
+		config.APIPort = 8080
+	}
 	configBytes, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
@@ -552,13 +565,8 @@ func SignMessage(message, justification, signingSubnetID string, quorumPercentag
 		Timeout: 30 * time.Second,
 	}
 
-	//resp, err := client.Post(
-	//	"http://localhost:8080/aggregate-signatures",
-	//	"application/json",
-	//	bytes.NewBuffer(requestBody),
-	//)
 	resp, err := client.Post(
-		"http://localhost:8082/aggregate-signatures",
+		"http://localhost:8080/aggregate-signatures",
 		"application/json",
 		bytes.NewBuffer(requestBody),
 	)

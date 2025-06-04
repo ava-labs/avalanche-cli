@@ -11,14 +11,14 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -418,8 +418,9 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 
+	logPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator.log")
 	binPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator-v0.4.3", "signature-aggregator")
-	if _, err := interchain.StartSignatureAggregator(binPath, configPath, aggregatorLogger); err != nil {
+	if _, err := interchain.StartSignatureAggregator(binPath, configPath, logPath, aggregatorLogger); err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
 
@@ -441,15 +442,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 	)
 	if err != nil {
 		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
-	}
-
-	// Check if signature aggregator is still running on port 8082
-	_, err = net.DialTimeout("tcp", "localhost:8082", 2*time.Second)
-	if err != nil {
-		fmt.Printf("Signature aggregator is no longer running on port 8082 after initializing validators set")
-	} else {
-		fmt.Printf("Signature aggregator is still running on port 8082")
-		// Keep connection open to verify port remains accessible
 	}
 
 	return nil
