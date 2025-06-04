@@ -3,6 +3,7 @@
 package commands
 
 import (
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 )
 
@@ -20,7 +21,7 @@ func SendICMMessage(args []string, testFlags utils.TestFlags) (string, error) {
 
 /* #nosec G204 */
 func DeployICMContracts(args []string, testFlags utils.TestFlags) (string, error) {
-	return utils.TestCommand(utils.ICMCmd, "deploy", args, utils.GlobalFlags{
+	return utils.TestCommand(cmd.ICMCmd, "deploy", args, utils.GlobalFlags{
 		"local":             true,
 		"skip-update-check": true,
 	}, testFlags)

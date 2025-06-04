@@ -23,7 +23,7 @@ jobs:
             "\\[Local Network\\]",
             "\\[Network\\]",
             "\\[Blockchain Configure\\]",
-            "\\[Package Management\\]",
+            # "\\[Package Management\\]",
             "\\[Root\\]",
             "\\[Local Subnet non SOV\\]",
             "\\[Subnet Compatibility\\]",

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -133,7 +134,7 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 
 func ConfigureBlockchain(blockchainName string, testFlags utils.TestFlags) (string, error) {
 	return utils.TestCommand(
-		utils.BlockchainCmd,
+		cmd.BlockchainCmd,
 		"configure",
 		[]string{blockchainName},
 		utils.GlobalFlags{},
@@ -143,7 +144,7 @@ func ConfigureBlockchain(blockchainName string, testFlags utils.TestFlags) (stri
 
 func DeployBlockchain(blockchainName string, testFlags utils.TestFlags) (string, error) {
 	return utils.TestCommand(
-		utils.BlockchainCmd,
+		cmd.BlockchainCmd,
 		"deploy",
 		[]string{blockchainName},
 		utils.GlobalFlags{},
