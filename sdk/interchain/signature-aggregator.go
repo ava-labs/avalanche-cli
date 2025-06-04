@@ -259,29 +259,6 @@ func (s *SignatureAggregator) Sign(
 	)
 }
 
-// logWriter is a custom writer that forwards output to a logger
-type logWriter struct {
-	logger logging.Logger
-	level  logging.Level
-}
-
-func (w *logWriter) Write(p []byte) (n int, err error) {
-	// Remove trailing newline if present
-	msg := string(p)
-	if len(msg) > 0 && msg[len(msg)-1] == '\n' {
-		msg = msg[:len(msg)-1]
-	}
-	switch w.level {
-	case logging.Info:
-		w.logger.Info(msg)
-	case logging.Error:
-		w.logger.Error(msg)
-	default:
-		w.logger.Info(msg)
-	}
-	return len(p), nil
-}
-
 // SignatureAggregatorRunFile represents the run file structure for the signature aggregator
 type SignatureAggregatorRunFile struct {
 	Pid int `json:"pid"`
@@ -304,67 +281,6 @@ func SaveSignatureAggregatorRunFile(runFilePath string, pid int) error {
 	}
 	return nil
 }
-
-//
-//// SignatureAggregatorIsUp checks if the signature aggregator is running
-//func SignatureAggregatorIsUp(runFilePath string) (bool, int, *os.Process, error) {
-//	if !awmUtils.FileExists(runFilePath) {
-//		return false, 0, nil, nil
-//	}
-//	bs, err := os.ReadFile(runFilePath)
-//	if err != nil {
-//		return false, 0, nil, err
-//	}
-//	rf := SignatureAggregatorRunFile{}
-//	if err := json.Unmarshal(bs, &rf); err != nil {
-//		return false, 0, nil, err
-//	}
-//	proc, err := awmUtils.GetProcess(rf.Pid)
-//	if err != nil {
-//		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
-//		return false, 0, nil, os.Remove(runFilePath)
-//	}
-//	return true, rf.Pid, proc, nil
-//}
-//
-//// SignatureAggregatorCleanup cleans up the signature aggregator process
-//func SignatureAggregatorCleanup(runFilePath string, logFilePath string) error {
-//	_ = os.Remove(logFilePath)
-//	aggregatorIsUp, pid, proc, err := SignatureAggregatorIsUp(runFilePath)
-//	if err != nil {
-//		return err
-//	}
-//	if aggregatorIsUp {
-//		waitedCh := make(chan struct{})
-//		go func() {
-//			for {
-//				if err := proc.Signal(syscall.Signal(0)); err != nil {
-//					if errors.Is(err, os.ErrProcessDone) {
-//						close(waitedCh)
-//						return
-//					} else {
-//						fmt.Printf("failure checking to process pid %d aliveness due to: %s", proc.Pid, err)
-//					}
-//				}
-//				time.Sleep(100 * time.Millisecond)
-//			}
-//		}()
-//		if err := proc.Signal(os.Interrupt); err != nil {
-//			return fmt.Errorf("failed sending interrupt signal to signature aggregator process with pid %d: %w", pid, err)
-//		}
-//		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-//		defer cancel()
-//		select {
-//		case <-ctx.Done():
-//			if err := proc.Signal(os.Kill); err != nil {
-//				return fmt.Errorf("failed killing signature aggregator process with pid %d: %w", pid, err)
-//			}
-//		case <-waitedCh:
-//		}
-//		return os.Remove(runFilePath)
-//	}
-//	return nil
-//}
 
 // StartSignatureAggregator starts the signature aggregator process.
 // It handles port conflicts and retries if necessary.
@@ -500,8 +416,6 @@ func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	fmt.Printf("configPath %s \n", configPath)
-	fmt.Printf("configPath APIPort %s \n", config.APIPort)
 
 	if err := os.WriteFile(configPath, configBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
