@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -285,9 +286,47 @@ func SaveSignatureAggregatorRunFile(runFilePath string, pid int) error {
 // StartSignatureAggregator starts the signature aggregator process.
 // It handles port conflicts and retries if necessary.
 func StartSignatureAggregator(binPath string, configPath string, logFile string, logger logging.Logger) (int, error) {
+	// Function to check if port is in use
+	isPortInUse := func() bool {
+		conn, err := net.Dial("tcp", "localhost:8080")
+		if err == nil {
+			if err := conn.Close(); err != nil {
+				logger.Warn("Failed to close connection while checking port",
+					zap.Error(err),
+				)
+			}
+			return true
+		}
+		return false
+	}
+
+	// Function to kill existing process
+	killExistingProcess := func() error {
+		// Try pkill first
+		cmd := exec.Command("pkill", "-f", "signature-aggregator")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to kill existing signature-aggregator process: %w", err)
+		}
+		return nil
+	}
+
 	// Try to start the aggregator with retries
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
+		if isPortInUse() {
+			logger.Info("Port 8080 is in use, attempting to kill existing process",
+				zap.Int("attempt", i+1),
+				zap.Int("max_attempts", maxRetries),
+			)
+			if err := killExistingProcess(); err != nil {
+				logger.Warn("Failed to kill existing process",
+					zap.Error(err),
+				)
+			}
+			// Wait for port to be released
+			time.Sleep(2 * time.Second)
+		}
+
 		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
 			return 0, err
 		}
