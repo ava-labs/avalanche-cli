@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -440,6 +441,15 @@ func (c *Subnet) InitializeProofOfAuthority(
 	)
 	if err != nil {
 		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
+	}
+
+	// Check if signature aggregator is still running on port 8082
+	_, err = net.DialTimeout("tcp", "localhost:8082", 2*time.Second)
+	if err != nil {
+		fmt.Printf("Signature aggregator is no longer running on port 8082 after initializing validators set")
+	} else {
+		fmt.Printf("Signature aggregator is still running on port 8082")
+		// Keep connection open to verify port remains accessible
 	}
 
 	return nil
