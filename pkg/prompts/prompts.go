@@ -27,13 +27,13 @@ const (
 )
 
 const (
-	Add          = "Add"
-	Del          = "Delete"
-	Preview      = "Preview"
-	MoreInfo     = "More Info"
-	Done         = "Done"
-	Cancel       = "Cancel"
-	customOption = "Custom"
+	Add      = "Add"
+	Del      = "Delete"
+	Preview  = "Preview"
+	MoreInfo = "More Info"
+	Done     = "Done"
+	Cancel   = "Cancel"
+	Custom   = "Custom"
 )
 
 var errNoKeys = errors.New("no keys")
@@ -258,7 +258,7 @@ func PromptChain(
 	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
 	subnetOptions = append(subnetOptions, sdkutils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
-		subnetOptions = append(subnetOptions, customOption)
+		subnetOptions = append(subnetOptions, Custom)
 	} else {
 		subnetOptions = append(subnetOptions, notListedOption)
 	}
@@ -270,7 +270,7 @@ func PromptChain(
 	if err != nil {
 		return false, false, false, false, "", "", err
 	}
-	if subnetOption == customOption {
+	if subnetOption == Custom {
 		blockchainID, err := prompter.CaptureString("Blockchain ID/Alias")
 		if err != nil {
 			return false, false, false, false, "", "", err
@@ -304,9 +304,9 @@ func PromptPrivateKey(
 	privateKey := ""
 	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
 	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customOption}
+	keyOptions := []string{cliKeyOpt, Custom}
 	if genesisPrivateKey != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, Custom}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which private key do you want to use to %s?", goal),
@@ -326,7 +326,7 @@ func PromptPrivateKey(
 			return "", err
 		}
 		privateKey = k.PrivKeyHex()
-	case customOption:
+	case Custom:
 		privateKey, err = prompter.CaptureString("Private Key")
 		if err != nil {
 			return "", err
@@ -350,9 +350,9 @@ func PromptAddress(
 	address := ""
 	cliKeyOpt := "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
 	genesisKeyOpt := fmt.Sprintf("Use the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customOption}
+	keyOptions := []string{cliKeyOpt, Custom}
 	if genesisAddress != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, Custom}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which address do you want to %s?", goal),
@@ -374,7 +374,7 @@ func PromptAddress(
 		if err != nil {
 			return "", err
 		}
-	case customOption:
+	case Custom:
 		switch format {
 		case PChainFormat:
 			address, err = prompter.CapturePChainAddress(customPrompt, network)
