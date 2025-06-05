@@ -9,83 +9,60 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-var testCLIMinVersion = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0", "minimum-version":""},"DevNet":{"latest-version":"v1.13.0", "minimum-version":""},"Fuji":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0"}}}`)
-
 func TestCheckMinDependencyVersion(t *testing.T) {
 	tests := []struct {
 		name              string
-		dependency        string
+		cliVersion        string
 		expectedError     bool
 		cliDependencyData []byte
-		customVersion     string
-		network           models.Network
 	}{
 		{
-			name:              "custom avalanchego dependency equal to cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
+			name:              "cli version equal to minimum version",
+			cliVersion:        "v1.8.10",
+			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
 			expectedError:     false,
-			customVersion:     "v1.13.0-fuji",
-			network:           models.NewFujiNetwork(),
 		},
 		{
-			name:              "custom avalanchego dependency higher than cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
+			name:              "cli version higher than minimum version",
+			cliVersion:        "v1.8.11",
+			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
 			expectedError:     false,
-			customVersion:     "v1.13.0",
-			network:           models.NewFujiNetwork(),
 		},
 		{
-			name:              "custom avalanchego dependency equal to cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
-			expectedError:     false,
-			customVersion:     "v1.13.0-fuji",
-			network:           models.NewFujiNetwork(),
-		},
-		{
-			name:              "custom avalanchego dependency higher than cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
-			expectedError:     false,
-			customVersion:     "v1.13.1",
-			network:           models.NewFujiNetwork(),
-		},
-		{
-			name:              "custom avalanchego dependency lower than cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
+			name:              "cli version lower than minimum version",
+			cliVersion:        "v1.8.9",
+			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
 			expectedError:     true,
-			customVersion:     "v1.12.2",
-			network:           models.NewFujiNetwork(),
 		},
 		{
-			name:              "custom avalanchego dependency for network that doesn't have minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
+			name:              "cli version much higher than minimum version",
+			cliVersion:        "v1.13.0",
+			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
 			expectedError:     false,
-			customVersion:     "v1.12.2",
-			network:           models.NewLocalNetwork(),
+		},
+		{
+			name:              "cli version much lower than minimum version",
+			cliVersion:        "v1.7.0",
+			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			expectedError:     true,
 		},
 	}
 
 	for _, tt := range tests {
 		mockDownloader := &mocks.Downloader{}
 		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
-			return url == constants.CLILatestDependencyURL
+			return url == constants.CLIMinVersionURL
 		})).Return(tt.cliDependencyData, nil)
 
 		app := application.New()
 		app.Downloader = mockDownloader
 
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckVersionIsOverMin(app, tt.dependency, tt.network, tt.customVersion)
+			err := CheckCLIVersionIsOverMin(app, tt.cliVersion)
 			if tt.expectedError {
 				require.Error(t, err)
 			} else {
