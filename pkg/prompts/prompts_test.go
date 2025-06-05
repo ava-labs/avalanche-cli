@@ -1,7 +1,7 @@
 // Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package promptstests
+package prompts
 
 import (
 	"errors"
@@ -10,10 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/internal/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
@@ -30,7 +29,7 @@ const (
 /*
 	These tests need to be in an independent module
 	because otherwise they create a circular dependency
-	between the mocks and the prompts modules
+	between the mocks and the modules
 */
 
 func TestCaptureListDecision(t *testing.T) {
@@ -45,63 +44,63 @@ func TestCaptureListDecision(t *testing.T) {
 	addr2 := crypto.PubkeyToAddress(pk2.PublicKey)
 
 	// 1. cancel
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Cancel, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Cancel, nil).Once()
 
 	// 2. error from CaptureList
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("", errors.New("fake error")).Once()
 
 	// 3. error from capture function
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything).Return(common.Address{}, errors.New("capture function error")).Once()
 
 	// 4. add - 1 valid, 1 done
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything).Return(addr, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 5. add - 1 valid, then add the same
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
 	// do a preview (nothing changes, but prints 2 addrs on STDOUT)
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Preview, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 6. add - 2 valid, then remove index 1, readd
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
 	// print info (nothing changes, but prints info to STDOUT)
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.MoreInfo, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(MoreInfo, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Del, nil).Once()
 	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(1, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 7. add 1 item, then delete it (list becomes empty), then done
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Del, nil).Once()
 	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(0, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 8. try to delete from empty list, then done
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Del, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 9. try to preview empty list, then done
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Preview, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Done, nil).Once()
 
 	// 10. add item, then delete but CaptureIndex returns error
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
-	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(Del, nil).Once()
 	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(0, errors.New("index error")).Once()
 
 	prompt := "Test CaptureListDecision"
@@ -111,7 +110,7 @@ func TestCaptureListDecision(t *testing.T) {
 	info := "something"
 
 	// 1.cancel
-	list, cancel, err := prompts.CaptureListDecision(
+	list, cancel, err := CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -124,7 +123,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Empty(list)
 
 	// 2. error from CaptureList
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -138,7 +137,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Empty(list)
 
 	// 3. error from capture function
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -152,7 +151,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Empty(list)
 
 	// 4. add - 1 valid, 1 done
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -165,7 +164,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(1, len(list))
 
 	// 5. add - 1 valid, then add the same
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -178,7 +177,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(2, len(list))
 
 	// 6. add - 2 valid, then remove index 1, readd
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -191,7 +190,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(2, len(list))
 
 	// 7. add 1 item, then delete it (list becomes empty), then done
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -204,7 +203,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(0, len(list))
 
 	// 8. try to delete from empty list, then done
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -217,7 +216,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(0, len(list))
 
 	// 9. try to preview empty list, then done
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -230,7 +229,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.Exactly(0, len(list))
 
 	// 10. add item, then delete but CaptureIndex returns error
-	list, cancel, err = prompts.CaptureListDecision(
+	list, cancel, err = CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
@@ -315,7 +314,7 @@ func TestCheckSubnetAuthKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(*testing.T) {
-			err := prompts.CheckSubnetAuthKeys(tt.walletKeys, tt.subnetAuthKeys, tt.controlKeys, tt.threshold)
+			err := CheckSubnetAuthKeys(tt.walletKeys, tt.subnetAuthKeys, tt.controlKeys, tt.threshold)
 			if tt.expectedErr == "" {
 				require.NoError(err)
 			} else {
@@ -334,18 +333,18 @@ func TestGetSubnetAuthKeys(t *testing.T) {
 		walletKeys := []string{"key1", "key2"}
 		controlKeys := []string{"key1", "key2"}
 		threshold := uint32(2)
-		result, err := prompts.GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
+		result, err := GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
 		require.NoError(err)
 		require.Equal(controlKeys, result)
 	})
 
-	t.Run("interactive adds wallet control keys and prompts for rest", func(t *testing.T) {
+	t.Run("interactive adds wallet control keys and for rest", func(t *testing.T) {
 		walletKeys := []string{"key1"}
 		controlKeys := []string{"key1", "key2", "key3"}
 		threshold := uint32(2)
 		// key1 is added automatically, user selects key2
 		mockPrompt.On("CaptureList", mock.Anything, []string{"key2", "key3"}).Return("key2", nil).Once()
-		result, err := prompts.GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
+		result, err := GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
 		require.NoError(err)
 		require.ElementsMatch([]string{"key1", "key2"}, result)
 		mockPrompt.AssertExpectations(t)
@@ -356,7 +355,7 @@ func TestGetSubnetAuthKeys(t *testing.T) {
 		controlKeys := []string{"key1", "key2", "key3"}
 		threshold := uint32(2)
 		mockPrompt.On("CaptureList", mock.Anything, []string{"key2", "key3"}).Return("", errors.New("user error")).Once()
-		result, err := prompts.GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
+		result, err := GetSubnetAuthKeys(mockPrompt, walletKeys, controlKeys, threshold)
 		require.Error(err)
 		require.Contains(err.Error(), "user error")
 		require.Nil(result)
@@ -373,7 +372,7 @@ func TestGetKeyOrLedger(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 		mockPrompt.On("ChooseKeyOrLedger", goal).Return(false, nil).Once()
-		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
+		useLedger, keyName, err := GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
 		require.True(useLedger)
 		require.Empty(keyName)
 		require.NoError(err)
@@ -388,7 +387,7 @@ func TestGetKeyOrLedger(t *testing.T) {
 		require.NoError(err)
 		mockPrompt.On("ChooseKeyOrLedger", goal).Return(true, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("key1", nil).Once()
-		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
+		useLedger, keyName, err := GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
 		require.False(useLedger)
 		require.Equal("key1", keyName)
 		require.NoError(err)
@@ -400,7 +399,7 @@ func TestGetKeyOrLedger(t *testing.T) {
 		keyDir := t.TempDir()
 		mockPrompt.On("ChooseKeyOrLedger", goal).Return(true, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("should not be called")).Maybe()
-		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, false)
+		useLedger, keyName, err := GetKeyOrLedger(mockPrompt, goal, keyDir, false)
 		require.False(useLedger)
 		require.Empty(keyName)
 		require.EqualError(err, "no keys")
@@ -416,7 +415,7 @@ func TestGetKeyOrLedger(t *testing.T) {
 		require.NoError(err)
 		mockPrompt.On("ChooseKeyOrLedger", goal).Return(true, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("", errSome).Once()
-		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
+		useLedger, keyName, err := GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
 		require.False(useLedger)
 		require.Empty(keyName)
 		require.ErrorIs(err, errSome)
@@ -428,7 +427,7 @@ func TestGetKeyOrLedger(t *testing.T) {
 		keyDir := t.TempDir()
 		errChoose := errors.New("choose error")
 		mockPrompt.On("ChooseKeyOrLedger", goal).Return(false, errChoose).Once()
-		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
+		useLedger, keyName, err := GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
 		require.False(useLedger)
 		require.Empty(keyName)
 		require.ErrorIs(err, errChoose)
@@ -444,7 +443,7 @@ func TestCaptureKeyName(t *testing.T) {
 	t.Run("error from GetKeyNames (nonexistent dir)", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		nonexistentDir := filepath.Join(os.TempDir(), "does-not-exist-1234")
-		_, err := prompts.CaptureKeyName(mockPrompt, goal, nonexistentDir, includeEwoq)
+		_, err := CaptureKeyName(mockPrompt, goal, nonexistentDir, includeEwoq)
 		require.Error(err)
 	})
 
@@ -452,7 +451,7 @@ func TestCaptureKeyName(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		dir := t.TempDir()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("should not be called")).Maybe()
-		_, err := prompts.CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid default key
+		_, err := CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid default key
 		require.Error(err)
 		require.EqualError(err, "no keys")
 	})
@@ -469,7 +468,7 @@ func TestCaptureKeyName(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.MatchedBy(func(keys []string) bool {
 			return len(keys) == 2 && ((keys[0] == "key1" && keys[1] == "key2") || (keys[0] == "key2" && keys[1] == "key1"))
 		}), 2).Return("key2", nil).Once()
-		keyName, err := prompts.CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
+		keyName, err := CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
 		require.NoError(err)
 		require.Equal("key2", keyName)
 		mockPrompt.AssertExpectations(t)
@@ -485,7 +484,7 @@ func TestCaptureKeyName(t *testing.T) {
 		err = os.WriteFile(key2, []byte("dummy"), 0o600)
 		require.NoError(err)
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, 2).Return("", errors.New("user cancel")).Once()
-		_, err = prompts.CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
+		_, err = CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
 		require.Error(err)
 		require.Contains(err.Error(), "user cancel")
 		mockPrompt.AssertExpectations(t)
@@ -511,7 +510,7 @@ func TestCaptureKeyName(t *testing.T) {
 			return len(keys) == 12
 		}), 10).Return("key5", nil).Once()
 
-		keyName, err := prompts.CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
+		keyName, err := CaptureKeyName(mockPrompt, goal, dir, false) // includeEwoq=false to avoid interference
 		require.NoError(err)
 		require.Equal("key5", keyName)
 		mockPrompt.AssertExpectations(t)
@@ -526,28 +525,28 @@ func TestCaptureBoolFlag(t *testing.T) {
 	t.Run("flagValue is true (shortcut)", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		cmd := &cobra.Command{}
-		result, err := prompts.CaptureBoolFlag(mockPrompt, cmd, flagName, true, promptMsg)
+		result, err := CaptureBoolFlag(mockPrompt, cmd, flagName, true, promptMsg)
 		require.NoError(err)
 		require.True(result)
 		// No mock expectations needed since it should return immediately
 	})
 
-	t.Run("flag doesn't exist (prompts user)", func(*testing.T) {
+	t.Run("flag doesn't exist (user)", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		cmd := &cobra.Command{}
 		mockPrompt.On("CaptureYesNo", promptMsg).Return(true, nil).Once()
-		result, err := prompts.CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
+		result, err := CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
 		require.NoError(err)
 		require.True(result)
 		mockPrompt.AssertExpectations(t)
 	})
 
-	t.Run("flag exists but not changed (prompts user)", func(*testing.T) {
+	t.Run("flag exists but not changed (user)", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		cmd := &cobra.Command{}
 		cmd.Flags().Bool(flagName, false, "test flag")
 		mockPrompt.On("CaptureYesNo", promptMsg).Return(false, nil).Once()
-		result, err := prompts.CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
+		result, err := CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
 		require.NoError(err)
 		require.False(result)
 		mockPrompt.AssertExpectations(t)
@@ -559,7 +558,7 @@ func TestCaptureBoolFlag(t *testing.T) {
 		cmd.Flags().Bool(flagName, false, "test flag")
 		err := cmd.Flags().Set(flagName, "true") // This marks the flag as changed
 		require.NoError(err)
-		result, err := prompts.CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
+		result, err := CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
 		require.NoError(err)
 		require.True(result)
 		// No mock expectations needed since it gets value from flags
@@ -569,7 +568,7 @@ func TestCaptureBoolFlag(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		cmd := &cobra.Command{}
 		mockPrompt.On("CaptureYesNo", promptMsg).Return(false, errors.New("user error")).Once()
-		result, err := prompts.CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
+		result, err := CaptureBoolFlag(mockPrompt, cmd, flagName, false, promptMsg)
 		require.Error(err)
 		require.Contains(err.Error(), "user error")
 		require.False(result)
@@ -588,7 +587,7 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			return len(options) > 0 && options[0] == "P-Chain"
 		}), 11).Return("P-Chain", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.NoError(err)
 		require.False(notListed)
@@ -605,7 +604,7 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			return len(options) > 0 && options[1] == "X-Chain"
 		}), 11).Return("X-Chain", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.NoError(err)
 		require.False(notListed)
@@ -622,7 +621,7 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			return len(options) > 0 && options[2] == "C-Chain"
 		}), 11).Return("C-Chain", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.NoError(err)
 		require.False(notListed)
@@ -654,7 +653,7 @@ func TestPromptChain(t *testing.T) {
 			}
 			return hasSubnet1 && hasSubnet3 && !hasSubnet2
 		}), 11).Return("Blockchain subnet1", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.NoError(err)
 		require.False(notListed)
@@ -671,14 +670,14 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			// Should contain "Custom" option
 			for _, opt := range options {
-				if opt == prompts.Custom {
+				if opt == Custom {
 					return true
 				}
 			}
 			return false
-		}), 11).Return(prompts.Custom, nil).Once()
+		}), 11).Return(Custom, nil).Once()
 		mockPrompt.On("CaptureString", "Blockchain ID/Alias").Return("custom-blockchain-id", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, true)
 		require.NoError(err)
 		require.False(notListed)
@@ -701,7 +700,7 @@ func TestPromptChain(t *testing.T) {
 			}
 			return false
 		}), 11).Return("My blockchain isn't listed", nil).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.NoError(err)
 		require.True(notListed)
@@ -716,7 +715,7 @@ func TestPromptChain(t *testing.T) {
 	t.Run("error from CaptureListWithSize", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		mockPrompt.On("CaptureListWithSize", prompt, mock.Anything, 11).Return("", errors.New("user error")).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)
 		require.Error(err)
 		require.Contains(err.Error(), "user error")
@@ -731,9 +730,9 @@ func TestPromptChain(t *testing.T) {
 
 	t.Run("error from CaptureString in Custom", func(*testing.T) {
 		mockPrompt := &mocks.Prompter{}
-		mockPrompt.On("CaptureListWithSize", prompt, mock.Anything, 11).Return(prompts.Custom, nil).Once()
+		mockPrompt.On("CaptureListWithSize", prompt, mock.Anything, 11).Return(Custom, nil).Once()
 		mockPrompt.On("CaptureString", "Blockchain ID/Alias").Return("", errors.New("string error")).Once()
-		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := prompts.PromptChain(
+		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, true)
 		require.Error(err)
 		require.Contains(err.Error(), "string error")
@@ -760,7 +759,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		err := os.WriteFile(keyFile, []byte("dummy"), 0o600)
 		require.NoError(err)
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -774,7 +773,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
 		// Since we can't easily mock the SoftKey, let's test the error case instead
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.Error(err)
 		require.Contains(err.Error(), "mock key - check parameters only")
 		require.Empty(privateKey)
@@ -785,7 +784,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 		expectedPrivKey := "0xcustomprivatekey123456789"
 
@@ -797,7 +796,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which private key do you want to use to test transaction?", expectedOptions).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureString", "Private Key").Return(expectedPrivKey, nil).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.NoError(err)
 		require.Equal(expectedPrivKey, privateKey)
 		mockPrompt.AssertExpectations(t)
@@ -808,7 +807,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		keyDir := t.TempDir()
 
 		genesisKeyOpt := "Use the private key of the Genesis Allocated address " + genesisAddress
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{genesisKeyOpt, cliKeyOpt, customOpt}
 
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
@@ -818,7 +817,7 @@ func TestPromptPrivateKey(t *testing.T) {
 
 		mockPrompt.On("CaptureList", "Which private key do you want to use to test transaction?", expectedOptions).Return(genesisKeyOpt, nil).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, genesisPrivateKey)
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, genesisPrivateKey)
 		require.NoError(err)
 		require.Equal(genesisPrivateKey, privateKey)
 		mockPrompt.AssertExpectations(t)
@@ -834,7 +833,7 @@ func TestPromptPrivateKey(t *testing.T) {
 
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("", errors.New("list error")).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.Error(err)
 		require.Contains(err.Error(), "list error")
 		require.Empty(privateKey)
@@ -845,7 +844,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
 			return nil, nil
 		}
@@ -853,7 +852,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureString", "Private Key").Return("", errors.New("string error")).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.Error(err)
 		require.Contains(err.Error(), "string error")
 		require.Empty(privateKey)
@@ -874,7 +873,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(cliKeyOpt, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.Error(err)
 		require.Contains(err.Error(), "getKey error")
 		require.Empty(privateKey)
@@ -893,7 +892,7 @@ func TestPromptPrivateKey(t *testing.T) {
 
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(cliKeyOpt, nil).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, invalidKeyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, invalidKeyDir, getKey, genesisAddress, "")
 		require.Error(err)
 		// The error should be related to directory access
 		require.True(err.Error() != "")
@@ -909,7 +908,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		require.NoError(err)
 
 		network := models.NewLocalNetwork()
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 
 		// Create a real SoftKey for testing
@@ -926,7 +925,7 @@ func TestPromptPrivateKey(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which private key do you want to use to test transaction?", expectedOptions).Return(cliKeyOpt, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		privateKey, err := prompts.PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
+		privateKey, err := PromptPrivateKey(mockPrompt, goal, keyDir, getKey, genesisAddress, "")
 		require.NoError(err)
 		require.NotEmpty(privateKey)
 		// Verify that the returned private key matches what we expect from k.PrivKeyHex()
@@ -952,7 +951,7 @@ func TestPromptAddress(t *testing.T) {
 		require.NoError(err)
 
 		cliKeyOpt := cliAddrOpt
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -965,7 +964,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which address do you want to test transaction?", expectedOptions).Return(cliKeyOpt, nil).Once()
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.EVMFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, EVMFormat, customPrompt)
 		require.Error(err)
 		require.Contains(err.Error(), "mock key - check parameters only")
 		require.Empty(address)
@@ -977,7 +976,7 @@ func TestPromptAddress(t *testing.T) {
 		keyDir := t.TempDir()
 
 		cliKeyOpt := cliAddrOpt
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 		expectedAddr := common.HexToAddress("0x1111111111111111111111111111111111111111")
 
@@ -989,7 +988,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which address do you want to test transaction?", expectedOptions).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureAddress", customPrompt).Return(expectedAddr, nil).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.EVMFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, EVMFormat, customPrompt)
 		require.NoError(err)
 		require.Equal(expectedAddr.Hex(), address)
 		mockPrompt.AssertExpectations(t)
@@ -1000,7 +999,7 @@ func TestPromptAddress(t *testing.T) {
 		keyDir := t.TempDir()
 
 		cliKeyOpt := cliAddrOpt
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 		expectedAddress := "P-local18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"
 
@@ -1012,7 +1011,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which address do you want to test transaction?", expectedOptions).Return(customOpt, nil).Once()
 		mockPrompt.On("CapturePChainAddress", customPrompt, network).Return(expectedAddress, nil).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.PChainFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, PChainFormat, customPrompt)
 		require.NoError(err)
 		require.Equal(expectedAddress, address)
 		mockPrompt.AssertExpectations(t)
@@ -1023,7 +1022,7 @@ func TestPromptAddress(t *testing.T) {
 		keyDir := t.TempDir()
 
 		cliKeyOpt := cliAddrOpt
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 		expectedAddress := "X-local18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t"
 
@@ -1035,7 +1034,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", "Which address do you want to test transaction?", expectedOptions).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureXChainAddress", customPrompt, network).Return(expectedAddress, nil).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.XChainFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, XChainFormat, customPrompt)
 		require.NoError(err)
 		require.Equal(expectedAddress, address)
 		mockPrompt.AssertExpectations(t)
@@ -1047,7 +1046,7 @@ func TestPromptAddress(t *testing.T) {
 
 		genesisKeyOpt := "Use the Genesis Allocated address " + genesisAddress
 		cliKeyOpt := cliAddrOpt
-		customOpt := prompts.Custom
+		customOpt := Custom
 		expectedOptions := []string{genesisKeyOpt, cliKeyOpt, customOpt}
 
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
@@ -1057,7 +1056,7 @@ func TestPromptAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureList", "Which address do you want to test transaction?", expectedOptions).Return(genesisKeyOpt, nil).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, genesisAddress, network, prompts.EVMFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, genesisAddress, network, EVMFormat, customPrompt)
 		require.NoError(err)
 		require.Equal(genesisAddress, address)
 		mockPrompt.AssertExpectations(t)
@@ -1073,7 +1072,7 @@ func TestPromptAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("", errors.New("list error")).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.EVMFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, EVMFormat, customPrompt)
 		require.Error(err)
 		require.Contains(err.Error(), "list error")
 		require.Empty(address)
@@ -1084,7 +1083,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
 			return nil, nil
 		}
@@ -1092,7 +1091,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureAddress", customPrompt).Return(common.Address{}, errors.New("address error")).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.EVMFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, EVMFormat, customPrompt)
 		require.Error(err)
 		require.Contains(err.Error(), "address error")
 		require.Empty(address)
@@ -1103,7 +1102,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
 			return nil, nil
 		}
@@ -1111,7 +1110,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(customOpt, nil).Once()
 		mockPrompt.On("CapturePChainAddress", customPrompt, network).Return("", errors.New("pchain error")).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.PChainFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, PChainFormat, customPrompt)
 		require.Error(err)
 		require.Contains(err.Error(), "pchain error")
 		require.Empty(address)
@@ -1122,7 +1121,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		keyDir := t.TempDir()
 
-		customOpt := prompts.Custom
+		customOpt := Custom
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {
 			return nil, nil
 		}
@@ -1130,7 +1129,7 @@ func TestPromptAddress(t *testing.T) {
 		mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(customOpt, nil).Once()
 		mockPrompt.On("CaptureXChainAddress", customPrompt, network).Return("", errors.New("invalid network for xchain")).Once()
 
-		address, err := prompts.PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, prompts.XChainFormat, customPrompt)
+		address, err := PromptAddress(mockPrompt, goal, keyDir, getKey, "", network, XChainFormat, customPrompt)
 		require.Error(err)
 		require.Contains(err.Error(), "invalid network for xchain")
 		require.Empty(address)
@@ -1165,7 +1164,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		// For Local network, includeEwoq should be true
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 		require.NoError(err)
 		require.NotEmpty(address)
 		require.True(len(address) > 0)
@@ -1197,7 +1196,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.XChainFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, XChainFormat)
 		require.NoError(err)
 		require.NotEmpty(address)
 		require.True(len(address) > 0)
@@ -1229,7 +1228,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.EVMFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, EVMFormat)
 		require.NoError(err)
 		require.NotEmpty(address)
 		require.True(len(address) > 0)
@@ -1263,7 +1262,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		// For Fuji network, includeEwoq should be false
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 		require.NoError(err)
 		require.NotEmpty(address)
 		require.True(len(realKey.P()) > 0)
@@ -1284,7 +1283,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		}
 
 		// With no keys in directory and includeEwoq=false, should get "no keys" error
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 		require.Error(err)
 		require.Contains(err.Error(), "no keys")
 		require.Empty(address)
@@ -1305,7 +1304,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 		require.Error(err)
 		require.Contains(err.Error(), "getKey failed")
 		require.Empty(address)
@@ -1331,7 +1330,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 
 		mockPrompt.On("CaptureListWithSize", mock.Anything, mock.Anything, mock.Anything).Return("testkey", nil).Once()
 
-		address, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.Undefined)
+		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, Undefined)
 		require.NoError(err)
 		require.Empty(address) // Undefined format should return empty string
 		mockPrompt.AssertExpectations(t)
@@ -1354,7 +1353,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 			// so CaptureListWithSize should be called
 			mockPrompt.On("CaptureListWithSize", mock.Anything, []string{"ewoq"}, 1).Return("ewoq", nil).Once()
 
-			_, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+			_, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 			require.Error(err)
 			require.Contains(err.Error(), "testing includeEwoq logic")
 			mockPrompt.AssertExpectations(t)
@@ -1371,7 +1370,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 			}
 
 			// With includeEwoq=false and empty dir, should get no keys error
-			_, err := prompts.CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, prompts.PChainFormat)
+			_, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 			require.Error(err)
 			require.Contains(err.Error(), "no keys")
 		})

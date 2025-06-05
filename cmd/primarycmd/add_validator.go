@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -233,10 +234,10 @@ func getDelegationFeeOption(app *application.Avalanche, network models.Network) 
 		ux.Logger.PrintToUser("Note that 20 000 is equivalent to 2%%")
 		delegationFee, err := app.Prompt.CapturePositiveInt(
 			delegationFeePrompt,
-			[]prompts.Comparator{
+			[]comparator.Comparator{
 				{
 					Label: "Min Delegation Fee",
-					Type:  prompts.MoreThanEq,
+					Type:  comparator.MoreThanEq,
 					Value: uint64(defaultFee),
 				},
 			},

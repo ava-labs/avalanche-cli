@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -26,39 +27,7 @@ import (
 const (
 	Yes        = "Yes"
 	No         = "No"
-	LessThanEq = "Less Than Or Eq"
-	MoreThanEq = "More Than Or Eq"
-	MoreThan   = "More Than"
-	NotEq      = "Not Eq"
 )
-
-type Comparator struct {
-	Label string // Label that identifies reference value
-	Type  string // Less Than Eq or More than Eq
-	Value uint64 // Value to Compare To
-}
-
-func (comparator Comparator) Validate(val uint64) error {
-	switch comparator.Type {
-	case LessThanEq:
-		if val > comparator.Value {
-			return fmt.Errorf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value)
-		}
-	case MoreThan:
-		if val <= comparator.Value {
-			return fmt.Errorf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value)
-		}
-	case MoreThanEq:
-		if val < comparator.Value {
-			return fmt.Errorf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value)
-		}
-	case NotEq:
-		if val == comparator.Value {
-			return fmt.Errorf("the value must be different than %s (%d)", comparator.Label, comparator.Value)
-		}
-	}
-	return nil
-}
 
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
@@ -89,14 +58,14 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string, validator func(uint64) error) (uint64, error)
 	CaptureValidatorBalance(promptStr string, availableBalance float64, minBalance float64) (float64, error)
-	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
+	CapturePositiveInt(promptStr string, comparators []comparator.Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint8(promptStr string) (uint8, error)
 	CaptureUint16(promptStr string) (uint16, error)
 	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
-	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
+	CaptureUint64Compare(promptStr string, comparators []comparator.Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureXChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
@@ -371,7 +340,7 @@ func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) erro
 	return strconv.ParseFloat(amountStr, 64)
 }
 
-func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparator) (int, error) {
+func (*realPrompter) CapturePositiveInt(promptStr string, comparators []comparator.Comparator) (int, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
@@ -398,7 +367,7 @@ func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparat
 	return strconv.Atoi(amountStr)
 }
 
-func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
+func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []comparator.Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
