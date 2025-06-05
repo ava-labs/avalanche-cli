@@ -141,7 +141,7 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 
 // get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
 // with a len equal to the subnet's [threshold]
-func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []string, threshold uint32) ([]string, error) {
+func GetSubnetAuthKeys(prompter Prompter, walletKeys []string, controlKeys []string, threshold uint32) ([]string, error) {
 	if len(controlKeys) == int(threshold) {
 		return controlKeys, nil
 	}
@@ -160,7 +160,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 		}
 	}
 	for len(subnetAuthKeys) != int(threshold) {
-		subnetAuthKey, err := prompt.CaptureList(
+		subnetAuthKey, err := prompter.CaptureList(
 			"Choose an auth key",
 			filteredControlKeys,
 		)
@@ -177,15 +177,15 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	return subnetAuthKeys, nil
 }
 
-func GetKeyOrLedger(prompt Prompter, goal string, keyDir string, includeEwoq bool) (bool, string, error) {
-	useStoredKey, err := prompt.ChooseKeyOrLedger(goal)
+func GetKeyOrLedger(prompter Prompter, goal string, keyDir string, includeEwoq bool) (bool, string, error) {
+	useStoredKey, err := prompter.ChooseKeyOrLedger(goal)
 	if err != nil {
 		return false, "", err
 	}
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := CaptureKeyName(prompt, goal, keyDir, includeEwoq)
+	keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -195,7 +195,7 @@ func GetKeyOrLedger(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	return false, keyName, nil
 }
 
-func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq bool) (string, error) {
+func CaptureKeyName(prompter Prompter, goal string, keyDir string, includeEwoq bool) (string, error) {
 	keyNames, err := utils.GetKeyNames(keyDir, includeEwoq)
 	if err != nil {
 		return "", err
@@ -207,7 +207,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
+	keyName, err := prompter.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}
@@ -215,7 +215,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 }
 
 func CaptureBoolFlag(
-	prompt Prompter,
+	prompter Prompter,
 	cmd *cobra.Command,
 	flagName string,
 	flagValue bool,
@@ -225,7 +225,7 @@ func CaptureBoolFlag(
 		return true, nil
 	}
 	if flag := cmd.Flags().Lookup(flagName); flag == nil || !flag.Changed {
-		return prompt.CaptureYesNo(promptMsg)
+		return prompter.CaptureYesNo(promptMsg)
 	} else {
 		return cmd.Flags().GetBool(flagName)
 	}
