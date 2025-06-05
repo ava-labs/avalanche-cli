@@ -5,6 +5,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/version"
 	"os"
 	"os/signal"
 	"os/user"
@@ -144,7 +145,9 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := checkForUpdates(cmd, app); err != nil {
 		return err
 	}
-
+	if err := version.CheckCLIVersionIsOverMin(app, cmd.Version); err != nil {
+		return err
+	}
 	return nil
 }
 
