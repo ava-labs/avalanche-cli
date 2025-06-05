@@ -98,6 +98,12 @@ func TestCaptureListDecision(t *testing.T) {
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
+	// 10. add item, then delete but CaptureIndex returns error
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(0, errors.New("index error")).Once()
+
 	prompt := "Test CaptureListDecision"
 	capture := mockPrompt.CaptureAddress
 	capturePrompt := "Enter address"
@@ -222,6 +228,20 @@ func TestCaptureListDecision(t *testing.T) {
 	require.NoError(err)
 	require.False(cancel)
 	require.Exactly(0, len(list))
+
+	// 10. add item, then delete but CaptureIndex returns error
+	list, cancel, err = prompts.CaptureListDecision(
+		mockPrompt,
+		prompt,
+		capture,
+		capturePrompt,
+		label,
+		info,
+	)
+	require.Error(err)
+	require.ErrorContains(err, "index error")
+	require.False(cancel)
+	require.Empty(list)
 }
 
 func TestCheckSubnetAuthKeys(t *testing.T) {
