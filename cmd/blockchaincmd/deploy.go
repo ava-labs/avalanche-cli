@@ -7,10 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -913,23 +911,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if tracked {
-		if sidecar.Sovereign {
-			ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-		} else {
-			ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
-		}
-	}
-
-	// Check if port 8082 is still open
-	_, err = net.DialTimeout("tcp", "localhost:8082", 2*time.Second)
-	if err != nil {
+	if sidecar.Sovereign && tracked {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Red.Wrap("Warning: Port 8082 is not accessible. The signature aggregator may not be running."))
-	} else {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Port 8082 is accessible. The signature aggregator is running."))
-		// Keep connection open to verify port remains accessible
+		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
 
 	var icmErr, relayerErr error
@@ -1042,15 +1026,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 
-	_, err = net.DialTimeout("tcp", "localhost:8082", 2*time.Second)
-	if err != nil {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Red.Wrap("Warning: Port 8082 is not accessible. The signature aggregator may not be running."))
-	} else {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Port 8082 is accessible. The signature aggregator is running."))
-		// Keep connection open to verify port remains accessible
+	if tracked {
+		if sidecar.Sovereign {
+			ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
+		}
 	}
+
 	return nil
 }
 
