@@ -146,7 +146,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := checkForUpdates(cmd, app); err != nil {
 		return err
 	}
-	if err := version.CheckCLIVersionIsOverMin(app, cmd.Version); err != nil {
+	if err := version.CheckCLIVersionIsOverMin(app, Version); err != nil {
 		return err
 	}
 	return nil

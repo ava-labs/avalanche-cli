@@ -22,32 +22,32 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 	}{
 		{
 			name:              "cli version equal to minimum version",
-			cliVersion:        "v1.8.10",
-			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			cliVersion:        "1.8.10",
+			cliDependencyData: []byte(`{"min-version":"1.8.10"}`),
 			expectedError:     false,
 		},
 		{
 			name:              "cli version higher than minimum version",
-			cliVersion:        "v1.8.11",
-			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			cliVersion:        "1.8.11",
+			cliDependencyData: []byte(`{"min-version":"1.8.10"}`),
 			expectedError:     false,
 		},
 		{
 			name:              "cli version lower than minimum version",
-			cliVersion:        "v1.8.9",
-			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			cliVersion:        "1.8.9",
+			cliDependencyData: []byte(`{"min-version":"1.8.10"}`),
 			expectedError:     true,
 		},
 		{
 			name:              "cli version much higher than minimum version",
-			cliVersion:        "v1.13.0",
-			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			cliVersion:        "1.13.0",
+			cliDependencyData: []byte(`{"min-version":"1.8.10"}`),
 			expectedError:     false,
 		},
 		{
 			name:              "cli version much lower than minimum version",
-			cliVersion:        "v1.7.0",
-			cliDependencyData: []byte(`{"min-version":"v1.8.10"}`),
+			cliVersion:        "1.7.0",
+			cliDependencyData: []byte(`{"min-version":"1.8.10"}`),
 			expectedError:     true,
 		},
 	}

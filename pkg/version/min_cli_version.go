@@ -5,6 +5,7 @@ package version
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"golang.org/x/mod/semver"
 
@@ -28,9 +29,18 @@ func CheckCLIVersionIsOverMin(app *application.Avalanche, version string) error 
 	}
 
 	minVersion := parsedMinVersion.MinVersion
+	// Add 'v' prefix if missing
+	if !strings.HasPrefix(minVersion, "v") {
+		minVersion = "v" + minVersion
+	}
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+
 	versionComparison := semver.Compare(version, minVersion)
 	fmt.Printf("minVersion %s \n", minVersion)
 	fmt.Printf("currentversion %s \n", version)
+	fmt.Printf("versionComparison %d \n", versionComparison)
 	if versionComparison == -1 {
 		return fmt.Errorf("CLI version is required to be at least %s, current CLI version is %s, please upgrade CLI by calling `curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s`", minVersion, version)
 	}
