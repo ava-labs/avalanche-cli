@@ -402,6 +402,18 @@ func TestGetKeyOrLedger(t *testing.T) {
 		require.ErrorIs(err, errSome)
 		mockPrompt.AssertExpectations(t)
 	})
+
+	t.Run("error from ChooseKeyOrLedger", func(*testing.T) {
+		mockPrompt := &mocks.Prompter{}
+		keyDir := t.TempDir()
+		errChoose := errors.New("choose error")
+		mockPrompt.On("ChooseKeyOrLedger", goal).Return(false, errChoose).Once()
+		useLedger, keyName, err := prompts.GetKeyOrLedger(mockPrompt, goal, keyDir, includeEwoq)
+		require.False(useLedger)
+		require.Empty(keyName)
+		require.ErrorIs(err, errChoose)
+		mockPrompt.AssertExpectations(t)
+	})
 }
 
 func TestCaptureKeyName(t *testing.T) {
