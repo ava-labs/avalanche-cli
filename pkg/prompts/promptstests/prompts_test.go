@@ -47,15 +47,19 @@ func TestCaptureListDecision(t *testing.T) {
 	// 1. cancel
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Cancel, nil).Once()
 
-	// 2. error
+	// 2. error from CaptureList
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("", errors.New("fake error")).Once()
 
-	// 3. add - 1 valid, 1 done
+	// 3. error from capture function
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureAddress", mock.Anything).Return(common.Address{}, errors.New("capture function error")).Once()
+
+	// 4. add - 1 valid, 1 done
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything).Return(addr, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
-	// 4. add - 1 valid, then add the same
+	// 5. add - 1 valid, then add the same
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
@@ -66,7 +70,7 @@ func TestCaptureListDecision(t *testing.T) {
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
-	// 5. add - 2 valid, then remove index 1, readd
+	// 6. add - 2 valid, then remove index 1, readd
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
@@ -77,6 +81,21 @@ func TestCaptureListDecision(t *testing.T) {
 	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(1, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+
+	// 7. add 1 item, then delete it (list becomes empty), then done
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
+	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureIndex", mock.Anything, mock.Anything).Return(0, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+
+	// 8. try to delete from empty list, then done
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Del, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
+
+	// 9. try to preview empty list, then done
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
 	prompt := "Test CaptureListDecision"
@@ -98,7 +117,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.True(cancel)
 	require.Empty(list)
 
-	// 2. error
+	// 2. error from CaptureList
 	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
@@ -112,7 +131,21 @@ func TestCaptureListDecision(t *testing.T) {
 	require.False(cancel)
 	require.Empty(list)
 
-	// 3. add - 1 valid, 1 done
+	// 3. error from capture function
+	list, cancel, err = prompts.CaptureListDecision(
+		mockPrompt,
+		prompt,
+		capture,
+		capturePrompt,
+		label,
+		info,
+	)
+	require.Error(err)
+	require.ErrorContains(err, "capture function error")
+	require.False(cancel)
+	require.Empty(list)
+
+	// 4. add - 1 valid, 1 done
 	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
@@ -125,7 +158,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.False(cancel)
 	require.Exactly(1, len(list))
 
-	// 4. add - 1 valid, then add the same
+	// 5. add - 1 valid, then add the same
 	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
@@ -138,7 +171,7 @@ func TestCaptureListDecision(t *testing.T) {
 	require.False(cancel)
 	require.Exactly(2, len(list))
 
-	// 5. add - 2 valid, then remove index 1, readd
+	// 6. add - 2 valid, then remove index 1, readd
 	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
@@ -150,6 +183,45 @@ func TestCaptureListDecision(t *testing.T) {
 	require.NoError(err)
 	require.False(cancel)
 	require.Exactly(2, len(list))
+
+	// 7. add 1 item, then delete it (list becomes empty), then done
+	list, cancel, err = prompts.CaptureListDecision(
+		mockPrompt,
+		prompt,
+		capture,
+		capturePrompt,
+		label,
+		info,
+	)
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(0, len(list))
+
+	// 8. try to delete from empty list, then done
+	list, cancel, err = prompts.CaptureListDecision(
+		mockPrompt,
+		prompt,
+		capture,
+		capturePrompt,
+		label,
+		info,
+	)
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(0, len(list))
+
+	// 9. try to preview empty list, then done
+	list, cancel, err = prompts.CaptureListDecision(
+		mockPrompt,
+		prompt,
+		capture,
+		capturePrompt,
+		label,
+		info,
+	)
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(0, len(list))
 }
 
 func TestCheckSubnetAuthKeys(t *testing.T) {
