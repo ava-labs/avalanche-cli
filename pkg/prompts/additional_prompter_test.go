@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/manifoldco/promptui"
@@ -2434,6 +2436,1037 @@ func TestCaptureEmailWithMonkeyPatch(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedEmail, email)
+			}
+		})
+	}
+}
+
+func TestCaptureStringAllowEmptyWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name           string
+		promptStr      string
+		mockReturn     string
+		mockError      error
+		expectedString string
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:           "valid non-empty string",
+			promptStr:      "Enter string:",
+			mockReturn:     "hello world",
+			mockError:      nil,
+			expectedString: "hello world",
+			expectError:    false,
+		},
+		{
+			name:           "empty string (allowed)",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      nil,
+			expectedString: "",
+			expectError:    false,
+		},
+		{
+			name:           "string with spaces",
+			promptStr:      "Enter description:",
+			mockReturn:     "  some text with spaces  ",
+			mockError:      nil,
+			expectedString: "  some text with spaces  ",
+			expectError:    false,
+		},
+		{
+			name:           "string with special characters",
+			promptStr:      "Enter string:",
+			mockReturn:     "test@example.com & special chars!",
+			mockError:      nil,
+			expectedString: "test@example.com & special chars!",
+			expectError:    false,
+		},
+		{
+			name:           "multiline-like string",
+			promptStr:      "Enter string:",
+			mockReturn:     "line1\\nline2",
+			mockError:      nil,
+			expectedString: "line1\\nline2",
+			expectError:    false,
+		},
+		{
+			name:           "numeric string",
+			promptStr:      "Enter string:",
+			mockReturn:     "12345",
+			mockError:      nil,
+			expectedString: "12345",
+			expectError:    false,
+		},
+		{
+			name:           "very long string",
+			promptStr:      "Enter string:",
+			mockReturn:     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+			mockError:      nil,
+			expectedString: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+			expectError:    false,
+		},
+		{
+			name:           "prompt error - user cancelled",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      fmt.Errorf("user cancelled"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "user cancelled",
+		},
+		{
+			name:           "prompt error - interrupt",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      fmt.Errorf("interrupt"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "interrupt",
+		},
+		{
+			name:           "prompt error - input failed",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      fmt.Errorf("input failed"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "input failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				// CaptureStringAllowEmpty should have no validation function
+				require.Nil(t, prompt.Validate)
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureStringAllowEmpty(tt.promptStr)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedString, result)
+			}
+		})
+	}
+}
+
+func TestCaptureStringWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name           string
+		promptStr      string
+		mockReturn     string
+		mockError      error
+		expectedString string
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:           "valid non-empty string",
+			promptStr:      "Enter string:",
+			mockReturn:     "hello world",
+			mockError:      nil,
+			expectedString: "hello world",
+			expectError:    false,
+		},
+		{
+			name:           "valid string with special characters",
+			promptStr:      "Enter string:",
+			mockReturn:     "test@example.com",
+			mockError:      nil,
+			expectedString: "test@example.com",
+			expectError:    false,
+		},
+		{
+			name:           "valid string with numbers",
+			promptStr:      "Enter string:",
+			mockReturn:     "test123",
+			mockError:      nil,
+			expectedString: "test123",
+			expectError:    false,
+		},
+		{
+			name:           "empty string - validation fails",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      nil,
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "string cannot be empty",
+		},
+		{
+			name:           "string with only spaces - valid (validateNonEmpty only checks for empty)",
+			promptStr:      "Enter string:",
+			mockReturn:     "   ",
+			mockError:      nil,
+			expectedString: "   ",
+			expectError:    false,
+		},
+		{
+			name:           "prompt error - user cancelled",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      fmt.Errorf("user cancelled"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "user cancelled",
+		},
+		{
+			name:           "prompt error - interrupt",
+			promptStr:      "Enter string:",
+			mockReturn:     "",
+			mockError:      fmt.Errorf("interrupt"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil {
+					err := prompt.Validate(tt.mockReturn)
+					if tt.expectError && strings.Contains(tt.errorContains, "string cannot be empty") {
+						require.Error(t, err)
+						return "", err
+					} else if !tt.expectError {
+						require.NoError(t, err)
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureString(tt.promptStr)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedString, result)
+			}
+		})
+	}
+}
+
+func TestCaptureValidatedStringWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name           string
+		promptStr      string
+		validator      func(string) error
+		mockReturn     string
+		mockError      error
+		expectedString string
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:      "valid string passes validator",
+			promptStr: "Enter string:",
+			validator: func(s string) error {
+				if s == "valid" {
+					return nil
+				}
+				return fmt.Errorf("string must be 'valid'")
+			},
+			mockReturn:     "valid",
+			mockError:      nil,
+			expectedString: "valid",
+			expectError:    false,
+		},
+		{
+			name:      "valid email validator",
+			promptStr: "Enter email:",
+			validator: func(s string) error {
+				if strings.Contains(s, "@") {
+					return nil
+				}
+				return fmt.Errorf("must contain @")
+			},
+			mockReturn:     "test@example.com",
+			mockError:      nil,
+			expectedString: "test@example.com",
+			expectError:    false,
+		},
+		{
+			name:      "length validator passes",
+			promptStr: "Enter string:",
+			validator: func(s string) error {
+				if len(s) >= 5 {
+					return nil
+				}
+				return fmt.Errorf("string must be at least 5 characters")
+			},
+			mockReturn:     "testing",
+			mockError:      nil,
+			expectedString: "testing",
+			expectError:    false,
+		},
+		{
+			name:      "string fails validation",
+			promptStr: "Enter string:",
+			validator: func(s string) error {
+				if s == "valid" {
+					return nil
+				}
+				return fmt.Errorf("string must be 'valid'")
+			},
+			mockReturn:     "invalid",
+			mockError:      nil,
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "string must be 'valid'",
+		},
+		{
+			name:      "email validator fails",
+			promptStr: "Enter email:",
+			validator: func(s string) error {
+				if strings.Contains(s, "@") {
+					return nil
+				}
+				return fmt.Errorf("must contain @")
+			},
+			mockReturn:     "invalid-email",
+			mockError:      nil,
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "must contain @",
+		},
+		{
+			name:      "length validator fails",
+			promptStr: "Enter string:",
+			validator: func(s string) error {
+				if len(s) >= 5 {
+					return nil
+				}
+				return fmt.Errorf("string must be at least 5 characters")
+			},
+			mockReturn:     "hi",
+			mockError:      nil,
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "string must be at least 5 characters",
+		},
+		{
+			name:           "prompt error - user cancelled",
+			promptStr:      "Enter string:",
+			validator:      func(string) error { return nil },
+			mockReturn:     "",
+			mockError:      fmt.Errorf("user cancelled"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "user cancelled",
+		},
+		{
+			name:           "prompt error - interrupt",
+			promptStr:      "Enter string:",
+			validator:      func(string) error { return nil },
+			mockReturn:     "",
+			mockError:      fmt.Errorf("interrupt"),
+			expectedString: "",
+			expectError:    true,
+			errorContains:  "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil {
+					err := prompt.Validate(tt.mockReturn)
+					if tt.expectError && !strings.Contains(tt.errorContains, "user") && !strings.Contains(tt.errorContains, "interrupt") {
+						require.Error(t, err)
+						return "", err
+					} else if !tt.expectError {
+						require.NoError(t, err)
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureValidatedString(tt.promptStr, tt.validator)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedString, result)
+			}
+		})
+	}
+}
+
+func TestCaptureGitURLWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name          string
+		promptStr     string
+		mockReturn    string
+		mockError     error
+		expectedURL   string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "valid HTTP URL",
+			promptStr:   "Enter Git URL:",
+			mockReturn:  "http://github.com/user/repo",
+			mockError:   nil,
+			expectedURL: "http://github.com/user/repo",
+			expectError: false,
+		},
+		{
+			name:        "valid HTTPS URL",
+			promptStr:   "Enter Git URL:",
+			mockReturn:  "https://github.com/user/repo",
+			mockError:   nil,
+			expectedURL: "https://github.com/user/repo",
+			expectError: false,
+		},
+		{
+			name:        "valid URL with path",
+			promptStr:   "Enter Git URL:",
+			mockReturn:  "https://github.com/ava-labs/avalanche-cli.git",
+			mockError:   nil,
+			expectedURL: "https://github.com/ava-labs/avalanche-cli.git",
+			expectError: false,
+		},
+		{
+			name:          "invalid URL format - validation fails",
+			promptStr:     "Enter Git URL:",
+			mockReturn:    "not-a-url",
+			mockError:     nil,
+			expectedURL:   "",
+			expectError:   true,
+			errorContains: "invalid",
+		},
+		{
+			name:          "empty string - validation fails",
+			promptStr:     "Enter Git URL:",
+			mockReturn:    "",
+			mockError:     nil,
+			expectedURL:   "",
+			expectError:   true,
+			errorContains: "empty url",
+		},
+		{
+			name:          "malformed URL - validation fails",
+			promptStr:     "Enter Git URL:",
+			mockReturn:    "http://[::1",
+			mockError:     nil,
+			expectedURL:   "",
+			expectError:   true,
+			errorContains: "missing ']' in host",
+		},
+		{
+			name:          "prompt error - user cancelled",
+			promptStr:     "Enter Git URL:",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("user cancelled"),
+			expectedURL:   "",
+			expectError:   true,
+			errorContains: "user cancelled",
+		},
+		{
+			name:          "prompt error - interrupt",
+			promptStr:     "Enter Git URL:",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("interrupt"),
+			expectedURL:   "",
+			expectError:   true,
+			errorContains: "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil {
+					err := prompt.Validate(tt.mockReturn)
+					if tt.expectError && (strings.Contains(tt.errorContains, "empty url") || strings.Contains(tt.errorContains, "missing") || strings.Contains(tt.errorContains, "invalid")) {
+						require.Error(t, err)
+						return "", err
+					} else if !tt.expectError {
+						require.NoError(t, err)
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureGitURL(tt.promptStr)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedURL, result.String())
+			}
+		})
+	}
+}
+
+func TestCaptureVersionWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name            string
+		promptStr       string
+		mockReturn      string
+		mockError       error
+		expectedVersion string
+		expectError     bool
+		errorContains   string
+	}{
+		{
+			name:            "valid semantic version",
+			promptStr:       "Enter version:",
+			mockReturn:      "v1.0.0",
+			mockError:       nil,
+			expectedVersion: "v1.0.0",
+			expectError:     false,
+		},
+		{
+			name:            "invalid semantic version without v prefix - validation fails",
+			promptStr:       "Enter version:",
+			mockReturn:      "1.2.3",
+			mockError:       nil,
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "version must be a legal semantic version",
+		},
+		{
+			name:            "valid pre-release version",
+			promptStr:       "Enter version:",
+			mockReturn:      "v1.0.0-alpha",
+			mockError:       nil,
+			expectedVersion: "v1.0.0-alpha",
+			expectError:     false,
+		},
+		{
+			name:            "valid build metadata version",
+			promptStr:       "Enter version:",
+			mockReturn:      "v1.0.0+20210101",
+			mockError:       nil,
+			expectedVersion: "v1.0.0+20210101",
+			expectError:     false,
+		},
+		{
+			name:            "invalid version format - validation fails",
+			promptStr:       "Enter version:",
+			mockReturn:      "not-a-version",
+			mockError:       nil,
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "version must be a legal semantic version",
+		},
+		{
+			name:            "incomplete version - validation fails",
+			promptStr:       "Enter version:",
+			mockReturn:      "1.0",
+			mockError:       nil,
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "version must be a legal semantic version",
+		},
+		{
+			name:            "empty string - validation fails",
+			promptStr:       "Enter version:",
+			mockReturn:      "",
+			mockError:       nil,
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "version must be a legal semantic version",
+		},
+		{
+			name:            "prompt error - user cancelled",
+			promptStr:       "Enter version:",
+			mockReturn:      "",
+			mockError:       fmt.Errorf("user cancelled"),
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "user cancelled",
+		},
+		{
+			name:            "prompt error - interrupt",
+			promptStr:       "Enter version:",
+			mockReturn:      "",
+			mockError:       fmt.Errorf("interrupt"),
+			expectedVersion: "",
+			expectError:     true,
+			errorContains:   "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil {
+					err := prompt.Validate(tt.mockReturn)
+					if tt.expectError && strings.Contains(tt.errorContains, "version must be a legal semantic version") {
+						require.Error(t, err)
+						return "", err
+					} else if !tt.expectError {
+						require.NoError(t, err)
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureVersion(tt.promptStr)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedVersion, result)
+			}
+		})
+	}
+}
+
+func TestCaptureIndexWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalSelectRunner := promptUISelectRunner
+	defer func() {
+		promptUISelectRunner = originalSelectRunner
+	}()
+
+	tests := []struct {
+		name          string
+		promptStr     string
+		options       []any
+		mockIndex     int
+		mockValue     string
+		mockError     error
+		expectedIndex int
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "select first option",
+			promptStr:     "Choose option:",
+			options:       []any{"option1", "option2", "option3"},
+			mockIndex:     0,
+			mockValue:     "option1",
+			mockError:     nil,
+			expectedIndex: 0,
+			expectError:   false,
+		},
+		{
+			name:          "select middle option",
+			promptStr:     "Choose option:",
+			options:       []any{"option1", "option2", "option3"},
+			mockIndex:     1,
+			mockValue:     "option2",
+			mockError:     nil,
+			expectedIndex: 1,
+			expectError:   false,
+		},
+		{
+			name:          "select last option",
+			promptStr:     "Choose option:",
+			options:       []any{"option1", "option2", "option3"},
+			mockIndex:     2,
+			mockValue:     "option3",
+			mockError:     nil,
+			expectedIndex: 2,
+			expectError:   false,
+		},
+		{
+			name:          "single option",
+			promptStr:     "Choose option:",
+			options:       []any{"only-option"},
+			mockIndex:     0,
+			mockValue:     "only-option",
+			mockError:     nil,
+			expectedIndex: 0,
+			expectError:   false,
+		},
+		{
+			name:          "numeric options",
+			promptStr:     "Choose number:",
+			options:       []any{1, 2, 3, 4, 5},
+			mockIndex:     2,
+			mockValue:     "3",
+			mockError:     nil,
+			expectedIndex: 2,
+			expectError:   false,
+		},
+		{
+			name:          "select error - user cancelled",
+			promptStr:     "Choose option:",
+			options:       []any{"option1", "option2"},
+			mockIndex:     0,
+			mockValue:     "",
+			mockError:     fmt.Errorf("user cancelled"),
+			expectedIndex: 0,
+			expectError:   true,
+			errorContains: "user cancelled",
+		},
+		{
+			name:          "select error - interrupt",
+			promptStr:     "Choose option:",
+			options:       []any{"option1", "option2"},
+			mockIndex:     0,
+			mockValue:     "",
+			mockError:     fmt.Errorf("interrupt"),
+			expectedIndex: 0,
+			expectError:   true,
+			errorContains: "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUISelectRunner = func(prompt promptui.Select) (int, string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.Equal(t, tt.options, prompt.Items)
+
+				return tt.mockIndex, tt.mockValue, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureIndex(tt.promptStr, tt.options)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Equal(t, 0, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedIndex, result)
+			}
+		})
+	}
+}
+
+func TestCaptureFutureDateWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	// Use relative times based on current time to ensure tests work
+	now := time.Now().UTC().Truncate(time.Second) // Remove nanoseconds for cleaner comparison
+	futureTime := now.Add(24 * time.Hour)
+	pastTime := now.Add(-24 * time.Hour)
+	customMinDate := now.Add(time.Hour) // Custom min date 1 hour from now
+
+	tests := []struct {
+		name          string
+		promptStr     string
+		minDate       time.Time
+		mockReturn    string
+		mockError     error
+		expectedTime  time.Time
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:         "valid future date with zero minDate",
+			promptStr:    "Enter date:",
+			minDate:      time.Time{},
+			mockReturn:   futureTime.Format(constants.TimeParseLayout),
+			mockError:    nil,
+			expectedTime: futureTime,
+			expectError:  false,
+		},
+		{
+			name:         "valid future date with custom minDate",
+			promptStr:    "Enter date:",
+			minDate:      customMinDate,
+			mockReturn:   customMinDate.Add(2 * time.Hour).Format(constants.TimeParseLayout),
+			mockError:    nil,
+			expectedTime: customMinDate.Add(2 * time.Hour),
+			expectError:  false,
+		},
+		{
+			name:         "valid date far in future",
+			promptStr:    "Enter date:",
+			minDate:      time.Time{},
+			mockReturn:   now.Add(365 * 24 * time.Hour).Format(constants.TimeParseLayout),
+			mockError:    nil,
+			expectedTime: now.Add(365 * 24 * time.Hour),
+			expectError:  false,
+		},
+		{
+			name:          "invalid date format - validation fails",
+			promptStr:     "Enter date:",
+			minDate:       time.Time{},
+			mockReturn:    "invalid-date-format",
+			mockError:     nil,
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "parsing time",
+		},
+		{
+			name:          "date in past - validation fails",
+			promptStr:     "Enter date:",
+			minDate:       time.Time{},
+			mockReturn:    pastTime.Format(constants.TimeParseLayout),
+			mockError:     nil,
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "the provided date is before",
+		},
+		{
+			name:          "date before custom minDate - validation fails",
+			promptStr:     "Enter date:",
+			minDate:       customMinDate,
+			mockReturn:    customMinDate.Add(-30 * time.Minute).Format(constants.TimeParseLayout),
+			mockError:     nil,
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "the provided date is before",
+		},
+		{
+			name:          "empty string - validation fails",
+			promptStr:     "Enter date:",
+			minDate:       time.Time{},
+			mockReturn:    "",
+			mockError:     nil,
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "parsing time",
+		},
+		{
+			name:          "prompt error - user cancelled",
+			promptStr:     "Enter date:",
+			minDate:       time.Time{},
+			mockReturn:    "",
+			mockError:     fmt.Errorf("user cancelled"),
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "user cancelled",
+		},
+		{
+			name:          "prompt error - interrupt",
+			promptStr:     "Enter date:",
+			minDate:       time.Time{},
+			mockReturn:    "",
+			mockError:     fmt.Errorf("interrupt"),
+			expectedTime:  time.Time{},
+			expectError:   true,
+			errorContains: "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil {
+					err := prompt.Validate(tt.mockReturn)
+					if tt.expectError && !strings.Contains(tt.errorContains, "user") && !strings.Contains(tt.errorContains, "interrupt") {
+						require.Error(t, err)
+						return "", err
+					} else if !tt.expectError {
+						require.NoError(t, err)
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureFutureDate(tt.promptStr, tt.minDate)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Equal(t, time.Time{}, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedTime, result)
+			}
+		})
+	}
+}
+
+func TestChooseKeyOrLedgerWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalSelectRunner := promptUISelectRunner
+	defer func() {
+		promptUISelectRunner = originalSelectRunner
+	}()
+
+	tests := []struct {
+		name           string
+		goal           string
+		mockIndex      int
+		mockValue      string
+		mockError      error
+		expectedResult bool
+		expectError    bool
+		errorContains  string
+	}{
+		{
+			name:           "choose stored key",
+			goal:           "for signing",
+			mockIndex:      0,
+			mockValue:      "Use stored key",
+			mockError:      nil,
+			expectedResult: true,
+			expectError:    false,
+		},
+		{
+			name:           "choose ledger",
+			goal:           "for signing",
+			mockIndex:      1,
+			mockValue:      "Use ledger",
+			mockError:      nil,
+			expectedResult: false,
+			expectError:    false,
+		},
+		{
+			name:           "choose stored key for different goal",
+			goal:           "to validate transactions",
+			mockIndex:      0,
+			mockValue:      "Use stored key",
+			mockError:      nil,
+			expectedResult: true,
+			expectError:    false,
+		},
+		{
+			name:           "choose ledger for different goal",
+			goal:           "to validate transactions",
+			mockIndex:      1,
+			mockValue:      "Use ledger",
+			mockError:      nil,
+			expectedResult: false,
+			expectError:    false,
+		},
+		{
+			name:           "select error - user cancelled",
+			goal:           "for signing",
+			mockIndex:      0,
+			mockValue:      "",
+			mockError:      fmt.Errorf("user cancelled"),
+			expectedResult: false,
+			expectError:    true,
+			errorContains:  "user cancelled",
+		},
+		{
+			name:           "select error - interrupt",
+			goal:           "for signing",
+			mockIndex:      0,
+			mockValue:      "",
+			mockError:      fmt.Errorf("interrupt"),
+			expectedResult: false,
+			expectError:    true,
+			errorContains:  "interrupt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			promptUISelectRunner = func(prompt promptui.Select) (int, string, error) {
+				expectedLabel := fmt.Sprintf("Which key should be used %s?", tt.goal)
+				require.Equal(t, expectedLabel, prompt.Label)
+				require.Equal(t, []string{"Use stored key", "Use ledger"}, prompt.Items)
+
+				return tt.mockIndex, tt.mockValue, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.ChooseKeyOrLedger(tt.goal)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.False(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResult, result)
 			}
 		})
 	}

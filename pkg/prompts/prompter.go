@@ -664,7 +664,7 @@ func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 		Validate: ValidateURLFormat,
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -688,7 +688,7 @@ func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
 		},
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -702,7 +702,7 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 		Items: options,
 	}
 
-	listIndex, _, err := prompt.Run()
+	listIndex, _, err := promptUISelectRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -730,7 +730,7 @@ func (*realPrompter) CaptureFutureDate(promptStr string, minDate time.Time) (tim
 		},
 	}
 
-	timestampStr, err := prompt.Run()
+	timestampStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return time.Time{}, err
 	}
