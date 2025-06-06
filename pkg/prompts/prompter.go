@@ -79,6 +79,14 @@ var promptUIRunner = func(prompt promptui.Prompt) (string, error) {
 	return prompt.Run()
 }
 
+// Global variable for Select operations that can be replaced during testing
+var promptUISelectRunner = func(prompt promptui.Select) (int, string, error) {
+	return prompt.Run()
+}
+
+// Global variable for ReadLongString operations that can be replaced during testing
+var utilsReadLongString = utils.ReadLongString
+
 func NewPrompter() Prompter {
 	return &realPrompter{}
 }
@@ -380,7 +388,7 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []compar
 		},
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -394,7 +402,7 @@ func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 		Validate: validatePositiveBigInt,
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +421,7 @@ func (*realPrompter) CapturePChainAddress(promptStr string, network models.Netwo
 		Validate: getPChainValidationFunc(network),
 	}
 
-	return prompt.Run()
+	return promptUIRunner(prompt)
 }
 
 func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Network) (string, error) {
@@ -422,7 +430,7 @@ func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Netwo
 		Validate: getXChainValidationFunc(network),
 	}
 
-	return prompt.Run()
+	return promptUIRunner(prompt)
 }
 
 func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
@@ -431,7 +439,7 @@ func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 		Validate: ValidateAddress,
 	}
 
-	addressStr, err := prompt.Run()
+	addressStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -445,7 +453,7 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 	validated := false
 	for !validated {
 		var err error
-		addressesStr, err = utils.ReadLongString(promptui.IconGood + " " + promptStr + " ")
+		addressesStr, err = utilsReadLongString(promptui.IconGood + " " + promptStr + " ")
 		if err != nil {
 			return nil, err
 		}
@@ -470,7 +478,7 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 		Validate: validateExistingFilepath,
 	}
 
-	pathStr, err := prompt.Run()
+	pathStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -485,7 +493,7 @@ func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
 		Validate: validateNewFilepath,
 	}
 
-	pathStr, err := prompt.Run()
+	pathStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -499,7 +507,7 @@ func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 		Items: orderedOptions,
 	}
 
-	_, decision, err := prompt.Run()
+	_, decision, err := promptUISelectRunner(prompt)
 	if err != nil {
 		return false, err
 	}
@@ -519,7 +527,7 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		Label: promptStr,
 		Items: options,
 	}
-	_, listDecision, err := prompt.Run()
+	_, listDecision, err := promptUISelectRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -532,7 +540,7 @@ func (*realPrompter) CaptureListWithSize(promptStr string, options []string, siz
 		Items: options,
 		Size:  size,
 	}
-	_, listDecision, err := prompt.Run()
+	_, listDecision, err := promptUISelectRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -545,7 +553,7 @@ func (*realPrompter) CaptureEmail(promptStr string) (string, error) {
 		Validate: validateEmail,
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -558,7 +566,7 @@ func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 		Label: promptStr,
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -572,7 +580,7 @@ func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (stri
 			Label:    promptStr,
 			Validate: ValidateURLFormat,
 		}
-		str, err := prompt.Run()
+		str, err := promptUIRunner(prompt)
 		if err != nil {
 			return "", err
 		}
@@ -593,7 +601,7 @@ func (*realPrompter) CaptureRepoBranch(promptStr string, repo string) (string, e
 			Label:    promptStr,
 			Validate: validateNonEmpty,
 		}
-		str, err := prompt.Run()
+		str, err := promptUIRunner(prompt)
 		if err != nil {
 			return "", err
 		}
@@ -611,7 +619,7 @@ func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch strin
 			Label:    promptStr,
 			Validate: validateNonEmpty,
 		}
-		str, err := prompt.Run()
+		str, err := promptUIRunner(prompt)
 		if err != nil {
 			return "", err
 		}
@@ -628,7 +636,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 		Validate: validateNonEmpty,
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
@@ -642,7 +650,7 @@ func (*realPrompter) CaptureValidatedString(promptStr string, validator func(str
 		Validate: validator,
 	}
 
-	str, err := prompt.Run()
+	str, err := promptUIRunner(prompt)
 	if err != nil {
 		return "", err
 	}
