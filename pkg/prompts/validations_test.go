@@ -4,7 +4,6 @@
 package prompts
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -135,12 +134,12 @@ func TestValidateMainnetStakingDuration(t *testing.T) {
 		},
 		{
 			name:    "minimum duration",
-			input:   fmt.Sprintf("%s", genesis.MainnetParams.MinStakeDuration),
+			input:   genesis.MainnetParams.MinStakeDuration.String(),
 			wantErr: false,
 		},
 		{
 			name:    "maximum duration",
-			input:   fmt.Sprintf("%s", genesis.MainnetParams.MaxStakeDuration),
+			input:   genesis.MainnetParams.MaxStakeDuration.String(),
 			wantErr: false,
 		},
 		{
@@ -195,7 +194,7 @@ func TestValidateMainnetL1StakingDuration(t *testing.T) {
 		},
 		{
 			name:    "maximum duration",
-			input:   fmt.Sprintf("%s", genesis.MainnetParams.MaxStakeDuration),
+			input:   genesis.MainnetParams.MaxStakeDuration.String(),
 			wantErr: false,
 		},
 		{
@@ -240,12 +239,12 @@ func TestValidateFujiStakingDuration(t *testing.T) {
 		},
 		{
 			name:    "minimum duration",
-			input:   fmt.Sprintf("%s", genesis.FujiParams.MinStakeDuration),
+			input:   genesis.FujiParams.MinStakeDuration.String(),
 			wantErr: false,
 		},
 		{
 			name:    "maximum duration",
-			input:   fmt.Sprintf("%s", genesis.FujiParams.MaxStakeDuration),
+			input:   genesis.FujiParams.MaxStakeDuration.String(),
 			wantErr: false,
 		},
 		{
@@ -339,7 +338,7 @@ func TestValidateDuration(t *testing.T) {
 
 func TestValidateTime(t *testing.T) {
 	// Create test times with sufficient buffer for processing delays
-	now := time.Now()
+	now := time.Now().UTC()
 	// Use a much larger buffer to account for test execution time
 	futureTime := now.Add(constants.StakingStartLeadTime + time.Hour)
 	pastTime := now.Add(-time.Hour)
@@ -351,9 +350,9 @@ func TestValidateTime(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "timing issue - skip for now",
+			name:    "valid time well beyond lead time boundary",
 			input:   futureTime.Format(constants.TimeParseLayout),
-			wantErr: true, // Accept timing issue as expected failure
+			wantErr: false,
 		},
 		{
 			name:    "time too close to now",
@@ -552,7 +551,8 @@ func TestValidateExistingFilepath(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test_file_*.txt")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	err = tmpFile.Close()
+	require.NoError(t, err)
 
 	// Create a temporary directory for testing
 	tmpDir, err := os.MkdirTemp("", "test_dir_*")
@@ -859,49 +859,87 @@ func TestValidateURLFormat(t *testing.T) {
 
 func TestValidatePChainAddress(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
+		name        string
+		input       string
+		expectedHRP string
+		wantErr     bool
 	}{
 		{
-			name:    "invalid Fuji P-Chain address - bad checksum",
-			input:   "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
-			wantErr: true, // This will fail checksum validation
+			name:        "valid P-Chain address - ewoq test address",
+			input:       "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			expectedHRP: "custom",
+			wantErr:     false,
 		},
 		{
-			name:    "invalid Mainnet P-Chain address - bad checksum",
-			input:   "P-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
-			wantErr: true, // This will fail checksum validation
+			name:        "valid address format but not P-Chain - X-Chain ewoq",
+			input:       "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			expectedHRP: "",
+			wantErr:     true, // Parse succeeds but chainID != "P"
 		},
 		{
-			name:    "invalid Local P-Chain address - bad checksum",
-			input:   "P-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
-			wantErr: true, // This will fail checksum validation
+			name:        "invalid Fuji P-Chain address - bad checksum",
+			input:       "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			expectedHRP: "",
+			wantErr:     true, // This will fail checksum validation
 		},
 		{
-			name:    "invalid - not P-Chain",
-			input:   "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
-			wantErr: true,
+			name:        "invalid Mainnet P-Chain address - bad checksum",
+			input:       "P-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+			expectedHRP: "",
+			wantErr:     true, // This will fail checksum validation
 		},
 		{
-			name:    "invalid - malformed address",
-			input:   "P-invalid-address",
-			wantErr: true,
+			name:        "invalid Local P-Chain address - bad checksum",
+			input:       "P-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			expectedHRP: "",
+			wantErr:     true, // This will fail checksum validation
 		},
 		{
-			name:    "empty string",
-			input:   "",
-			wantErr: true,
+			name:        "invalid - not P-Chain (X-Chain prefix)",
+			input:       "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			expectedHRP: "",
+			wantErr:     true,
+		},
+		{
+			name:        "invalid - not P-Chain (C-Chain prefix)",
+			input:       "C-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			expectedHRP: "",
+			wantErr:     true,
+		},
+		{
+			name:        "invalid - unknown chain prefix",
+			input:       "Z-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			expectedHRP: "",
+			wantErr:     true,
+		},
+		{
+			name:        "invalid - no chain prefix",
+			input:       "fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			expectedHRP: "",
+			wantErr:     true,
+		},
+		{
+			name:        "invalid - malformed address",
+			input:       "P-invalid-address",
+			expectedHRP: "",
+			wantErr:     true,
+		},
+		{
+			name:        "empty string",
+			input:       "",
+			expectedHRP: "",
+			wantErr:     true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validatePChainAddress(tt.input)
+			hrp, err := validatePChainAddress(tt.input)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+				require.Equal(t, tt.expectedHRP, hrp)
 			}
 		})
 	}
@@ -913,6 +951,16 @@ func TestValidatePChainFujiAddress(t *testing.T) {
 		input   string
 		wantErr bool
 	}{
+		{
+			name:    "valid P-Chain address with Fuji HRP",
+			input:   "P-fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t",
+			wantErr: false, // Parse succeeds and HRP == "fuji"
+		},
+		{
+			name:    "valid P-Chain address but wrong HRP - custom",
+			input:   "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: true, // Parse succeeds but HRP != "fuji"
+		},
 		{
 			name:    "invalid Fuji P-Chain address - bad checksum",
 			input:   "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
@@ -959,6 +1007,16 @@ func TestValidatePChainMainAddress(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name:    "valid P-Chain address with Mainnet HRP",
+			input:   "P-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5",
+			wantErr: false, // Parse succeeds and HRP == "avax"
+		},
+		{
+			name:    "valid P-Chain address but wrong HRP - custom",
+			input:   "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: true, // Parse succeeds but HRP != "avax"
+		},
+		{
 			name:    "invalid Mainnet P-Chain address - bad checksum",
 			input:   "P-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
 			wantErr: true, // This will fail checksum validation
@@ -1003,6 +1061,16 @@ func TestValidatePChainLocalAddress(t *testing.T) {
 		input   string
 		wantErr bool
 	}{
+		{
+			name:    "valid P-Chain address with custom HRP",
+			input:   "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: false,
+		},
+		{
+			name:    "invalid P-Chain address - unsupported HRP",
+			input:   "P-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5",
+			wantErr: true, // HRP is neither local nor fallback
+		},
 		{
 			name:    "invalid Local P-Chain address - bad checksum",
 			input:   "P-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
@@ -1072,6 +1140,12 @@ func TestGetPChainValidationFunc(t *testing.T) {
 			validAddr:   "P-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
 			invalidAddr: "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
 		},
+		{
+			name:        "Devnet network",
+			network:     models.NewDevnetNetwork("", 0),
+			validAddr:   "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			invalidAddr: "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1104,6 +1178,16 @@ func TestValidateXChainAddress(t *testing.T) {
 		input   string
 		wantErr bool
 	}{
+		{
+			name:    "valid X-Chain address",
+			input:   "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: false,
+		},
+		{
+			name:    "valid address format but not X-Chain",
+			input:   "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: true, // chainID != "X"
+		},
 		{
 			name:    "invalid Fuji X-Chain address - bad checksum",
 			input:   "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
@@ -1139,6 +1223,61 @@ func TestValidateXChainAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := validateXChainAddress(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateXChainFujiAddress(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "valid X-Chain address with Fuji HRP",
+			input:   "X-fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t",
+			wantErr: false,
+		},
+		{
+			name:    "valid X-Chain address but wrong HRP - custom",
+			input:   "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: true, // Parse succeeds but HRP != "fuji"
+		},
+		{
+			name:    "invalid Fuji X-Chain address - bad checksum",
+			input:   "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			wantErr: true, // This will fail checksum validation
+		},
+		{
+			name:    "invalid - Mainnet address",
+			input:   "X-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+			wantErr: true,
+		},
+		{
+			name:    "invalid - Local address",
+			input:   "X-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			wantErr: true,
+		},
+		{
+			name:    "invalid - not X-Chain",
+			input:   "P-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateXChainFujiAddress(tt.input)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -1201,7 +1340,8 @@ func TestValidateNewFilepath(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "existing_file_*.txt")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	err = tmpFile.Close()
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	Yes        = "Yes"
-	No         = "No"
+	Yes = "Yes"
+	No  = "No"
 )
 
 type Prompter interface {

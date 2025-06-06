@@ -92,6 +92,7 @@ func validateDuration(input string) error {
 	return err
 }
 
+// [input] should be UTC
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {
@@ -100,7 +101,7 @@ func validateTime(input string) error {
 	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
 		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
 	}
-	return err
+	return nil
 }
 
 func ValidateNodeID(input string) error {
