@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -275,7 +274,6 @@ func GetPChainSubnetToL1ConversionUnsignedMessage(
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
-	signatureAggregatorBinDir string,
 ) (*warp.UnsignedMessage, error) {
 	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
@@ -314,12 +312,6 @@ func GetPChainSubnetToL1ConversionUnsignedMessage(
 	if err != nil {
 		return nil, err
 	}
-
-	binPath, err := signatureaggregator.InstallSignatureAggregator(signatureAggregatorBinDir, "latest")
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("binPath %s \n", binPath)
 
 	return subnetConversionUnsignedMessage, nil
 }

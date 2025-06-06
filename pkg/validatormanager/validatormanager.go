@@ -300,20 +300,19 @@ func SetupPoA(
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	v2_0_0 bool,
+	signatureAggregatorEndpoint string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		log,
 		network.SDKNetwork(),
 		privateKey,
-		aggregatorExtraPeerEndpoints,
 		aggregatorLogger,
 		validatorManagerAddressStr,
 		v2_0_0,
-		"",
+		signatureAggregatorEndpoint,
 	)
 }
 

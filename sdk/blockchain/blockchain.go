@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
@@ -348,11 +347,10 @@ func (c *Subnet) InitializeProofOfAuthority(
 	log logging.Logger,
 	network network.Network,
 	privateKey string,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
-	signatureAggregatorBinDir string,
+	signatureAggregatorEndpoint string,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -404,30 +402,15 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.BlockchainID,
 		managerAddress,
 		c.BootstrapValidators,
-		signatureAggregatorBinDir,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	// Create config file for signature aggregator
-	config := interchain.CreateSignatureAggregatorConfig(c.SubnetID.String(), network.Endpoint, aggregatorExtraPeerEndpoints)
-
-	configPath := filepath.Join(signatureAggregatorBinDir, "config.json")
-	if err := interchain.WriteSignatureAggregatorConfig(config, configPath); err != nil {
-		return fmt.Errorf("failed to write signature aggregator config: %w", err)
-	}
-
-	logPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator.log")
-	binPath := filepath.Join(signatureAggregatorBinDir, "signature-aggregator-v0.4.3", "signature-aggregator")
-	if _, err := interchain.StartSignatureAggregator(binPath, configPath, logPath, aggregatorLogger); err != nil {
-		return fmt.Errorf("failed to start signature aggregator: %w", err)
-	}
-
 	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 
-	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), constants.DefaultQuorumPercentage, aggregatorLogger)
+	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), constants.DefaultQuorumPercentage, aggregatorLogger, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}

@@ -198,10 +198,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			subnetSDK,
 			network,
 			privateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			managerAddress,
 			sc.UseACP99,
+			"",
 		); err != nil {
 			return err
 		}

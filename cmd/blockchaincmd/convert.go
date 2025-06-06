@@ -395,6 +395,14 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
+	err = signatureaggregator.CreateSignatureAggregatorInstance(subnetID.String(), network, extraAggregatorPeers, app.GetSignatureAggregatorBinDir(), aggregatorLogger)
+	if err != nil {
+		return tracked, err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+	if err != nil {
+		return tracked, err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
 	if pos {
@@ -442,11 +450,10 @@ func InitializeValidatorManager(
 			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			managerAddress,
 			useACP99,
-			app.GetSignatureAggregatorBinDir(),
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
 		}
