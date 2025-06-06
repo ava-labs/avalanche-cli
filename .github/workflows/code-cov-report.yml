@@ -1,0 +1,49 @@
+name: Code Coverage Cron Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight UTC
+  
+jobs:
+  code_cov_report:
+    name: Code Coverage Report
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16.x"
+        
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install Go dependencies
+        run: go mod download
+      
+      - name: Build
+        working-directory: ${{ github.workspace }}
+        run: |
+          scripts/build.sh
+        env:
+          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
+
+      - name: Unit Tests
+        working-directory: ${{ github.workspace }}
+        run: |
+          scripts/unit_test.sh
+
+      - name: E2E Tests
+        working-directory: ${{ github.workspace }}
+        run: |
+          scripts/run_e2e_suites_for_cov.sh
+
+      # at the moment the coverage report is printed to the console
+      - name: Generate Code Coverage Report
+        run: |
+          scripts/report_coverage.sh
