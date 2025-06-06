@@ -653,3 +653,7 @@ func PointersSlice[T any](input []T) []*T {
 	}
 	return output
 }
+
+func SimulatedPublicNetwork() bool {
+	return os.Getenv(constants.SimulatePublicNetwork) != ""
+}
