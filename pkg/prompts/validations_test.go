@@ -4,6 +4,7 @@
 package prompts
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -590,71 +591,6 @@ func TestValidateExistingFilepath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateExistingFilepath(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestValidateWeight(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
-	}{
-		{
-			name:    "valid weight",
-			input:   "50",
-			wantErr: false,
-		},
-		{
-			name:    "minimum valid weight",
-			input:   "1",
-			wantErr: false,
-		},
-		{
-			name:    "maximum valid weight",
-			input:   "100",
-			wantErr: false,
-		},
-		{
-			name:    "weight too low",
-			input:   "0",
-			wantErr: true,
-		},
-		{
-			name:    "weight above 100 (still valid as per function logic)",
-			input:   "150",
-			wantErr: false,
-		},
-		{
-			name:    "negative weight",
-			input:   "-1",
-			wantErr: true,
-		},
-		{
-			name:    "invalid format",
-			input:   "abc",
-			wantErr: true,
-		},
-		{
-			name:    "empty string",
-			input:   "",
-			wantErr: true,
-		},
-		{
-			name:    "float number",
-			input:   "50.5",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateWeight(tt.input)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -1917,6 +1853,201 @@ func TestValidateRepoFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateWeightFunc(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "valid weight within range",
+			input:   "50",
+			wantErr: false,
+		},
+		{
+			name:    "minimum valid weight",
+			input:   "1",
+			wantErr: false,
+		},
+		{
+			name:    "large valid weight",
+			input:   "100",
+			wantErr: false,
+		},
+		{
+			name:    "very large weight",
+			input:   "1000",
+			wantErr: false,
+		},
+		{
+			name:    "zero weight - below minimum",
+			input:   "0",
+			wantErr: true,
+		},
+		{
+			name:    "negative weight - invalid format",
+			input:   "-1",
+			wantErr: true,
+		},
+		{
+			name:    "invalid format - letters",
+			input:   "abc",
+			wantErr: true,
+		},
+		{
+			name:    "invalid format - float",
+			input:   "50.5",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid format - mixed",
+			input:   "50abc",
+			wantErr: true,
+		},
+	}
+
+	// Test without extra validation
+	t.Run("without extra validation", func(t *testing.T) {
+		validator := validateWeightFunc(nil)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validator(tt.input)
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	// Test with extra validation that always passes
+	t.Run("with extra validation that passes", func(t *testing.T) {
+		extraValidation := func(uint64) error {
+			return nil // Always pass
+		}
+		validator := validateWeightFunc(extraValidation)
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validator(tt.input)
+				if tt.wantErr {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	// Test with extra validation that fails for values > 100
+	t.Run("with extra validation max 100", func(t *testing.T) {
+		extraValidation := func(val uint64) error {
+			if val > 100 {
+				return fmt.Errorf("weight must not exceed 100")
+			}
+			return nil
+		}
+		validator := validateWeightFunc(extraValidation)
+
+		// Test cases specific to this extra validation
+		extraTests := []struct {
+			name    string
+			input   string
+			wantErr bool
+		}{
+			{
+				name:    "weight within extra limit",
+				input:   "50",
+				wantErr: false,
+			},
+			{
+				name:    "weight at extra limit",
+				input:   "100",
+				wantErr: false,
+			},
+			{
+				name:    "weight above extra limit",
+				input:   "150",
+				wantErr: true,
+			},
+			{
+				name:    "large weight above extra limit",
+				input:   "1000",
+				wantErr: true,
+			},
+		}
+
+		for _, tt := range extraTests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validator(tt.input)
+				if tt.wantErr {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), "must not exceed 100")
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+
+	// Test with extra validation that fails for even numbers
+	t.Run("with extra validation odd numbers only", func(t *testing.T) {
+		extraValidation := func(val uint64) error {
+			if val%2 == 0 {
+				return fmt.Errorf("weight must be an odd number")
+			}
+			return nil
+		}
+		validator := validateWeightFunc(extraValidation)
+
+		// Test cases specific to this extra validation
+		extraTests := []struct {
+			name    string
+			input   string
+			wantErr bool
+		}{
+			{
+				name:    "odd number",
+				input:   "1",
+				wantErr: false,
+			},
+			{
+				name:    "another odd number",
+				input:   "99",
+				wantErr: false,
+			},
+			{
+				name:    "even number",
+				input:   "2",
+				wantErr: true,
+			},
+			{
+				name:    "another even number",
+				input:   "100",
+				wantErr: true,
+			},
+		}
+
+		for _, tt := range extraTests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validator(tt.input)
+				if tt.wantErr {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), "must be an odd number")
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
 }
 
 func TestValidatePositiveInt(t *testing.T) {

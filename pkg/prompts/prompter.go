@@ -199,17 +199,8 @@ func (*realPrompter) CaptureValidatorBalance(
 
 func (*realPrompter) CaptureWeight(promptStr string, validator func(uint64) error) (uint64, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
-		Validate: func(input string) error {
-			if err := validateWeight(input); err != nil {
-				return err
-			}
-			val, err := strconv.ParseUint(input, 10, 64)
-			if err != nil {
-				return err
-			}
-			return validator(val)
-		},
+		Label:    promptStr,
+		Validate: validateWeightFunc(validator),
 	}
 
 	amountStr, err := prompt.Run()

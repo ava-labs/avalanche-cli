@@ -139,15 +139,20 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
-func validateWeight(input string) error {
-	val, err := strconv.ParseUint(input, 10, 64)
-	if err != nil {
-		return err
+func validateWeightFunc(extraValidation func(uint64) error) func(string) error {
+	return func(input string) error {
+		val, err := strconv.ParseUint(input, 10, 64)
+		if err != nil {
+			return err
+		}
+		if val < constants.MinStakeWeight {
+			return errors.New("the weight must be an integer between 1 and 100")
+		}
+		if extraValidation != nil {
+			return extraValidation(val)
+		}
+		return nil
 	}
-	if val < constants.MinStakeWeight {
-		return errors.New("the weight must be an integer between 1 and 100")
-	}
-	return nil
 }
 
 func validateValidatorBalanceFunc(availableBalance float64, minBalance float64) func(string) error {
