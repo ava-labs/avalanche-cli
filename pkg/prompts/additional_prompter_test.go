@@ -789,7 +789,7 @@ func TestCaptureUint64CompareWithMonkeyPatch(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "zero value",
+			name:        "zero value - valid when no comparators",
 			mockReturn:  "0",
 			mockError:   nil,
 			comparators: []comparator.Comparator{},
@@ -865,13 +865,26 @@ func TestCaptureUint64CompareWithMonkeyPatch(t *testing.T) {
 			expectError:   true,
 			errorContains: "the value must be bigger than or equal to",
 		},
+		{
+			name:       "zero value rejected by comparator",
+			mockReturn: "0",
+			mockError:  nil,
+			comparators: []comparator.Comparator{
+				{
+					Label: "must be positive",
+					Type:  comparator.MoreThan,
+					Value: uint64(0),
+				},
+			},
+			expectedVal:   0,
+			expectError:   true,
+			errorContains: "the value must be bigger than",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Replace the global function with mock
 			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
-				// Verify the prompt was set up correctly
 				require.Equal(t, "Enter uint64:", prompt.Label)
 				require.NotNil(t, prompt.Validate)
 
@@ -885,6 +898,11 @@ func TestCaptureUint64CompareWithMonkeyPatch(t *testing.T) {
 						err := prompt.Validate(tt.mockReturn)
 						require.Error(t, err)
 						return "", err
+					case strings.Contains(tt.errorContains, "the value must be bigger than"):
+						err := prompt.Validate(tt.mockReturn)
+						require.Error(t, err)
+						return "", err
+
 					case strings.Contains(tt.errorContains, "invalid syntax"):
 						return tt.mockReturn, nil
 					default:
@@ -3470,4 +3488,486 @@ func TestChooseKeyOrLedgerWithMonkeyPatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCaptureRepoFileWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name          string
+		promptStr     string
+		repo          string
+		branch        string
+		mockReturn    string
+		mockError     error
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "empty string - validation fails",
+			promptStr:     "Enter file path:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			branch:        "main",
+			mockReturn:    "",
+			mockError:     nil,
+			expectError:   true,
+			errorContains: "string cannot be empty",
+		},
+		{
+			name:          "prompt error - user cancelled",
+			promptStr:     "Enter file path:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			branch:        "main",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("user cancelled"),
+			expectError:   true,
+			errorContains: "user cancelled",
+		},
+		{
+			name:          "prompt error - interrupt",
+			promptStr:     "Enter file path:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			branch:        "main",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("interrupt"),
+			expectError:   true,
+			errorContains: "interrupt",
+		},
+		{
+			name:          "ValidateRepoFile fails then succeeds",
+			promptStr:     "Enter file path:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			branch:        "main",
+			mockReturn:    "README.md", // Final valid response
+			mockError:     nil,
+			expectError:   false,
+			errorContains: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callCount := 0
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				callCount++
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil && tt.expectError && strings.Contains(tt.errorContains, "string cannot be empty") {
+					err := prompt.Validate(tt.mockReturn)
+					require.Error(t, err)
+					return "", err
+				}
+
+				// For ValidateRepoFile failure test, simulate multiple attempts
+				if strings.Contains(tt.name, "ValidateRepoFile fails then succeeds") {
+					switch callCount {
+					case 1:
+						// First attempt: return invalid file (will fail validation)
+						return "non-existent-file-1.xyz", nil
+					case 2:
+						// Second attempt: return another invalid file (will fail validation)
+						return "non-existent-file-2.xyz", nil
+					default:
+						// Third attempt: return valid file (will pass validation)
+						return tt.mockReturn, tt.mockError
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureRepoFile(tt.promptStr, tt.repo, tt.branch)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.mockReturn, result)
+			}
+		})
+	}
+
+	// Test prompt validation function separately without triggering the full function
+	t.Run("validateNonEmpty function test", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			input         string
+			expectError   bool
+			errorContains string
+		}{
+			{
+				name:        "valid non-empty string",
+				input:       "README.md",
+				expectError: false,
+			},
+			{
+				name:        "valid file path in subdirectory",
+				input:       "cmd/root.go",
+				expectError: false,
+			},
+			{
+				name:        "valid file with extension",
+				input:       "config.json",
+				expectError: false,
+			},
+			{
+				name:          "empty string fails",
+				input:         "",
+				expectError:   true,
+				errorContains: "string cannot be empty",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validateNonEmpty(tt.input)
+				if tt.expectError {
+					require.Error(t, err)
+					if tt.errorContains != "" {
+						require.Contains(t, err.Error(), tt.errorContains)
+					}
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+}
+
+func TestCaptureRepoBranchWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name          string
+		promptStr     string
+		repo          string
+		mockReturn    string
+		mockError     error
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:          "empty string - validation fails",
+			promptStr:     "Enter branch:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			mockReturn:    "",
+			mockError:     nil,
+			expectError:   true,
+			errorContains: "string cannot be empty",
+		},
+		{
+			name:          "prompt error - user cancelled",
+			promptStr:     "Enter branch:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("user cancelled"),
+			expectError:   true,
+			errorContains: "user cancelled",
+		},
+		{
+			name:          "prompt error - interrupt",
+			promptStr:     "Enter branch:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			mockReturn:    "",
+			mockError:     fmt.Errorf("interrupt"),
+			expectError:   true,
+			errorContains: "interrupt",
+		},
+		{
+			name:          "ValidateRepoBranch fails then succeeds",
+			promptStr:     "Enter branch:",
+			repo:          "https://github.com/ava-labs/avalanche-cli",
+			mockReturn:    "main", // Final valid response
+			mockError:     nil,
+			expectError:   false,
+			errorContains: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callCount := 0
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				callCount++
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil && tt.expectError && strings.Contains(tt.errorContains, "string cannot be empty") {
+					err := prompt.Validate(tt.mockReturn)
+					require.Error(t, err)
+					return "", err
+				}
+
+				// For ValidateRepoBranch failure test, simulate multiple attempts
+				if strings.Contains(tt.name, "ValidateRepoBranch fails then succeeds") {
+					switch callCount {
+					case 1:
+						// First attempt: return invalid branch (will fail validation)
+						return "non-existent-branch-1", nil
+					case 2:
+						// Second attempt: return another invalid branch (will fail validation)
+						return "non-existent-branch-2", nil
+					default:
+						// Third attempt: return valid branch (will pass validation)
+						return tt.mockReturn, tt.mockError
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureRepoBranch(tt.promptStr, tt.repo)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.mockReturn, result)
+			}
+		})
+	}
+
+	// Test prompt validation function separately without triggering the full function
+	t.Run("validateNonEmpty function test", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			input         string
+			expectError   bool
+			errorContains string
+		}{
+			{
+				name:        "valid non-empty string",
+				input:       "main",
+				expectError: false,
+			},
+			{
+				name:        "valid branch name",
+				input:       "feature/new-feature",
+				expectError: false,
+			},
+			{
+				name:        "valid branch with version",
+				input:       "v1.0.0",
+				expectError: false,
+			},
+			{
+				name:          "empty string fails",
+				input:         "",
+				expectError:   true,
+				errorContains: "string cannot be empty",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := validateNonEmpty(tt.input)
+				if tt.expectError {
+					require.Error(t, err)
+					if tt.errorContains != "" {
+						require.Contains(t, err.Error(), tt.errorContains)
+					}
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
+}
+
+func TestCaptureURLWithMonkeyPatch(t *testing.T) {
+	// Save original function
+	originalRunner := promptUIRunner
+	defer func() {
+		promptUIRunner = originalRunner
+	}()
+
+	tests := []struct {
+		name               string
+		promptStr          string
+		validateConnection bool
+		mockReturn         string
+		mockError          error
+		expectError        bool
+		errorContains      string
+	}{
+		{
+			name:               "empty string - validation fails",
+			promptStr:          "Enter URL:",
+			validateConnection: false,
+			mockReturn:         "",
+			mockError:          nil,
+			expectError:        true,
+			errorContains:      "empty url",
+		},
+		{
+			name:               "invalid URL format - validation fails",
+			promptStr:          "Enter URL:",
+			validateConnection: false,
+			mockReturn:         "not-a-url",
+			mockError:          nil,
+			expectError:        true,
+			errorContains:      "invalid URI for request",
+		},
+		{
+			name:               "valid URL format without connection validation",
+			promptStr:          "Enter URL:",
+			validateConnection: false,
+			mockReturn:         "https://example.com",
+			mockError:          nil,
+			expectError:        false,
+			errorContains:      "",
+		},
+		{
+			name:               "prompt error - user cancelled",
+			promptStr:          "Enter URL:",
+			validateConnection: false,
+			mockReturn:         "",
+			mockError:          fmt.Errorf("user cancelled"),
+			expectError:        true,
+			errorContains:      "user cancelled",
+		},
+		{
+			name:               "prompt error - interrupt",
+			promptStr:          "Enter URL:",
+			validateConnection: false,
+			mockReturn:         "",
+			mockError:          fmt.Errorf("interrupt"),
+			expectError:        true,
+			errorContains:      "interrupt",
+		},
+		{
+			name:               "ValidateURL fails then succeeds",
+			promptStr:          "Enter URL:",
+			validateConnection: true,
+			mockReturn:         "https://github.com/ava-labs/avalanche-cli",
+			mockError:          nil,
+			expectError:        false,
+			errorContains:      "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			callCount := 0
+			promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+				require.Equal(t, tt.promptStr, prompt.Label)
+				require.NotNil(t, prompt.Validate)
+
+				callCount++
+
+				// Test validation function if no error expected from prompt
+				if tt.mockError == nil && tt.expectError && (strings.Contains(tt.errorContains, "empty url") || strings.Contains(tt.errorContains, "invalid URI for request")) {
+					err := prompt.Validate(tt.mockReturn)
+					require.Error(t, err)
+					return "", err
+				}
+
+				// For ValidateURL failure test, simulate multiple attempts
+				if strings.Contains(tt.name, "ValidateURL fails then succeeds") {
+					switch callCount {
+					case 1:
+						// First attempt: return invalid URL (will fail connection validation)
+						return "https://thisdomaindoesnotexist12345.com", nil
+					case 2:
+						// Second attempt: return another invalid URL (will fail connection validation)
+						return "https://nonexistent-invalid-domain-999.com", nil
+					default:
+						// Third attempt: return valid URL (will pass connection validation)
+						return tt.mockReturn, tt.mockError
+					}
+				}
+
+				return tt.mockReturn, tt.mockError
+			}
+
+			prompter := &realPrompter{}
+			result, err := prompter.CaptureURL(tt.promptStr, tt.validateConnection)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					require.Contains(t, err.Error(), tt.errorContains)
+				}
+				require.Empty(t, result)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.mockReturn, result)
+			}
+		})
+	}
+
+	// Test prompt validation function separately without triggering the full function
+	t.Run("ValidateURLFormat function test", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			input         string
+			expectError   bool
+			errorContains string
+		}{
+			{
+				name:        "valid HTTP URL",
+				input:       "http://example.com",
+				expectError: false,
+			},
+			{
+				name:        "valid HTTPS URL",
+				input:       "https://example.com",
+				expectError: false,
+			},
+			{
+				name:        "valid URL with path",
+				input:       "https://example.com/path",
+				expectError: false,
+			},
+			{
+				name:          "invalid URL format",
+				input:         "not-a-url",
+				expectError:   true,
+				errorContains: "invalid URI for request",
+			},
+			{
+				name:          "empty string fails",
+				input:         "",
+				expectError:   true,
+				errorContains: "empty url",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				err := ValidateURLFormat(tt.input)
+				if tt.expectError {
+					require.Error(t, err)
+					if tt.errorContains != "" {
+						require.Contains(t, err.Error(), tt.errorContains)
+					}
+				} else {
+					require.NoError(t, err)
+				}
+			})
+		}
+	})
 }
