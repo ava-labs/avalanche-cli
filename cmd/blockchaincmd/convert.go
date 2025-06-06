@@ -395,7 +395,8 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(subnetID.String(), network, extraAggregatorPeers, app.GetSignatureAggregatorBinDir(), aggregatorLogger)
+	// TODO: replace latest below with sig agg version in flags for convert and deploy
+	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
 	if err != nil {
 		return tracked, err
 	}
