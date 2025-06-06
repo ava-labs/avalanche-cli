@@ -74,6 +74,11 @@ type Prompter interface {
 
 type realPrompter struct{}
 
+// Global variable that can be replaced during testing
+var promptUIRunner = func(prompt promptui.Prompt) (string, error) {
+	return prompt.Run()
+}
+
 func NewPrompter() Prompter {
 	return &realPrompter{}
 }
@@ -84,7 +89,7 @@ func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
 		Validate: validateDuration,
 	}
 
-	durationStr, err := prompt.Run()
+	durationStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -98,7 +103,7 @@ func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error
 		Validate: validateFujiStakingDuration,
 	}
 
-	durationStr, err := prompt.Run()
+	durationStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -112,7 +117,7 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 		Validate: validateMainnetStakingDuration,
 	}
 
-	durationStr, err := prompt.Run()
+	durationStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -126,7 +131,7 @@ func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Dur
 		Validate: validateMainnetL1StakingDuration,
 	}
 
-	durationStr, err := prompt.Run()
+	durationStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -140,7 +145,7 @@ func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 		Validate: validateTime,
 	}
 
-	timeStr, err := prompt.Run()
+	timeStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -154,7 +159,7 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 		Validate: validateID,
 	}
 
-	idStr, err := prompt.Run()
+	idStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -167,7 +172,7 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 		Validate: ValidateNodeID,
 	}
 
-	nodeIDStr, err := prompt.Run()
+	nodeIDStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
@@ -184,7 +189,7 @@ func (*realPrompter) CaptureValidatorBalance(
 		Label:    promptStr,
 		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
 	}
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -203,7 +208,7 @@ func (*realPrompter) CaptureWeight(promptStr string, validator func(uint64) erro
 		Validate: validateWeightFunc(validator),
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -222,7 +227,7 @@ func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (in
 			return validator(val)
 		},
 	}
-	input, err := prompt.Run()
+	input, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -244,7 +249,7 @@ func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
 			return nil
 		},
 	}
-	input, err := prompt.Run()
+	input, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -266,7 +271,7 @@ func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
 			return nil
 		},
 	}
-	input, err := prompt.Run()
+	input, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -288,7 +293,7 @@ func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {
 			return nil
 		},
 	}
-	input, err := prompt.Run()
+	input, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -305,7 +310,7 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 		Validate: validateBiggerThanZero,
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -324,7 +329,7 @@ func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) erro
 		},
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
@@ -351,7 +356,7 @@ func (*realPrompter) CapturePositiveInt(promptStr string, comparators []comparat
 		},
 	}
 
-	amountStr, err := prompt.Run()
+	amountStr, err := promptUIRunner(prompt)
 	if err != nil {
 		return 0, err
 	}
