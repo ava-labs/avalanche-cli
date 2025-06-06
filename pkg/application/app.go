@@ -157,6 +157,10 @@ func (app *Avalanche) GetICMRelayerBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMRelayerInstallDir)
 }
 
+func (app *Avalanche) GetSignatureAggregatorBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SignatureAggregator)
+}
+
 func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
 	networkDirName := strings.ReplaceAll(networkKind.String(), " ", "")
 	return filepath.Join(app.GetRunDir(), networkDirName, constants.LocalRelayerDir)

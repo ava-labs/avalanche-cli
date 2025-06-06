@@ -9,19 +9,20 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
+
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -265,6 +266,54 @@ func GetPChainSubnetToL1ConversionMessage(
 		return nil, err
 	}
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
+}
+
+func GetPChainSubnetToL1ConversionUnsignedMessage(
+	network network.Network,
+	subnetID ids.ID,
+	managerBlockchainID ids.ID,
+	managerAddress common.Address,
+	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
+) (*warp.UnsignedMessage, error) {
+	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
+	for _, convertSubnetValidator := range convertSubnetValidators {
+		validators = append(validators, warpMessage.SubnetToL1ConversionValidatorData{
+			NodeID:       convertSubnetValidator.NodeID[:],
+			BLSPublicKey: convertSubnetValidator.Signer.PublicKey,
+			Weight:       convertSubnetValidator.Weight,
+		})
+	}
+	subnetConversionData := warpMessage.SubnetToL1ConversionData{
+		SubnetID:       subnetID,
+		ManagerChainID: managerBlockchainID,
+		ManagerAddress: managerAddress.Bytes(),
+		Validators:     validators,
+	}
+	subnetConversionID, err := warpMessage.SubnetToL1ConversionID(subnetConversionData)
+	if err != nil {
+		return nil, err
+	}
+	addressedCallPayload, err := warpMessage.NewSubnetToL1Conversion(subnetConversionID)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
+		nil,
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		avagoconstants.PlatformChainID,
+		subnetConversionAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return subnetConversionUnsignedMessage, nil
 }
 
 // InitializeValidatorsSet calls poa manager validators set init method,

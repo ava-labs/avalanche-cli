@@ -3,9 +3,15 @@
 package interchain
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -24,6 +30,7 @@ import (
 	awmUtils "github.com/ava-labs/icm-services/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
 const (
@@ -248,4 +255,119 @@ func (s *SignatureAggregator) Sign(
 		s.subnetID,
 		s.quorumPercentage,
 	)
+}
+
+// SignatureAggregatorRunFile represents the run file structure for the signature aggregator
+type SignatureAggregatorRunFile struct {
+	Pid int `json:"pid"`
+}
+
+// SaveSignatureAggregatorRunFile saves the signature aggregator run file
+func SaveSignatureAggregatorRunFile(runFilePath string, pid int) error {
+	rf := SignatureAggregatorRunFile{
+		Pid: pid,
+	}
+	bs, err := json.Marshal(&rf)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(runFilePath), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(runFilePath, bs, 0o600); err != nil {
+		return fmt.Errorf("could not write signature aggregator run file to %s: %w", runFilePath, err)
+	}
+	return nil
+}
+
+// AggregateSignaturesRequest represents the request structure for aggregating signatures
+type AggregateSignaturesRequest struct {
+	Message                string `json:"message"`
+	Justification          string `json:"justification"`
+	SigningSubnetID        string `json:"signing-subnet-id"`
+	QuorumPercentage       int    `json:"quorum-percentage"`
+	QuorumPercentageBuffer int    `json:"quorum-percentage-buffer,omitempty"`
+}
+
+// SignMessage sends a request to the signature aggregator to sign a message.
+// It returns the signed warp message or an error if the operation fails.
+func SignMessage(message, justification, signingSubnetID string, quorumPercentage int, logger logging.Logger, signatureAggregatorEndpoint string) (*warp.Message, error) {
+	request := AggregateSignaturesRequest{
+		Message:          message,
+		Justification:    justification,
+		SigningSubnetID:  signingSubnetID,
+		QuorumPercentage: quorumPercentage,
+	}
+
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	logger.Info("Calling signature aggregator",
+		zap.String("request", string(requestBody)),
+	)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := client.Post(
+		signatureAggregatorEndpoint,
+		"application/json",
+		bytes.NewBuffer(requestBody),
+	)
+	if err != nil {
+		logger.Error("Error making request to signature aggregator",
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			logger.Warn("Failed to close response body",
+				zap.Error(closeErr),
+			)
+		}
+	}()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error("Error reading response body",
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	logger.Info("Received response from signature aggregator",
+		zap.Int("status_code", resp.StatusCode),
+		zap.String("response", string(body)),
+	)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("signature aggregator returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the response to get the signed message hex
+	var response struct {
+		SignedMessage string `json:"signed-message"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Decode the hex string
+	signedMessageBytes, err := hex.DecodeString(response.SignedMessage)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding hex: %w", err)
+	}
+
+	// Parse the signed message
+	signedMessage, err := warp.ParseMessage(signedMessageBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing signed message: %w", err)
+	}
+
+	return signedMessage, nil
 }

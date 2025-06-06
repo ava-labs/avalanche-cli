@@ -395,6 +395,14 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
+	err = signatureaggregator.CreateSignatureAggregatorInstance(subnetID.String(), network, extraAggregatorPeers, app.GetSignatureAggregatorBinDir(), aggregatorLogger)
+	if err != nil {
+		return tracked, err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+	if err != nil {
+		return tracked, err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
 	if pos {
@@ -439,14 +447,13 @@ func InitializeValidatorManager(
 	} else {
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
-			aggregatorCtx,
 			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			managerAddress,
 			useACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
 		}
