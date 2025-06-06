@@ -4,6 +4,7 @@ package transfer
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -349,6 +350,7 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 
 			_, err = commands.KeyTransferSend(transferArgs)
 			gomega.Expect(err).Should(gomega.BeNil())
+			time.Sleep(5 * time.Second) //TODO notice
 
 			// Verify ERC20 balances
 			output, err = commands.ListKeys("local", true, "c,"+subnetName, fmt.Sprintf("%s,%s", erc20Address, remoteAddress))
@@ -414,6 +416,7 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 
 			_, err = commands.KeyTransferSend(transferArgs)
 			gomega.Expect(err).Should(gomega.BeNil())
+			time.Sleep(5 * time.Second) //TODO notice
 
 			// Verify ERC20 balances
 			output, err = commands.ListKeys("local", true, "c,"+subnetName, fmt.Sprintf("%s,%s", erc20Address, remoteAddress))

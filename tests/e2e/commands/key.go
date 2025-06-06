@@ -135,27 +135,3 @@ func KeyTransferSend(
 	outputByte, err := cmd.CombinedOutput()
 	return string(outputByte), err
 }
-
-/* #nosec G204 */
-func KeyTransferReceive(keyName string, amount string, recoveryStep string) (string, error) {
-	// Create config
-	args := []string{
-		KeyCmd,
-		"transfer",
-		"--local",
-		"--key",
-		keyName,
-		"--receive",
-		"--amount",
-		amount,
-		"--fund-p-chain",
-		"--force",
-		"--receive-recovery-step",
-		recoveryStep,
-		"--" + constants.SkipUpdateFlag,
-	}
-	cmd := exec.Command(CLIBinary, args...)
-
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
