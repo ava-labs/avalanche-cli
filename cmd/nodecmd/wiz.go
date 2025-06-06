@@ -303,6 +303,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// load sidecar one more time to get deployed subnet id
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
