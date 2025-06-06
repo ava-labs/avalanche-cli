@@ -31,18 +31,34 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 	}
 }
 
+// WriteCloser interface (promptui)
+func (ul *UserLog) Write(p []byte) (n int, err error) {
+	ul.Print(string(p))
+	return len(string(p)), nil
+}
+
+// WriteCloser interface (promptui)
+func (*UserLog) Close() error {
+	return nil
+}
+
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
-	ul.print(fmt.Sprintf(msg, args...) + "\n")
+	ul.Printf(msg+"\n", args...)
 }
 
-func (ul *UserLog) print(msg string) {
+func (ul *UserLog) Printf(msg string, args ...interface{}) {
+	s := fmt.Sprintf(msg, args...)
+	ul.Print(s)
+}
+
+func (ul *UserLog) Print(s string) {
 	if ul != nil {
-		fmt.Fprint(ul.Writer, msg)
-		ul.log.Info(msg)
+		fmt.Fprint(ul.Writer, s)
+		ul.log.Info(strings.TrimSpace(s))
 	} else {
-		fmt.Print(msg)
+		fmt.Print(s)
 	}
 }
 

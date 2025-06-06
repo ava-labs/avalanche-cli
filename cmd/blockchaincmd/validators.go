@@ -4,8 +4,8 @@
 package blockchaincmd
 
 import (
+	"bytes"
 	"errors"
-	"os"
 	"strconv"
 	"time"
 
@@ -13,9 +13,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +75,8 @@ func printValidators(_ *cobra.Command, args []string) error {
 
 func printValidatorsFromList(network models.Network, subnetID ids.ID, validators []platformvm.ClientPermissionlessValidator) error {
 	header := []string{"NodeID", "Weight", "Delegator Weight", "Start Time", "End Time", "Type"}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetRowLine(true)
 
@@ -103,6 +106,7 @@ func printValidatorsFromList(network models.Network, subnetID ids.ID, validators
 	}
 
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 
 	return nil
 }
