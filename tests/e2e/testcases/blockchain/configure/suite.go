@@ -108,7 +108,7 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		commands.DeleteSubnetConfig(utils.BlockchainName)
 	})
 

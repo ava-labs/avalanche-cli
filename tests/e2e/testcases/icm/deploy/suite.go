@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			commands.CleanNetwork()
+			_, _ = commands.CleanNetwork()
 			err := utils.DeleteConfigs(subnetName)
 			gomega.Expect(err).Should(gomega.BeNil())
 		})
@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			commands.CleanNetwork()
+			_, _ = commands.CleanNetwork()
 		})
 		ginkgo.It("should fail with invalid mutually exclusive fields (network flags)", func() {
 			testFlags := utils.TestFlags{

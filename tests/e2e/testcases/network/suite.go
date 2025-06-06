@@ -18,7 +18,7 @@ const (
 
 var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -133,7 +133,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		gomega.Expect(len(plugins)).Should(gomega.Equal(1))
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.CleanNetwork()
+		_, err = commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check that plugin binaries exist
 		plugins, err = utils.GetPluginBinaries()
