@@ -4342,7 +4342,7 @@ func TestCaptureAddressesWithMonkeyPatch(t *testing.T) {
 			callCount := 0
 
 			// Replace the utils.ReadLongString function with mock
-			utilsReadLongString = func(msg string, args ...interface{}) (string, error) {
+			utilsReadLongString = func(msg string, _ ...interface{}) (string, error) {
 				// Verify the prompt message format
 				expectedMsg := promptui.IconGood + " " + tt.promptStr + " "
 				require.Equal(t, expectedMsg, msg)
