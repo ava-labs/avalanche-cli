@@ -4,6 +4,7 @@
 package prompts
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1152,9 +1153,13 @@ func TestGetPChainValidationFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			validator := getPChainValidationFunc(tt.network)
 
-			// Test "valid" address - actually fails due to bad checksum
+			// Test "valid" address - most fail due to bad checksum, except Devnet
 			err := validator(tt.validAddr)
-			require.Error(t, err) // All our test addresses have bad checksums
+			if tt.network.Kind == models.Devnet {
+				require.NoError(t, err) // Devnet address with custom HRP should be valid
+			} else {
+				require.Error(t, err) // Other test addresses have bad checksums
+			}
 
 			// Test invalid address
 			err = validator(tt.invalidAddr)
@@ -1285,6 +1290,182 @@ func TestValidateXChainFujiAddress(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateXChainMainAddress(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "valid X-Chain address with Mainnet HRP",
+			input:   "X-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5",
+			wantErr: false,
+		},
+		{
+			name:    "valid X-Chain address but wrong HRP - custom",
+			input:   "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: true, // Parse succeeds but HRP != "avax"
+		},
+		{
+			name:    "invalid Mainnet X-Chain address - bad checksum",
+			input:   "X-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+			wantErr: true, // This will fail checksum validation
+		},
+		{
+			name:    "invalid - Fuji address",
+			input:   "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			wantErr: true,
+		},
+		{
+			name:    "invalid - Local address",
+			input:   "X-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			wantErr: true,
+		},
+		{
+			name:    "invalid - not X-Chain",
+			input:   "P-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateXChainMainAddress(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateXChainLocalAddress(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "valid X-Chain address with custom HRP",
+			input:   "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			wantErr: false,
+		},
+		{
+			name:    "invalid X-Chain address with local HRP - bad checksum",
+			input:   "X-local18jma8ppw3nhx5r4ap8clazz0dps7rv5uwdpekrw",
+			wantErr: true, // This will fail checksum validation
+		},
+		{
+			name:    "invalid X-Chain address - unsupported HRP",
+			input:   "X-fuji18jma8ppw3nhx5r4ap8clazz0dps7rv5u6wmu4t",
+			wantErr: true, // HRP is neither local nor custom
+		},
+		{
+			name:    "invalid X-Chain address - Mainnet HRP",
+			input:   "X-avax18jma8ppw3nhx5r4ap8clazz0dps7rv5ukulre5",
+			wantErr: true, // HRP is neither local nor custom
+		},
+		{
+			name:    "invalid Local X-Chain address - bad checksum",
+			input:   "X-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			wantErr: true, // This will fail checksum validation
+		},
+		{
+			name:    "invalid Custom X-Chain address - bad checksum",
+			input:   "X-custom1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcwfmrp",
+			wantErr: true, // This will fail checksum validation
+		},
+		{
+			name:    "invalid - not X-Chain",
+			input:   "P-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateXChainLocalAddress(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGetXChainValidationFunc(t *testing.T) {
+	tests := []struct {
+		name        string
+		network     models.Network
+		validAddr   string
+		invalidAddr string
+	}{
+		{
+			name:        "Fuji network",
+			network:     models.NewFujiNetwork(),
+			validAddr:   "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+			invalidAddr: "X-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+		},
+		{
+			name:        "Mainnet network",
+			network:     models.NewMainnetNetwork(),
+			validAddr:   "X-avax1x459sj0ssm4tdrn372f7fhqx7p4pkj9hh8a74w",
+			invalidAddr: "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+		},
+		{
+			name:        "Local network",
+			network:     models.NewLocalNetwork(),
+			validAddr:   "X-local1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhcz8r9x",
+			invalidAddr: "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+		},
+		{
+			name:        "Devnet network",
+			network:     models.NewDevnetNetwork("", 0),
+			validAddr:   "X-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+			invalidAddr: "X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validator := getXChainValidationFunc(tt.network)
+
+			// Test "valid" address - most fail due to bad checksum, except Devnet
+			err := validator(tt.validAddr)
+			if tt.network.Kind == models.Devnet {
+				require.NoError(t, err) // Devnet address with custom HRP should be valid
+			} else {
+				require.Error(t, err) // Other test addresses have bad checksums
+			}
+
+			// Test invalid address
+			err = validator(tt.invalidAddr)
+			require.Error(t, err)
+		})
+	}
+
+	// Test unsupported network
+	t.Run("unsupported network", func(t *testing.T) {
+		unsupportedNetwork := models.Network{Kind: 999} // Use an invalid numeric value
+		validator := getXChainValidationFunc(unsupportedNetwork)
+		err := validator("X-fuji1x459sj0ssm4tdrn372f7fhqx7p4pkj9hhqhmp5")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported network")
+	})
 }
 
 func TestValidateID(t *testing.T) {
@@ -1478,6 +1659,257 @@ func TestValidateHexa(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateHexa(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRequestURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name:    "valid URL - GitHub",
+			url:     "https://github.com/ava-labs/avalanche-cli",
+			wantErr: false,
+		},
+		{
+			name:    "valid URL - Google",
+			url:     "https://www.google.com",
+			wantErr: false,
+		},
+		{
+			name:    "invalid URL - non-existent domain",
+			url:     "https://thisdomaindoesnotexist12345.com",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - 404 page",
+			url:     "https://github.com/ava-labs/avalanche-cli/blob/main/nonexistent-file.txt",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - malformed",
+			url:     "not-a-url",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - missing protocol",
+			url:     "github.com",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - causes NewRequest to fail",
+			url:     "http://[::1",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := RequestURL(tt.url)
+			if tt.wantErr {
+				require.Error(t, err)
+				require.Nil(t, resp)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				_ = resp.Body.Close()
+			}
+		})
+	}
+}
+
+func TestValidateURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name:    "valid URL - GitHub",
+			url:     "https://github.com/ava-labs/avalanche-cli",
+			wantErr: false,
+		},
+		{
+			name:    "valid URL - Google",
+			url:     "https://www.google.com",
+			wantErr: false,
+		},
+		{
+			name:    "invalid URL format",
+			url:     "not-a-url",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - non-existent domain",
+			url:     "https://thisdomaindoesnotexist12345.com",
+			wantErr: true,
+		},
+		{
+			name:    "invalid URL - 404 page",
+			url:     "https://github.com/ava-labs/avalanche-cli/blob/main/nonexistent-file.txt",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			url:     "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateURL(tt.url)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateRepoBranch(t *testing.T) {
+	tests := []struct {
+		name    string
+		repo    string
+		branch  string
+		wantErr bool
+	}{
+		{
+			name:    "valid repo and branch - avalanche-cli main",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "main",
+			wantErr: false,
+		},
+		{
+			name:    "valid repo but non-existent branch",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "nonexistent-branch-12345",
+			wantErr: true,
+		},
+		{
+			name:    "non-existent repo",
+			repo:    "https://github.com/nonexistent-org/nonexistent-repo",
+			branch:  "main",
+			wantErr: true,
+		},
+		{
+			name:    "invalid repo URL",
+			repo:    "not-a-repo-url",
+			branch:  "main",
+			wantErr: true,
+		},
+		{
+			name:    "empty repo",
+			repo:    "",
+			branch:  "main",
+			wantErr: true,
+		},
+		{
+			name:    "empty branch",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateRepoBranch(tt.repo, tt.branch)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateRepoFile(t *testing.T) {
+	tests := []struct {
+		name    string
+		repo    string
+		branch  string
+		file    string
+		wantErr bool
+	}{
+		{
+			name:    "valid repo, branch, and file",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "main",
+			file:    "README.md",
+			wantErr: false,
+		},
+		{
+			name:    "valid repo and branch but non-existent file",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "main",
+			file:    "nonexistent-file.txt",
+			wantErr: true,
+		},
+		{
+			name:    "valid repo but non-existent branch",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "nonexistent-branch",
+			file:    "README.md",
+			wantErr: true,
+		},
+		{
+			name:    "non-existent repo",
+			repo:    "https://github.com/nonexistent-org/nonexistent-repo",
+			branch:  "main",
+			file:    "README.md",
+			wantErr: true,
+		},
+		{
+			name:    "invalid repo URL",
+			repo:    "not-a-repo-url",
+			branch:  "main",
+			file:    "README.md",
+			wantErr: true,
+		},
+		{
+			name:    "empty repo",
+			repo:    "",
+			branch:  "main",
+			file:    "README.md",
+			wantErr: true,
+		},
+		{
+			name:    "empty branch",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "",
+			file:    "README.md",
+			wantErr: true,
+		},
+		{
+			name:    "empty file - GitHub handles gracefully",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "main",
+			file:    "",
+			wantErr: false, // GitHub redirects empty file to branch view
+		},
+		{
+			name:    "file in subdirectory",
+			repo:    "https://github.com/ava-labs/avalanche-cli",
+			branch:  "main",
+			file:    "cmd/root.go",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateRepoFile(tt.repo, tt.branch, tt.file)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
