@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	promptsmocks "github.com/ava-labs/avalanche-cli/pkg/prompts/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -393,7 +394,7 @@ func TestPublishing(t *testing.T) {
 	mockPrompt.ExpectedCalls = nil
 }
 
-func configureMockPrompt(mockPrompt *mocks.Prompter) {
+func configureMockPrompt(mockPrompt *promptsmocks.Prompter) {
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("Add", nil).Once()
 	mockPrompt.On("CaptureEmail", mock.Anything).Return("someone@somewhere.com", nil)
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("Done", nil).Once()
@@ -407,14 +408,14 @@ func configureMockPrompt(mockPrompt *mocks.Prompter) {
 	mockPrompt.On("CaptureVersion", mock.Anything).Return("v0.9.99", nil)
 }
 
-func setupTestEnv(t *testing.T) (*require.Assertions, *mocks.Prompter) {
+func setupTestEnv(t *testing.T) (*require.Assertions, *promptsmocks.Prompter) {
 	require := require.New(t)
 	testDir := t.TempDir()
 	err := os.Mkdir(filepath.Join(testDir, "repos"), 0o755)
 	require.NoError(err)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	app = &application.Avalanche{}
-	mockPrompt := mocks.NewPrompter(t)
+	mockPrompt := promptsmocks.NewPrompter(t)
 	app.Setup(testDir, logging.NoLog{}, config.New(), "", mockPrompt, application.NewDownloader(), nil)
 
 	return require, mockPrompt

@@ -92,6 +92,7 @@ func validateDuration(input string) error {
 	return err
 }
 
+// [input] should be UTC
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {
@@ -100,7 +101,7 @@ func validateTime(input string) error {
 	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
 		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
 	}
-	return err
+	return nil
 }
 
 func ValidateNodeID(input string) error {
@@ -138,15 +139,20 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
-func validateWeight(input string) error {
-	val, err := strconv.ParseUint(input, 10, 64)
-	if err != nil {
-		return err
+func validateWeightFunc(extraValidation func(uint64) error) func(string) error {
+	return func(input string) error {
+		val, err := strconv.ParseUint(input, 10, 64)
+		if err != nil {
+			return err
+		}
+		if val < constants.MinStakeWeight {
+			return errors.New("the weight must be an integer between 1 and 100")
+		}
+		if extraValidation != nil {
+			return extraValidation(val)
+		}
+		return nil
 	}
-	if val < constants.MinStakeWeight {
-		return errors.New("the weight must be an integer between 1 and 100")
-	}
-	return nil
 }
 
 func validateValidatorBalanceFunc(availableBalance float64, minBalance float64) func(string) error {

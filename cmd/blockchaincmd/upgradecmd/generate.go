@@ -5,6 +5,7 @@ package upgradecmd
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -26,7 +27,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
+	goethereummath "github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
 )
 
@@ -249,7 +250,7 @@ func promptNativeMintParams(
 	precompiles *[]params.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
-	initialMint := map[common.Address]*math.HexOrDecimal256{}
+	initialMint := map[common.Address]*goethereummath.HexOrDecimal256{}
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "mint native tokens")
 	if cancelled || err != nil {
 		return cancelled, err
@@ -271,7 +272,11 @@ func promptNativeMintParams(
 				if err != nil {
 					return "", err
 				}
-				initialMint[addr] = math.NewHexOrDecimal256(int64(amount))
+				// Check for overflow when converting uint64 to int64
+				if amount > math.MaxInt64 {
+					return "", fmt.Errorf("amount %d exceeds maximum allowed value of %d", amount, math.MaxInt64)
+				}
+				initialMint[addr] = goethereummath.NewHexOrDecimal256(int64(amount))
 				return fmt.Sprintf("%s-%d", addr.Hex(), amount), nil
 			},
 			"Add an address to amount pair",

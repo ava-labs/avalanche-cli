@@ -8,8 +8,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/mock"

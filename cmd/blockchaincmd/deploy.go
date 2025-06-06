@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -334,15 +335,15 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 			ux.Logger.PrintToUser("Enter your blockchain's ChainID. It can be any positive integer != %d.", originalChainID)
 			newChainID, err := app.Prompt.CapturePositiveInt(
 				"ChainID",
-				[]prompts.Comparator{
+				[]comparator.Comparator{
 					{
 						Label: "Zero",
-						Type:  prompts.MoreThan,
+						Type:  comparator.MoreThan,
 						Value: 0,
 					},
 					{
 						Label: "Original Chain ID",
-						Type:  prompts.NotEq,
+						Type:  comparator.NotEq,
 						Value: originalChainID,
 					},
 				},

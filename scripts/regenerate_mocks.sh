@@ -23,7 +23,7 @@ mockgen -source=$(go env GOPATH)/pkg/mod/github.com/ava-labs/subnet-evm@$subnet_
 go install github.com/vektra/mockery/v2@v2.43.2
 mockery -r --output ./internal/mocks --name BinaryChecker --filename binary_checker.go
 mockery -r --output ./internal/mocks --name PluginBinaryDownloader --filename plugin_binary_downloader.go
-mockery -r --output ./internal/mocks --name Prompter --filename prompter.go
+mockery -r --output ./pkg/prompts/mocks --name Prompter --filename prompter.go
 mockery -r --output ./internal/mocks --name Installer --filename installer.go
 mockery -r --output ./internal/mocks --name Publisher --filename publisher.go
 mockery -r --output ./internal/mocks --name Downloader --filename downloader.go
