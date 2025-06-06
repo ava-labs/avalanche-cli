@@ -345,7 +345,7 @@ type PeerConfig struct {
 	IP string `json:"ip"`
 }
 
-func CreateSignatureAggregatorInstance(subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, sigAggBinDir string, aggregatorLogger logging.Logger) error {
+func CreateSignatureAggregatorInstance(subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, sigAggBinDir string, aggregatorLogger logging.Logger, app *application.Avalanche) error {
 	// Create config file for signature aggregator
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers)
 
@@ -359,7 +359,9 @@ func CreateSignatureAggregatorInstance(subnetIDStr string, network models.Networ
 	if _, err := StartSignatureAggregator(binPath, configPath, logPath, aggregatorLogger); err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
-	return nil
+	runFilePath := app.GetLocalRelayerRunPath(network.Kind)
+
+	return saveSignatureFile(runFilePath string, pid, apiPort, metricsPort int)
 }
 
 func GetSignatureAggregatorEndpoint() (string, error) {
@@ -372,19 +374,19 @@ type signatureAggregatorRunFile struct {
 	MetricsPort int `json:"metrics_port"`
 }
 
-//func saveSignatureFile(runFilePath string, pid, apiPort, metrisPort int) error {
-//	rf := signatureAggregatorRunFile{
-//		Pid: pid,
-//	}
-//	bs, err := json.Marshal(&rf)
-//	if err != nil {
-//		return err
-//	}
-//	if err := os.MkdirAll(filepath.Dir(runFilePath), constants.DefaultPerms755); err != nil {
-//		return err
-//	}
-//	if err := os.WriteFile(runFilePath, bs, constants.WriteReadReadPerms); err != nil {
-//		return fmt.Errorf("could not write signature aggregator run file to %s: %w", runFilePath, err)
-//	}
-//	return nil
-//}
+func saveSignatureFile(runFilePath string, pid, apiPort, metricsPort int) error {
+	rf := signatureAggregatorRunFile{
+		Pid: pid,
+	}
+	bs, err := json.Marshal(&rf)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(runFilePath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(runFilePath, bs, constants.WriteReadReadPerms); err != nil {
+		return fmt.Errorf("could not write signature aggregator run file to %s: %w", runFilePath, err)
+	}
+	return nil
+}
