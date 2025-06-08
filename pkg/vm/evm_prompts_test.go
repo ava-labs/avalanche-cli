@@ -34,7 +34,7 @@ func TestPromptTokenSymbol(t *testing.T) {
 		{
 			name:        "returns provided token symbol when not empty",
 			tokenSymbol: "AVAX",
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as CaptureString should not be called
 			},
 			expectedResult: "AVAX",
@@ -43,7 +43,7 @@ func TestPromptTokenSymbol(t *testing.T) {
 		{
 			name:        "returns provided token symbol when whitespace only - should not be considered empty",
 			tokenSymbol: "   ",
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as CaptureString should not be called
 			},
 			expectedResult: "   ",
@@ -114,7 +114,7 @@ func TestPromptVMType(t *testing.T) {
 			name:         "returns SubnetEvm when useSubnetEvm is true",
 			useSubnetEvm: true,
 			useCustom:    false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as CaptureList should not be called
 			},
 			expectedResult: models.SubnetEvm,
@@ -124,7 +124,7 @@ func TestPromptVMType(t *testing.T) {
 			name:         "returns CustomVM when useCustom is true",
 			useSubnetEvm: false,
 			useCustom:    true,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as CaptureList should not be called
 			},
 			expectedResult: models.CustomVM,
@@ -134,7 +134,7 @@ func TestPromptVMType(t *testing.T) {
 			name:         "returns SubnetEvm when useCustom is true but useSubnetEvm takes precedence",
 			useSubnetEvm: true,
 			useCustom:    true,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as CaptureList should not be called
 			},
 			expectedResult: models.SubnetEvm,
@@ -262,7 +262,7 @@ func TestPromptGasTokenKind(t *testing.T) {
 			defaultsKind:        NoDefaults,
 			useExternalGasToken: true,
 			enableExternal:      false, // doesn't matter since we return early
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as no prompting should occur
 			},
 			expectedError: "",
@@ -275,7 +275,7 @@ func TestPromptGasTokenKind(t *testing.T) {
 			defaultsKind:        NoDefaults,
 			useExternalGasToken: false,
 			enableExternal:      false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as no prompting should occur
 			},
 			expectedError: "",
@@ -288,7 +288,7 @@ func TestPromptGasTokenKind(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useExternalGasToken: false,
 			enableExternal:      true,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as no prompting should occur
 			},
 			expectedError: "",
@@ -407,7 +407,7 @@ func TestPromptGasTokenKind(t *testing.T) {
 				m.On("CaptureList", "Which token will be used for transaction fee payments?", gasTokenOptions).Return("", errors.New("prompt failed"))
 			},
 			expectedError: "prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -465,7 +465,7 @@ func TestPromptDefaults(t *testing.T) {
 		{
 			name:          "returns early when defaultsKind is TestDefaults",
 			inputDefaults: TestDefaults,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as no prompting should occur
 			},
 			expectedResult: TestDefaults,
@@ -474,7 +474,7 @@ func TestPromptDefaults(t *testing.T) {
 		{
 			name:          "returns early when defaultsKind is ProductionDefaults",
 			inputDefaults: ProductionDefaults,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as no prompting should occur
 			},
 			expectedResult: ProductionDefaults,
@@ -781,7 +781,7 @@ func TestAddNewKeyAllocation(t *testing.T) {
 			setupDir: func(tempDir string) {
 				// Create the key directory
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 			},
 			expectedError: "",
@@ -812,7 +812,7 @@ func TestAddNewKeyAllocation(t *testing.T) {
 			setupDir: func(tempDir string) {
 				// Create the key directory
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 			},
 			expectedError: "",
@@ -843,7 +843,7 @@ func TestAddNewKeyAllocation(t *testing.T) {
 			setupDir: func(tempDir string) {
 				// Create the key directory
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 			},
 			expectedError: "",
@@ -867,18 +867,18 @@ func TestAddNewKeyAllocation(t *testing.T) {
 			setupDir: func(tempDir string) {
 				// Create the key directory first
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 
 				// Get the expected key name and create a directory where the key file should be
 				expectedKeyName := utils.GetDefaultBlockchainAirdropKeyName("error-blockchain")
 				keyFilePath := filepath.Join(keyDir, expectedKeyName+constants.KeySuffix)
 				// Create a directory instead of allowing a file to be created
-				err = os.MkdirAll(keyFilePath, 0755)
+				err = os.MkdirAll(keyFilePath, 0o755)
 				require.NoError(t, err)
 			},
 			expectedError: "is a directory",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc, tempDir string) {
+			validateResult: func(t *testing.T, allocations core.GenesisAlloc, _ string) {
 				// Should have no allocations since the function failed
 				require.Len(t, allocations, 0)
 			},
@@ -1308,7 +1308,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureList", "How should the initial token allocation be structured?", options).Return("", errors.New("prompt failed"))
 			},
 			expectedError: "prompt failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1339,7 +1339,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureAddress", "Address to allocate to").Return(common.Address{}, errors.New("address capture failed")).Once()
 			},
 			expectedError: "address capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1371,7 +1371,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureUint64", "Amount to allocate (in TEST units)").Return(uint64(0), errors.New("balance capture failed")).Once()
 			},
 			expectedError: "balance capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1401,7 +1401,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureList", "How would you like to modify the initial token allocation?", actionOptions).Return("", errors.New("action selection failed")).Once()
 			},
 			expectedError: "action selection failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1575,7 +1575,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureAddress", "Address to update the allocation of").Return(common.Address{}, errors.New("change address capture failed")).Once()
 			},
 			expectedError: "change address capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1606,7 +1606,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureAddress", "Address to remove from the allocation list").Return(common.Address{}, errors.New("remove address capture failed")).Once()
 			},
 			expectedError: "remove address capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1642,7 +1642,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureUint64", "Updated amount to allocate (in TEST units)").Return(uint64(0), errors.New("change balance capture failed")).Once()
 			},
 			expectedError: "change balance capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1725,7 +1725,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 				m.On("CaptureYesNo", "Are you sure you want to finalize this allocation list?").Return(false, errors.New("yes/no capture failed")).Once()
 			},
 			expectedError: "yes/no capture failed",
-			validateResult: func(t *testing.T, allocations core.GenesisAlloc) {
+			validateResult: func(_ *testing.T, _ core.GenesisAlloc) {
 				// Should not be called due to error
 			},
 		},
@@ -1744,7 +1744,7 @@ func TestGetNativeGasTokenAllocationConfig(t *testing.T) {
 
 				// Create the key directory
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a real application instance
@@ -1845,7 +1845,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useWarp:             true,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// With TestDefaults, most prompting should be skipped
 			},
 			expectedError: "",
@@ -1877,11 +1877,11 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useWarp:             true,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// With TestDefaults, most prompting should be skipped
 			},
 			expectedError: "",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, _ string) {
 				require.True(t, params.UsePoAValidatorManager)
 				require.False(t, params.UsePoSValidatorManager)
 				require.True(t, params.DisableICMOnGenesis)
@@ -1908,11 +1908,11 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useWarp:             true,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// With TestDefaults, most prompting should be skipped
 			},
 			expectedError: "",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, _ string) {
 				require.False(t, params.UsePoAValidatorManager)
 				require.True(t, params.UsePoSValidatorManager)
 				require.True(t, params.enableNativeMinterPrecompile)
@@ -1939,7 +1939,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureUint64", "Chain ID").Return(uint64(77777), nil)
 			},
 			expectedError: "",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, _ string) {
 				require.Equal(t, uint64(77777), params.chainID)
 			},
 		},
@@ -1960,7 +1960,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureUint64", "Chain ID").Return(uint64(0), errors.New("chainID prompt failed"))
 			},
 			expectedError: "chainID prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -1977,11 +1977,11 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useWarp:             false, // But disable warp - this should cause an error
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// With TestDefaults, most prompting should be skipped
 			},
 			expectedError: "warp should be enabled for ICM to work",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -1998,11 +1998,11 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 			defaultsKind:        TestDefaults,
 			useWarp:             true,
 			useExternalGasToken: true, // This should automatically enable ICM
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// With TestDefaults and external gas token, most prompting should be skipped
 			},
 			expectedError: "",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, _ string) {
 				require.True(t, params.UseExternalGasToken)
 				require.True(t, params.UseICM) // Should be enabled automatically
 				require.True(t, params.enableWarpPrecompile)
@@ -2033,7 +2033,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "Which token will be used for transaction fee payments?", gasTokenOptions).Return("", errors.New("gas token kind prompt failed"))
 			},
 			expectedError: "gas token kind prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2077,7 +2077,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "How should the transaction fees be configured on your Blockchain?", feeOptions).Return("", errors.New("fee config prompt failed"))
 			},
 			expectedError: "fee config prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2099,7 +2099,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureString", "Token Symbol").Return("", errors.New("token symbol prompt failed"))
 			},
 			expectedError: "token symbol prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2127,7 +2127,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "How should the initial token allocation be structured?", allocOptions).Return("", errors.New("allocation prompt failed"))
 			},
 			expectedError: "allocation prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2179,7 +2179,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "Do you want dynamic fees on your blockchain?", dynamicFeeOptions).Return("", errors.New("dynamic fees prompt failed"))
 			},
 			expectedError: "dynamic fees prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2252,7 +2252,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "Do you want to connect your blockchain with other blockchains or the C-Chain?", interopOptions).Return("", errors.New("interop prompt failed"))
 			},
 			expectedError: "interop prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2323,7 +2323,7 @@ func TestPromptSubnetEVMGenesisParams(t *testing.T) {
 				m.On("CaptureList", "Do you want to enable anyone to issue transactions and deploy smart contracts to your blockchain?", permissioningOptions).Return("", errors.New("permissioning prompt failed"))
 			},
 			expectedError: "permissioning prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2474,7 +2474,7 @@ func TestGetNativeMinterPrecompileConfig(t *testing.T) {
 				m.On("CaptureList", "Allow minting of new native tokens?", options).Return("", errors.New("capture list failed"))
 			},
 			expectedError: "capture list failed",
-			validateResult: func(t *testing.T, allowList AllowList, enabled bool) {
+			validateResult: func(_ *testing.T, _ AllowList, _ bool) {
 				// Should not be called due to error
 			},
 		},
@@ -2537,7 +2537,7 @@ func TestGetNativeMinterPrecompileConfig(t *testing.T) {
 				m.On("CaptureYesNo", "Minting of native tokens automatically enabled. Do you want to configure allow list?").Return(false, errors.New("yes no capture failed"))
 			},
 			expectedError: "yes no capture failed",
-			validateResult: func(t *testing.T, allowList AllowList, enabled bool) {
+			validateResult: func(_ *testing.T, _ AllowList, _ bool) {
 				// Should not be called due to error
 			},
 		},
@@ -2563,7 +2563,7 @@ func TestGetNativeMinterPrecompileConfig(t *testing.T) {
 				m.On("CaptureList", "Configure the addresses that are allowed to mint native tokens", allowListOptions).Return("", errors.New("generate allow list failed"))
 			},
 			expectedError: "generate allow list failed",
-			validateResult: func(t *testing.T, allowList AllowList, enabled bool) {
+			validateResult: func(_ *testing.T, _ AllowList, _ bool) {
 				// Should not be called due to error
 			},
 		},
@@ -2660,7 +2660,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 			initialParams: SubnetEVMGenesisParams{
 				initialTokenAllocation: make(core.GenesisAlloc),
 			},
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as token symbol is provided and TestDefaults doesn't prompt
 			},
 			expectedError: "",
@@ -2704,7 +2704,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 			initialParams: SubnetEVMGenesisParams{
 				initialTokenAllocation: make(core.GenesisAlloc),
 			},
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as token symbol is provided and ProductionDefaults only creates a key
 			},
 			expectedError: "",
@@ -2807,7 +2807,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 				m.On("CaptureString", "Token Symbol").Return("", errors.New("token symbol prompt failed"))
 			},
 			expectedError: "token symbol prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2820,11 +2820,11 @@ func TestPromptNativeGasToken(t *testing.T) {
 			initialParams: SubnetEVMGenesisParams{
 				initialTokenAllocation: make(core.GenesisAlloc),
 			},
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as the error will come from key generation
 			},
 			expectedError: "no such file or directory",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2846,7 +2846,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 				m.On("CaptureList", "How should the initial token allocation be structured?", allocOptions).Return("", errors.New("allocation config failed"))
 			},
 			expectedError: "allocation config failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2878,7 +2878,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 				m.On("CaptureList", "Allow minting of new native tokens?", nativeMinterOptions).Return("", errors.New("minter config failed"))
 			},
 			expectedError: "minter config failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams, tokenSymbol string) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams, _ string) {
 				// Should not be called due to error
 			},
 		},
@@ -2934,7 +2934,7 @@ func TestPromptNativeGasToken(t *testing.T) {
 
 				// Create the key directory
 				keyDir := filepath.Join(tempDir, constants.KeyDir)
-				err := os.MkdirAll(keyDir, 0755)
+				err := os.MkdirAll(keyDir, 0o755)
 				require.NoError(t, err)
 
 				// Create a real application instance
@@ -3015,7 +3015,7 @@ func TestPromptFeeConfig(t *testing.T) {
 			version:       "v0.6.8",
 			defaultsKind:  TestDefaults,
 			initialParams: SubnetEVMGenesisParams{},
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as TestDefaults doesn't prompt
 			},
 			expectedError: "",
@@ -3031,7 +3031,7 @@ func TestPromptFeeConfig(t *testing.T) {
 			version:       "v0.6.8",
 			defaultsKind:  ProductionDefaults,
 			initialParams: SubnetEVMGenesisParams{},
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as ProductionDefaults doesn't prompt
 			},
 			expectedError: "",
@@ -3340,7 +3340,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "How should the transaction fees be configured on your Blockchain?", throughputOptions).Return("", errors.New("throughput prompt failed"))
 			},
 			expectedError: "throughput prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3361,7 +3361,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set gas limit").Return(nil, errors.New("gas limit prompt failed"))
 			},
 			expectedError: "gas limit prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3388,7 +3388,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "Do you want dynamic fees on your blockchain?", dynamicFeeOptions).Return("", errors.New("dynamic fees prompt failed"))
 			},
 			expectedError: "dynamic fees prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3422,7 +3422,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "Should transaction fees be adjustable without a network upgrade?", feeAdjustOptions).Return("", errors.New("fee adjust prompt failed"))
 			},
 			expectedError: "fee adjust prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3465,7 +3465,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "Configure the addresses that are allowed to adjust the gas fees", feeManagerOptions).Return("", errors.New("fee manager allow list failed"))
 			},
 			expectedError: "fee manager allow list failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3506,7 +3506,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "Do you want the transaction fees to be burned (sent to a blackhole address)? All transaction fees on Avalanche are burned by default", burnFeeOptions).Return("", errors.New("burn fees prompt failed"))
 			},
 			expectedError: "burn fees prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3556,7 +3556,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CaptureList", "Configure the addresses that are allowed to customize gas fees distribution", rewardManagerOptions).Return("", errors.New("reward manager allow list failed"))
 			},
 			expectedError: "reward manager allow list failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3577,7 +3577,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set gas limit").Return(nil, errors.New("gas limit prompt failed"))
 			},
 			expectedError: "gas limit prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3599,7 +3599,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set target block rate").Return(nil, errors.New("block rate prompt failed"))
 			},
 			expectedError: "block rate prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3622,7 +3622,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set min base fee").Return(nil, errors.New("min base fee prompt failed"))
 			},
 			expectedError: "min base fee prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3646,7 +3646,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set target gas").Return(nil, errors.New("target gas prompt failed"))
 			},
 			expectedError: "target gas prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3671,7 +3671,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set base fee change denominator").Return(nil, errors.New("base fee change denominator prompt failed"))
 			},
 			expectedError: "base fee change denominator prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3697,7 +3697,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set min block gas cost").Return(nil, errors.New("min block gas prompt failed"))
 			},
 			expectedError: "min block gas prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3724,7 +3724,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set max block gas cost").Return(nil, errors.New("max block gas prompt failed"))
 			},
 			expectedError: "max block gas prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3752,7 +3752,7 @@ func TestPromptFeeConfig(t *testing.T) {
 				m.On("CapturePositiveBigInt", "Set block gas cost step").Return(nil, errors.New("gas step prompt failed"))
 			},
 			expectedError: "gas step prompt failed",
-			validateResult: func(t *testing.T, params SubnetEVMGenesisParams) {
+			validateResult: func(_ *testing.T, _ SubnetEVMGenesisParams) {
 				// Should not be called due to error
 			},
 		},
@@ -3928,7 +3928,7 @@ func TestPromptInterop(t *testing.T) {
 			useICMFlag:          func() *bool { b := true; return &b }(),
 			defaultsKind:        NoDefaults,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as function returns early
 			},
 			expectedResult: true,
@@ -3939,7 +3939,7 @@ func TestPromptInterop(t *testing.T) {
 			useICMFlag:          func() *bool { b := false; return &b }(),
 			defaultsKind:        NoDefaults,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as function returns early
 			},
 			expectedResult: false,
@@ -3950,7 +3950,7 @@ func TestPromptInterop(t *testing.T) {
 			useICMFlag:          nil,
 			defaultsKind:        TestDefaults,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as function returns early
 			},
 			expectedResult: true,
@@ -3961,7 +3961,7 @@ func TestPromptInterop(t *testing.T) {
 			useICMFlag:          nil,
 			defaultsKind:        ProductionDefaults,
 			useExternalGasToken: false,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as function returns early
 			},
 			expectedResult: true,
@@ -3972,7 +3972,7 @@ func TestPromptInterop(t *testing.T) {
 			useICMFlag:          nil,
 			defaultsKind:        NoDefaults,
 			useExternalGasToken: true,
-			mockSetup: func(m *mocks.Prompter) {
+			mockSetup: func(_ *mocks.Prompter) {
 				// No mock setup needed as function returns early
 			},
 			expectedResult: true,
