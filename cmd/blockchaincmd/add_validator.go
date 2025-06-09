@@ -562,6 +562,7 @@ func CallAddValidator(
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
+	fmt.Printf("extraAggregatorPeers addvalidator %s \n", extraAggregatorPeers)
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
