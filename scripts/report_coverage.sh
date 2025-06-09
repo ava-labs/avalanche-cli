@@ -1,10 +1,20 @@
-mkdir -p coverage/merged
-go tool covdata merge -i=coverage/e2e,coverage/ut -o coverage/merged
+#!/usr/bin/env bash
 
-go tool covdata textfmt -i coverage/merged/ -o profile.txt
+set -e
+
+if ! [[ "$0" =~ scripts/report_coverage.sh ]]; then
+  echo "script must be run from repository root"
+  exit 1
+fi
+
+mkdir -p $PWD/coverage/merged
+go tool covdata merge -i=$PWD/coverage/e2e,$PWD/coverage/ut -o $PWD/coverage/merged
+
+go tool covdata textfmt -i $PWD/coverage/merged/ -o profile.txt
 
 cat profile.txt\
-	| grep -v github.com/ava-labs/avalanche-cli/internal/mocks > profile.tmp
+	| grep -v github.com/ava-labs/avalanche-cli/internal/mocks\
+	| grep -v github.com/ava-labs/avalanche-cli/sdk/mocks > profile.tmp
 mv profile.tmp profile.txt
 
 go tool cover -func profile.txt > coverage.txt

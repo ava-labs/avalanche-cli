@@ -1,10 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+if ! [[ "$0" =~ scripts/run_e2e_suites_for_cov.sh ]]; then
+  echo "script must be run from repository root"
+  exit 1
+fi
 
 export COVERAGE_MODE=true
 export LEDGER_SIM=true
 
-rm -rf coverage/e2e
-killall avalanchego
-rm -f /tmp/testKey.pk
+rm -rf $PWD/coverage/e2e
+rm -f /tmp/testKey.pk # TODO: to remove this after fixing the issue with the key being left behind
 rm -rf ~/.avalanche-cli/e2e/
 
 suites=(

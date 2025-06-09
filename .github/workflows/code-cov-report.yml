@@ -26,13 +26,6 @@ jobs:
       - name: Install Go dependencies
         run: go mod download
       
-      - name: Build
-        working-directory: ${{ github.workspace }}
-        run: |
-          scripts/build.sh
-        env:
-          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
-
       - name: Unit Tests
         working-directory: ${{ github.workspace }}
         run: |
@@ -43,7 +36,8 @@ jobs:
         run: |
           scripts/run_e2e_suites_for_cov.sh
 
-      # at the moment the coverage report is printed to the console
+      # TODO: at the moment the coverage report is printed to the console
+      #       we want to report it to PR as a comment later
       - name: Generate Code Coverage Report
         run: |
           scripts/report_coverage.sh
