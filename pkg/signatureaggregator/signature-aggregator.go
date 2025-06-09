@@ -206,7 +206,7 @@ func StartSignatureAggregator(app *application.Avalanche, configPath string, log
 		cmd := exec.Command(binPath, "--config-file", configPath)
 		cmd.Stdout = logWriter
 		cmd.Stderr = logWriter
-
+		fmt.Printf("cmd %s \n", cmd.Path)
 		if err := cmd.Start(); err != nil {
 			if closeErr := logWriter.Close(); closeErr != nil {
 				return 0, closeErr
@@ -237,6 +237,7 @@ func StartSignatureAggregator(app *application.Avalanche, configPath string, log
 
 		// Check if the aggregator is ready
 		//if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
+		fmt.Printf("waiting for %s \n", signatureAggregatorEndpoint)
 		if err := waitForAggregatorReady(signatureAggregatorEndpoint, 5*time.Second); err != nil {
 			_ = cmd.Process.Kill()
 			if i == maxRetries-1 {
@@ -281,7 +282,7 @@ func waitForAggregatorReady(url string, timeout time.Duration) error {
 	}
 }
 
-func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer) *SignatureAggregatorConfig {
+func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort int) *SignatureAggregatorConfig {
 	config := &SignatureAggregatorConfig{
 		LogLevel:             "debug",
 		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
@@ -290,7 +291,8 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 		AllowPrivateIPs:      true,
 		TrackedSubnetIDs:     []string{subnetID},
 		ManuallyTrackedPeers: make([]PeerConfig, 0),
-		APIPort:              8080,
+		APIPort:              apiPort,
+		MetricsPort:          metricsPort,
 	}
 
 	for _, peer := range peers {
@@ -310,9 +312,6 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 // WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
 func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
 	// Set default API port if not specified
-	if config.APIPort == 0 {
-		config.APIPort = 8080
-	}
 	configBytes, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
@@ -335,6 +334,7 @@ type SignatureAggregatorConfig struct {
 	TrackedSubnetIDs     []string     `json:"tracked-subnet-ids"`
 	ManuallyTrackedPeers []PeerConfig `json:"manually-tracked-peers"`
 	APIPort              int          `json:"api-port"`
+	MetricsPort          int          `json:"metrics-port"`
 }
 
 // APIConfig represents the configuration for an API endpoint.
@@ -349,19 +349,19 @@ type PeerConfig struct {
 }
 
 func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
-	sigAggBinDir := app.GetSignatureAggregatorBinDir()
 	// Create config file for signature aggregator
-	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers)
-	configPath := filepath.Join(sigAggBinDir, "config.json")
-	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
-		return fmt.Errorf("failed to write signature aggregator config: %w", err)
-	}
 	apiPort, metricsPort, err := generateAPIMetricsPorts()
 	if err != nil {
 		return fmt.Errorf("failed to generate api and metrics ports: %w", err)
 	}
-	logPath := filepath.Join(sigAggBinDir, "signature-aggregator.log")
+	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
+	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "config.json")
+	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
+		return fmt.Errorf("failed to write signature aggregator config: %w", err)
+	}
+	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
+	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 	pid, err := StartSignatureAggregator(app, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
@@ -374,11 +374,13 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 func isPortAvailable(port int) bool {
 	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-	if err == nil {
-		conn.Close()
-		return false
+	if err != nil {
+		// If we can't connect, the port is available
+		return true
 	}
-	return true
+	// If we can connect, the port is in use
+	conn.Close()
+	return false
 }
 
 func generateAPIMetricsPorts() (int, int, error) {
@@ -397,8 +399,10 @@ func generateAPIMetricsPorts() (int, int, error) {
 			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
 		default:
 			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
+				fmt.Printf("both ports are availble %s and %s \n", apiPort, metricsPort)
 				return apiPort, metricsPort, nil
 			}
+			fmt.Printf("trying ports apiPort %s and metrics Port %s \n", apiPort, metricsPort)
 			apiPort += 2
 			metricsPort += 2
 		}
