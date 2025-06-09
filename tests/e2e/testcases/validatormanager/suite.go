@@ -221,7 +221,6 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 			logging.NoLog{},
 			network.SDKNetwork(),
 			k.PrivKeyHex(),
-			extraAggregatorPeers,
 			logging.NoLog{},
 			ProxyContractAddress,
 			true,

@@ -560,6 +560,14 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	//err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+	//if err != nil {
+	//	return err
+	//}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+	if err != nil {
+		return err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
 	fmt.Printf("extraAggregatorPeers addvalidator %s \n", extraAggregatorPeers)
@@ -587,6 +595,7 @@ func CallAddValidator(
 		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err

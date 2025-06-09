@@ -669,6 +669,7 @@ func addAsValidator(
 		validatorManagerAddressStr,
 		useACP99,
 		"",
+		"",
 	)
 	if err != nil {
 		return err
