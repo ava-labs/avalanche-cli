@@ -560,10 +560,10 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
-	if err != nil {
-		return err
-	}
+	//err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+	//if err != nil {
+	//	return err
+	//}
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
 	if err != nil {
 		return err
