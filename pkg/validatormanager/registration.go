@@ -421,6 +421,7 @@ func InitValidatorRegistration(
 	validatorManagerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
