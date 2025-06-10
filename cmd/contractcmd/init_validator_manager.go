@@ -192,7 +192,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
-
+		signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+		if err != nil {
+			return err
+		}
 		if err := validatormanager.SetupPoA(
 			app.Log,
 			subnetSDK,
@@ -201,7 +204,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			aggregatorLogger,
 			managerAddress,
 			sc.UseACP99,
-			"",
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return err
 		}

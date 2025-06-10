@@ -382,6 +382,11 @@ func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
+	// Create parent directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
 	if err := os.WriteFile(configPath, configBytes, 0o600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
