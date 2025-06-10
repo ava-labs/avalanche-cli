@@ -161,9 +161,9 @@ func (app *Avalanche) GetSignatureAggregatorBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SignatureAggregator)
 }
 
-func (app *Avalanche) GetSignatureAggregatorRunDir(networkKind models.NetworkKind, subnetIDStr string) string {
+func (app *Avalanche) GetSignatureAggregatorRunDir(networkKind models.NetworkKind) string {
 	networkDirName := strings.ReplaceAll(networkKind.String(), " ", "")
-	return filepath.Join(app.GetRunDir(), networkDirName, subnetIDStr, constants.SignatureAggregator)
+	return filepath.Join(app.GetRunDir(), networkDirName, constants.SignatureAggregator)
 }
 
 func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
@@ -190,8 +190,8 @@ func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkKind) str
 	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerRunFilename)
 }
 
-func (app *Avalanche) GetLocalSignatureAggregatorRunPath(networkKind models.NetworkKind, subnetIDStr string) string {
-	return filepath.Join(app.GetSignatureAggregatorRunDir(networkKind, subnetIDStr), constants.SignatureAggregatorProcessFilename)
+func (app *Avalanche) GetLocalSignatureAggregatorRunPath(networkKind models.NetworkKind) string {
+	return filepath.Join(app.GetSignatureAggregatorRunDir(networkKind), constants.SignatureAggregatorProcessFilename)
 }
 
 func (app *Avalanche) GetICMRelayerServiceDir(baseDir string) string {

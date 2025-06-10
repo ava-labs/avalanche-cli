@@ -3,7 +3,6 @@
 package validatormanager
 
 import (
-	"context"
 	_ "embed"
 	"encoding/hex"
 	"errors"
@@ -319,12 +318,10 @@ func PoSWeightToValue(
 }
 
 func GetPChainL1ValidatorRegistrationMessage(
-	_ context.Context,
 	network models.Network,
 	rpcURL string,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	_ []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
@@ -386,7 +383,6 @@ func CompleteValidatorRegistration(
 }
 
 func InitValidatorRegistration(
-	_ context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -547,7 +543,6 @@ func InitValidatorRegistration(
 }
 
 func FinishValidatorRegistration(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -556,7 +551,6 @@ func FinishValidatorRegistration(
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	signatureAggregatorEndpoint string,
@@ -571,12 +565,10 @@ func FinishValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
-		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,
 		true,

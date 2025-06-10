@@ -427,20 +427,20 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	apiPort := 8080
 	metricsPort := 8081
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
-	// configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "config.json")
-	configPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "config.json")
+	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
+	// configPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
-	// logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "signature-aggregator.log")
-	logPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "signature-aggregator.log")
+	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
+	// logPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
 	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 	pid, err := StartSignatureAggregator(app, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
-	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr)
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 
 	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort)
 }

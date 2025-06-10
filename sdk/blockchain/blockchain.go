@@ -5,7 +5,6 @@ package blockchain
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -24,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanche-cli/sdk/wallet"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -410,7 +407,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 
-	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), constants.DefaultQuorumPercentage, aggregatorLogger, signatureAggregatorEndpoint)
+	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
@@ -431,17 +428,16 @@ func (c *Subnet) InitializeProofOfAuthority(
 }
 
 func (c *Subnet) InitializeProofOfStake(
-	ctx context.Context,
 	log logging.Logger,
 	network network.Network,
 	privateKey string,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 	managerAddress string,
 	specializedManagerAddress string,
 	managerOwnerPrivateKey string,
 	useACP99 bool,
+	signatureAggregatorEndpoint string,
 ) error {
 	if client, err := evm.GetClient(c.RPC); err != nil {
 		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
@@ -487,12 +483,8 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		log.Info("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 	}
-	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
-		ctx,
+	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
 		network,
-		aggregatorLogger,
-		0,
-		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
 		common.HexToAddress(managerAddress),
@@ -501,6 +493,15 @@ func (c *Subnet) InitializeProofOfStake(
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
+
+	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
+	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+
+	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
+	if err != nil {
+		return fmt.Errorf("failed to get signed message: %w", err)
+	}
+
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		common.HexToAddress(managerAddress),
@@ -508,7 +509,7 @@ func (c *Subnet) InitializeProofOfStake(
 		c.SubnetID,
 		c.BlockchainID,
 		c.BootstrapValidators,
-		subnetConversionSignedMessage,
+		signedMessage,
 	)
 	if err != nil {
 		return evm.TransactionError(tx, err, "failure initializing validators set on pos manager")

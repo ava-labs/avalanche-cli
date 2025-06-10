@@ -413,10 +413,7 @@ func removeValidatorSOV(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
-		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -425,7 +422,6 @@ func removeValidatorSOV(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		sc.UseACP99,

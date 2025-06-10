@@ -367,7 +367,6 @@ func CompleteValidatorRemoval(
 }
 
 func FinishValidatorRemoval(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -376,7 +375,6 @@ func FinishValidatorRemoval(
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
@@ -391,12 +389,10 @@ func FinishValidatorRemoval(
 		return nil, err
 	}
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
-		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,
 		false,

@@ -28,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/config"
@@ -404,8 +403,6 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
@@ -421,11 +418,9 @@ func InitializeValidatorManager(
 			return tracked, fmt.Errorf("could not find validator manager owner private key")
 		}
 		if err := subnetSDK.InitializeProofOfStake(
-			aggregatorCtx,
 			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
@@ -441,6 +436,7 @@ func InitializeValidatorManager(
 			validatormanagerSDK.SpecializationProxyContractAddress,
 			managerOwnerPrivateKey,
 			useACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
 		}
