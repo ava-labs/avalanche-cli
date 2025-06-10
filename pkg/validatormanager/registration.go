@@ -202,7 +202,7 @@ func GetRegisterL1ValidatorMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
+	_ []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	managerAddress common.Address,
@@ -291,21 +291,8 @@ func GetRegisterL1ValidatorMessage(
 		}
 		validationID = reg.ValidationID()
 	}
-	//signatureAggregator, err := interchain.NewSignatureAggregator(
-	//	ctx,
-	//	network.SDKNetwork(),
-	//	aggregatorLogger,
-	//	subnetID,
-	//	aggregatorQuorumPercentage,
-	//	aggregatorExtraPeerEndpoints,
-	//)
-	//if err != nil {
-	//	return nil, ids.Empty, err
-	//}
-	//signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
-	//chainIDHexStr := hex.EncodeToString(subnetID[:])
-	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 
+	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 	signedMessage, err := interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 	if err != nil {
 		fmt.Printf("firs stage err  \n")
