@@ -3,7 +3,6 @@
 package utils
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -351,19 +350,6 @@ func GetGitCommit(gitRepoURL string) string {
 		}
 	}
 	return ""
-}
-
-// ReadLongString reads a long string from the user input.
-func ReadLongString(msg string, args ...interface{}) (string, error) {
-	fmt.Printf(msg, args...)
-	reader := bufio.NewReader(os.Stdin)
-	longString, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	// Remove newline character at the end
-	longString = strings.TrimSuffix(longString, "\n")
-	return longString, nil
 }
 
 func SupportedAvagoArch() []string {

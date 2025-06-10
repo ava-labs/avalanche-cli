@@ -3,8 +3,8 @@
 package relayercmd
 
 import (
+	"bytes"
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -46,7 +46,8 @@ const (
 )
 
 func preview(configSpec ConfigSpec) {
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	if len(configSpec.sources) > 0 {
@@ -60,7 +61,8 @@ func preview(configSpec ConfigSpec) {
 		}
 	}
 	table.Render()
-	fmt.Println()
+	ux.Logger.Print(tableBuf.String())
+	ux.Logger.PrintToUser("")
 }
 
 func addBoth(network models.Network, configSpec ConfigSpec, chainSpec contract.ChainSpec, defaultKey string) (ConfigSpec, error) {

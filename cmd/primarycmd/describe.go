@@ -3,10 +3,10 @@
 package primarycmd
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -113,7 +113,8 @@ func describe(_ *cobra.Command, _ []string) error {
 	}
 	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	balanceStr := fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax))
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
@@ -141,5 +142,6 @@ func describe(_ *cobra.Command, _ []string) error {
 		table.Append([]string{"ICM Registry Address", icmRegistryAddress})
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 	return nil
 }

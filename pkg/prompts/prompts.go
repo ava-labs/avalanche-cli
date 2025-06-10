@@ -3,10 +3,12 @@
 package prompts
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -208,6 +210,7 @@ func CaptureListDecision[T comparable](
 
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateDuration,
 	}
@@ -222,6 +225,7 @@ func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
 
 func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateFujiStakingDuration,
 	}
@@ -236,6 +240,7 @@ func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error
 
 func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateMainnetStakingDuration,
 	}
@@ -250,6 +255,7 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 
 func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateMainnetL1StakingDuration,
 	}
@@ -264,6 +270,7 @@ func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Dur
 
 func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateTime,
 	}
@@ -278,6 +285,7 @@ func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 
 func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateID,
 	}
@@ -291,6 +299,7 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: ValidateNodeID,
 	}
@@ -309,6 +318,7 @@ func (*realPrompter) CaptureValidatorBalance(
 	minBalance float64,
 ) (float64, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
 	}
@@ -327,7 +337,8 @@ func (*realPrompter) CaptureValidatorBalance(
 
 func (*realPrompter) CaptureWeight(promptStr string, validator func(uint64) error) (uint64, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			if err := validateWeight(input); err != nil {
 				return err
@@ -350,7 +361,8 @@ func (*realPrompter) CaptureWeight(promptStr string, validator func(uint64) erro
 
 func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (int, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			val, err := strconv.Atoi(input)
 			if err != nil {
@@ -372,7 +384,8 @@ func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (in
 
 func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			_, err := strconv.ParseUint(input, 0, 8)
 			if err != nil {
@@ -394,7 +407,8 @@ func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
 
 func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			_, err := strconv.ParseUint(input, 0, 16)
 			if err != nil {
@@ -416,7 +430,8 @@ func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
 
 func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			_, err := strconv.ParseUint(input, 0, 32)
 			if err != nil {
@@ -438,6 +453,7 @@ func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {
 
 func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateBiggerThanZero,
 	}
@@ -451,7 +467,8 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 
 func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) error) (float64, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			val, err := strconv.ParseFloat(input, 64)
 			if err != nil {
@@ -470,7 +487,8 @@ func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) erro
 
 func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparator) (int, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			val, err := strconv.Atoi(input)
 			if err != nil {
@@ -497,7 +515,8 @@ func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparat
 
 func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			val, err := strconv.ParseUint(input, 0, 64)
 			if err != nil {
@@ -522,6 +541,7 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Compar
 
 func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validatePositiveBigInt,
 	}
@@ -541,6 +561,7 @@ func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 
 func (*realPrompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: getPChainValidationFunc(network),
 	}
@@ -550,6 +571,7 @@ func (*realPrompter) CapturePChainAddress(promptStr string, network models.Netwo
 
 func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: getXChainValidationFunc(network),
 	}
@@ -559,6 +581,7 @@ func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Netwo
 
 func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: ValidateAddress,
 	}
@@ -577,7 +600,7 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 	validated := false
 	for !validated {
 		var err error
-		addressesStr, err = utils.ReadLongString(promptui.IconGood + " " + promptStr + " ")
+		addressesStr, err = PromptLongString(promptui.IconGood + " " + promptStr + " ")
 		if err != nil {
 			return nil, err
 		}
@@ -598,6 +621,7 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 
 func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
 	}
@@ -613,6 +637,7 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 
 func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateNewFilepath,
 	}
@@ -627,8 +652,9 @@ func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
 
 func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	prompt := promptui.Select{
-		Label: promptStr,
-		Items: orderedOptions,
+		Stdout: ux.Logger,
+		Label:  promptStr,
+		Items:  orderedOptions,
 	}
 
 	_, decision, err := prompt.Run()
@@ -648,8 +674,9 @@ func (*realPrompter) CaptureNoYes(promptStr string) (bool, error) {
 
 func (*realPrompter) CaptureList(promptStr string, options []string) (string, error) {
 	prompt := promptui.Select{
-		Label: promptStr,
-		Items: options,
+		Stdout: ux.Logger,
+		Label:  promptStr,
+		Items:  options,
 	}
 	_, listDecision, err := prompt.Run()
 	if err != nil {
@@ -660,9 +687,10 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 
 func (*realPrompter) CaptureListWithSize(promptStr string, options []string, size int) (string, error) {
 	prompt := promptui.Select{
-		Label: promptStr,
-		Items: options,
-		Size:  size,
+		Stdout: ux.Logger,
+		Label:  promptStr,
+		Items:  options,
+		Size:   size,
 	}
 	_, listDecision, err := prompt.Run()
 	if err != nil {
@@ -673,6 +701,7 @@ func (*realPrompter) CaptureListWithSize(promptStr string, options []string, siz
 
 func (*realPrompter) CaptureEmail(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateEmail,
 	}
@@ -687,7 +716,8 @@ func (*realPrompter) CaptureEmail(promptStr string) (string, error) {
 
 func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 	}
 
 	str, err := prompt.Run()
@@ -701,6 +731,7 @@ func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (string, error) {
 	for {
 		prompt := promptui.Prompt{
+			Stdout:   ux.Logger,
 			Label:    promptStr,
 			Validate: ValidateURLFormat,
 		}
@@ -722,6 +753,7 @@ func (*realPrompter) CaptureRepoBranch(promptStr string, repo string) (string, e
 	for {
 		var err error
 		prompt := promptui.Prompt{
+			Stdout:   ux.Logger,
 			Label:    promptStr,
 			Validate: validateNonEmpty,
 		}
@@ -740,6 +772,7 @@ func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch strin
 	for {
 		var err error
 		prompt := promptui.Prompt{
+			Stdout:   ux.Logger,
 			Label:    promptStr,
 			Validate: validateNonEmpty,
 		}
@@ -756,6 +789,7 @@ func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch strin
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validateNonEmpty,
 	}
@@ -770,6 +804,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 
 func (*realPrompter) CaptureValidatedString(promptStr string, validator func(string) error) (string, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: validator,
 	}
@@ -784,6 +819,7 @@ func (*realPrompter) CaptureValidatedString(promptStr string, validator func(str
 
 func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	prompt := promptui.Prompt{
+		Stdout:   ux.Logger,
 		Label:    promptStr,
 		Validate: ValidateURLFormat,
 	}
@@ -803,7 +839,8 @@ func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 
 func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(input string) error {
 			if !semver.IsValid(input) {
 				return errors.New("version must be a legal semantic version (ex: v1.1.1)")
@@ -822,8 +859,9 @@ func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
 
 func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) {
 	prompt := promptui.Select{
-		Label: promptStr,
-		Items: options,
+		Stdout: ux.Logger,
+		Label:  promptStr,
+		Items:  options,
 	}
 
 	listIndex, _, err := prompt.Run()
@@ -838,7 +876,8 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 // Otherwise, time from time.Now() is chosen.
 func (*realPrompter) CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Stdout: ux.Logger,
+		Label:  promptStr,
 		Validate: func(s string) error {
 			t, err := time.Parse(constants.TimeParseLayout, s)
 			if err != nil {
@@ -1203,4 +1242,18 @@ func CaptureKeyAddress(
 		return k.C(), nil
 	}
 	return "", nil
+}
+
+// PromptLongString reads a long string from the user input.
+func PromptLongString(msg string, args ...interface{}) (string, error) {
+	_, _ = ux.Logger.Write([]byte(fmt.Sprintf(msg, args...)))
+	reader := bufio.NewReader(os.Stdin)
+	longString, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	// Remove newline character at the end
+	longString = strings.TrimSuffix(longString, "\n")
+	ux.Logger.Info(longString)
+	return longString, nil
 }

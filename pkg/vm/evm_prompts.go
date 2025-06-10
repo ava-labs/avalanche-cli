@@ -3,6 +3,7 @@
 package vm
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"os"
@@ -331,7 +332,8 @@ func PromptDefaults(
 
 func displayAllocations(alloc core.GenesisAlloc) {
 	header := []string{"Address", "Balance"}
-	table := tablewriter.NewWriter(os.Stdout)
+	var tableBuf bytes.Buffer
+	table := tablewriter.NewWriter(&tableBuf)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -340,6 +342,7 @@ func displayAllocations(alloc core.GenesisAlloc) {
 		table.Append([]string{address.Hex(), utils.FormatAmount(account.Balance, 18)})
 	}
 	table.Render()
+	ux.Logger.Print(tableBuf.String())
 }
 
 func addNewKeyAllocation(allocations core.GenesisAlloc, app *application.Avalanche, subnetName string) error {
@@ -389,8 +392,8 @@ func getNativeGasTokenAllocationConfig(
 
 	if allocOption == customAllocationOption {
 		if len(allocations) != 0 {
-			fmt.Println()
-			fmt.Println(logging.Bold.Wrap("Addresses automatically allocated"))
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser(logging.Bold.Wrap("Addresses automatically allocated"))
 			displayAllocations(allocations)
 		}
 		for {
