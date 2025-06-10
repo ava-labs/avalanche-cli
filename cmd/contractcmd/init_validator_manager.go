@@ -186,7 +186,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		OwnerAddress:        &ownerAddress,
 		RPC:                 initValidatorManagerFlags.RPC,
 	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		return err
 	}

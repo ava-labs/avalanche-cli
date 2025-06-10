@@ -139,120 +139,66 @@ func getSignatureAggregatorURL(version string) (string, error) {
 }
 
 // StartSignatureAggregator starts the signature aggregator process.
-// It handles port conflicts and retries if necessary.
-func StartSignatureAggregator(app *application.Avalanche, configPath string, logFile string, logger logging.Logger, version string, signatureAggregatorEndpoint string) (int, error) {
+func StartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logFile string, logger logging.Logger, version string, signatureAggregatorEndpoint string) (int, error) {
 	binPath, err := InstallSignatureAggregator(app, &version)
 	if err != nil {
 		return 0, err
 	}
 	fmt.Printf("binPath %s \n", binPath)
 
-	// TODO: remove kill process below once cleanup is implemented
-	// Function to check if port is in use
-	isPortInUse := func() bool {
-		conn, err := net.Dial("tcp", "localhost:8080")
-		if err == nil {
-			if err := conn.Close(); err != nil {
-				logger.Warn("Failed to close connection while checking port",
-					zap.Error(err),
-				)
-			}
-			return true
-		}
-		return false
-	}
-
-	// Function to kill existing process
-	killExistingProcess := func() error {
-		// Try pkill first
-		cmd := exec.Command("pkill", "-f", "signature-aggregator")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to kill existing signature-aggregator process: %w", err)
-		}
-		return nil
-	}
-
-	// Try to start the aggregator with retries
-	maxRetries := 3
-	for i := 0; i < maxRetries; i++ {
-		if isPortInUse() {
-			logger.Info("Port 8080 is in use, attempting to kill existing process",
-				zap.Int("attempt", i+1),
-				zap.Int("max_attempts", maxRetries),
-			)
-			if err := killExistingProcess(); err != nil {
-				logger.Warn("Failed to kill existing process",
-					zap.Error(err),
-				)
-			}
-			// Wait for port to be released
-			time.Sleep(2 * time.Second)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
-			return 0, err
-		}
-
-		logWriter, err := os.Create(logFile)
-		if err != nil {
-			return 0, err
-		}
-
-		logger.Info("Starting Signature Aggregator",
-			zap.Int("attempt", i+1),
-			zap.Int("max_attempts", maxRetries),
+	// Stop any existing signature aggregator process
+	if err := stopSignatureAggregator(app, network); err != nil {
+		logger.Warn("Failed to stop existing signature aggregator",
+			zap.Error(err),
 		)
-
-		cmd := exec.Command(binPath, "--config-file", configPath)
-		cmd.Stdout = logWriter
-		cmd.Stderr = logWriter
-		fmt.Printf("cmd %s \n", cmd.Path)
-		if err := cmd.Start(); err != nil {
-			if closeErr := logWriter.Close(); closeErr != nil {
-				return 0, closeErr
-			}
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts: %w", maxRetries, err)
-			}
-			continue
-		}
-
-		ch := make(chan struct{})
-		go func() {
-			_ = cmd.Wait()
-			ch <- struct{}{}
-		}()
-
-		// Allow time for the aggregator to initialize
-		time.Sleep(2 * time.Second)
-
-		select {
-		case <-ch:
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("signature-aggregator exited during startup after %d attempts", maxRetries)
-			}
-			continue
-		default:
-		}
-
-		// Check if the aggregator is ready
-		// if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
-		fmt.Printf("waiting for %s \n", signatureAggregatorEndpoint)
-		if err := waitForAggregatorReady(signatureAggregatorEndpoint, 5*time.Second); err != nil {
-			_ = cmd.Process.Kill()
-			if i == maxRetries-1 {
-				return 0, fmt.Errorf("signature-aggregator not ready after %d attempts: %w", maxRetries, err)
-			}
-			continue
-		}
-
-		logger.Info("Signature Aggregator started successfully",
-			zap.Int("attempt", i+1),
-		)
-		return cmd.Process.Pid, nil
 	}
 
-	return 0, fmt.Errorf("failed to start signature-aggregator after %d attempts", maxRetries)
+	if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
+		return 0, err
+	}
+
+	logWriter, err := os.Create(logFile)
+	if err != nil {
+		return 0, err
+	}
+
+	logger.Info("Starting Signature Aggregator")
+
+	cmd := exec.Command(binPath, "--config-file", configPath)
+	cmd.Stdout = logWriter
+	cmd.Stderr = logWriter
+	fmt.Printf("cmd %s \n", cmd.Path)
+	if err := cmd.Start(); err != nil {
+		if closeErr := logWriter.Close(); closeErr != nil {
+			return 0, closeErr
+		}
+		return 0, fmt.Errorf("failed to start signature-aggregator: %w", err)
+	}
+
+	ch := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		ch <- struct{}{}
+	}()
+
+	// Allow time for the aggregator to initialize
+	time.Sleep(2 * time.Second)
+
+	select {
+	case <-ch:
+		return 0, fmt.Errorf("signature-aggregator exited during startup")
+	default:
+	}
+
+	// Check if the aggregator is ready
+	fmt.Printf("waiting for %s \n", signatureAggregatorEndpoint)
+	if err := waitForAggregatorReady(signatureAggregatorEndpoint, 5*time.Second); err != nil {
+		_ = cmd.Process.Kill()
+		return 0, fmt.Errorf("signature-aggregator not ready: %w", err)
+	}
+
+	logger.Info("Signature Aggregator started successfully")
+	return cmd.Process.Pid, nil
 }
 
 func waitForAggregatorReady(url string, timeout time.Duration) error {
@@ -418,48 +364,76 @@ type PeerConfig struct {
 	IP string `json:"ip"`
 }
 
-func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
-	// Create config file for signature aggregator
-	// apiPort, metricsPort, err := generateAPIMetricsPorts()
-	// if err != nil {
-	//	return fmt.Errorf("failed to generate api and metrics ports: %w", err)
-	// }
+func isPortAvailable(port int) bool {
+	addr := fmt.Sprintf("localhost:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+	if err != nil {
+		// If we can't connect, the port is available
+		return true
+	}
+	// If we can connect, the port is in use
+	if err := conn.Close(); err != nil {
+		fmt.Printf("Failed to close connection while checking port availability: %v\n", err)
+	}
+	return false
+}
+
+func generateAPIMetricsPorts() (int, int, error) {
+	// Create a context with a 30 second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Start with default ports and increment by 2 each time
 	apiPort := 8080
 	metricsPort := 8081
+
+	// Keep trying until we find available ports or timeout
+	for {
+		select {
+		case <-ctx.Done():
+			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
+		default:
+			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
+				return apiPort, metricsPort, nil
+			}
+			apiPort += 2
+			metricsPort += 2
+		}
+	}
+}
+
+func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
+	// Create config file for signature aggregator
+	var apiPort, metricsPort int
+	var err error
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 	// Check if run file exists and read ports from it
 	if _, err := os.Stat(runFilePath); err == nil {
-		// File exists, read it
-		runFileBytes, err := os.ReadFile(runFilePath)
+		// File exists, get process details
+		runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
 		if err != nil {
-			return fmt.Errorf("failed to read existing run file: %w", err)
+			return fmt.Errorf("failed to get process details: %w", err)
 		}
-
-		var runFile signatureAggregatorRunFile
-		if err := json.Unmarshal(runFileBytes, &runFile); err != nil {
-			return fmt.Errorf("failed to parse existing run file: %w", err)
-		}
-
 		// Use existing ports
 		apiPort = runFile.APIPort
 		metricsPort = runFile.MetricsPort
-		// Use existing version if not specified
-		if version == "" {
-			version = runFile.Version
+	} else {
+		// Run file doesn't exist, generate new ports
+		apiPort, metricsPort, err = generateAPIMetricsPorts()
+		if err != nil {
+			return fmt.Errorf("failed to generate api and metrics ports: %w", err)
 		}
 	}
 
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
 	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
-	// configPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
-	// logPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
 	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
-	pid, err := StartSignatureAggregator(app, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
+	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
@@ -467,46 +441,13 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort, version)
 }
 
-// func isPortAvailable(port int) bool {
-//	addr := fmt.Sprintf("localhost:%d", port)
-//	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-//	if err != nil {
-//		// If we can't connect, the port is available
-//		return true
-//	}
-//	// If we can connect, the port is in use
-//	if err := conn.Close(); err != nil {
-//		fmt.Printf("Failed to close connection while checking port availability: %v\n", err)
-//	}
-//	return false
-// }
-
-// func generateAPIMetricsPorts() (int, int, error) {
-//	// Create a context with a 30 second timeout
-//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-//	defer cancel()
-//
-//	// Start with default ports and increment by 2 each time
-//	apiPort := 8080
-//	metricsPort := 8081
-//
-//	// Keep trying until we find available ports or timeout
-//	for {
-//		select {
-//		case <-ctx.Done():
-//			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
-//		default:
-//			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
-//				return apiPort, metricsPort, nil
-//			}
-//			apiPort += 2
-//			metricsPort += 2
-//		}
-//	}
-// }
-
-func GetSignatureAggregatorEndpoint() (string, error) {
-	return "http://localhost:8080/aggregate-signatures", nil
+func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.Network) (string, error) {
+	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		return "", fmt.Errorf("failed to get process details: %w", err)
+	}
+	fmt.Printf("obtained GetSignatureAggregatorEndpoint %s \n", fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort))
+	return fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort), nil
 }
 
 type signatureAggregatorRunFile struct {
@@ -527,6 +468,7 @@ func saveSignatureAggregatorFile(runFilePath string, pid, apiPort, metricsPort i
 	if err != nil {
 		return err
 	}
+	fmt.Printf("saveSignatureAggregatorFile %s \n", filepath.Dir(runFilePath))
 	if err := os.MkdirAll(filepath.Dir(runFilePath), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -536,9 +478,82 @@ func saveSignatureAggregatorFile(runFilePath string, pid, apiPort, metricsPort i
 	return nil
 }
 
-// UpdateSignatureAggregatorConfig updates the existing signature aggregator config with new peers.
+// getCurrentSignatureAggregatorProcessDetails reads the run file and returns the current process details.
+// It returns the run file information including PID, ports, and version.
+func getCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, network models.Network) (*signatureAggregatorRunFile, error) {
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	runFileBytes, err := os.ReadFile(runFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read run file: %w", err)
+	}
+
+	var runFile signatureAggregatorRunFile
+	if err := json.Unmarshal(runFileBytes, &runFile); err != nil {
+		return nil, fmt.Errorf("failed to parse run file: %w", err)
+	}
+
+	return &runFile, nil
+}
+
+// stopSignatureAggregator stops the running signature aggregator process.
+// It reads the run file to get the PID and kills the process if it's running.
+func stopSignatureAggregator(app *application.Avalanche, network models.Network) error {
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
+		return nil
+	}
+
+	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		return fmt.Errorf("failed to get process details: %w", err)
+	}
+
+	// Kill existing process if running
+	if runFile.Pid > 0 {
+		process, err := os.FindProcess(runFile.Pid)
+		if err == nil {
+			if err := process.Kill(); err != nil {
+				fmt.Printf("Failed to kill process %d: %v\n", runFile.Pid, err)
+			}
+		}
+	}
+
+	// Wait a bit for the process to be killed
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+// restartSignatureAggregator restarts the signature aggregator with the given config.
+// It reads the run file to get the current ports and version, kills the existing process,
+// and starts a new one with the updated config.
+func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
+	// Stop the existing signature aggregator
+	if err := stopSignatureAggregator(app, network); err != nil {
+		return fmt.Errorf("failed to stop signature aggregator: %w", err)
+	}
+
+	// Get current process details
+	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		return fmt.Errorf("failed to get process details: %w", err)
+	}
+
+	// Restart signature aggregator with updated config
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
+	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
+	pid, err := StartSignatureAggregator(app, network, configPath, logPath, logger, runFile.Version, signatureAggregatorEndpoint)
+	if err != nil {
+		return fmt.Errorf("failed to restart signature aggregator: %w", err)
+	}
+
+	// Update run file with new PID
+	return saveSignatureAggregatorFile(runFilePath, pid, runFile.APIPort, runFile.MetricsPort, runFile.Version)
+}
+
+// UpdateSignatureAggregatorPeers updates the existing signature aggregator config with new peers.
 // If new peers are found, it updates the config and restarts the signature aggregator.
-func UpdateSignatureAggregatorConfig(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer) error {
+func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer, logger logging.Logger) error {
 	// Get the config path
 	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
 
@@ -583,39 +598,6 @@ func UpdateSignatureAggregatorConfig(app *application.Avalanche, network models.
 		return fmt.Errorf("failed to write updated config: %w", err)
 	}
 
-	// Read run file to get ports
-	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
-	runFileBytes, err := os.ReadFile(runFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read run file: %w", err)
-	}
-
-	var runFile signatureAggregatorRunFile
-	if err := json.Unmarshal(runFileBytes, &runFile); err != nil {
-		return fmt.Errorf("failed to parse run file: %w", err)
-	}
-
-	// Kill existing process if running
-	if runFile.Pid > 0 {
-		process, err := os.FindProcess(runFile.Pid)
-		if err == nil {
-			if err := process.Kill(); err != nil {
-				fmt.Printf("Failed to kill process %d: %v\n", runFile.Pid, err)
-			}
-		}
-	}
-
-	// Wait a bit for the process to be killed
-	time.Sleep(2 * time.Second)
-
-	// Restart signature aggregator with updated config
-	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
-	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
-	pid, err := StartSignatureAggregator(app, configPath, logPath, nil, "", signatureAggregatorEndpoint)
-	if err != nil {
-		return fmt.Errorf("failed to restart signature aggregator: %w", err)
-	}
-
-	// Update run file with new PID
-	return saveSignatureAggregatorFile(runFilePath, pid, runFile.APIPort, runFile.MetricsPort, runFile.Version)
+	// Restart the signature aggregator with the updated config
+	return restartSignatureAggregator(app, network, configPath, logger)
 }

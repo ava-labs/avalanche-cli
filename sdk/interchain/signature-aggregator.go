@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -260,24 +258,6 @@ func (s *SignatureAggregator) Sign(
 // SignatureAggregatorRunFile represents the run file structure for the signature aggregator
 type SignatureAggregatorRunFile struct {
 	Pid int `json:"pid"`
-}
-
-// SaveSignatureAggregatorRunFile saves the signature aggregator run file
-func SaveSignatureAggregatorRunFile(runFilePath string, pid int) error {
-	rf := SignatureAggregatorRunFile{
-		Pid: pid,
-	}
-	bs, err := json.Marshal(&rf)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(runFilePath), 0o755); err != nil {
-		return err
-	}
-	if err := os.WriteFile(runFilePath, bs, 0o600); err != nil {
-		return fmt.Errorf("could not write signature aggregator run file to %s: %w", runFilePath, err)
-	}
-	return nil
 }
 
 // AggregateSignaturesRequest represents the request structure for aggregating signatures

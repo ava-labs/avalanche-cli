@@ -399,7 +399,7 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint()
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		return tracked, err
 	}
