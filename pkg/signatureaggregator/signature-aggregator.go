@@ -426,6 +426,24 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	// }
 	apiPort := 8080
 	metricsPort := 8081
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	// Check if run file exists and read ports from it
+	if _, err := os.Stat(runFilePath); err == nil {
+		// File exists, read it
+		runFileBytes, err := os.ReadFile(runFilePath)
+		if err != nil {
+			return fmt.Errorf("failed to read existing run file: %w", err)
+		}
+
+		var runFile signatureAggregatorRunFile
+		if err := json.Unmarshal(runFileBytes, &runFile); err != nil {
+			return fmt.Errorf("failed to parse existing run file: %w", err)
+		}
+
+		// Use existing ports
+		apiPort = runFile.APIPort
+		metricsPort = runFile.MetricsPort
+	}
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
 	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
 	// configPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "config.json")
@@ -440,7 +458,6 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
-	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 
 	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort)
 }
