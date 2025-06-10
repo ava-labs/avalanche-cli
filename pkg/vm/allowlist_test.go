@@ -943,19 +943,7 @@ func TestRemoveAddress(t *testing.T) {
 			}
 
 			require.Equal(t, tt.expectedCancelled, cancelled, "Cancelled flag should match expected value")
-			require.Equal(t, len(tt.expectedAddresses), len(resultAddresses), "Result should have expected number of addresses")
-
-			// Check that all expected addresses are present
-			for _, expectedAddr := range tt.expectedAddresses {
-				found := false
-				for _, resultAddr := range resultAddresses {
-					if expectedAddr == resultAddr {
-						found = true
-						break
-					}
-				}
-				require.True(t, found, "Expected address %s should be in result", expectedAddr.Hex())
-			}
+			require.Equal(t, tt.expectedAddresses, resultAddresses, "Result should have expected addresses")
 
 			// Verify output messages
 			if tt.expectedOutput != "" {
@@ -1128,4 +1116,1010 @@ func TestRemoveAddressEdgeCases(t *testing.T) {
 
 		mockPrompter.AssertExpectations(t)
 	})
+}
+
+func TestGenerateAllowList(t *testing.T) {
+	tests := []struct {
+		name                string
+		inputAllowList      AllowList
+		action              string
+		evmVersion          string
+		mockSetup           func(*mocks.Prompter)
+		expectedAllowList   AllowList
+		expectedCancelled   bool
+		expectedError       string
+		shouldCaptureStdout bool
+		expectedOutput      string
+	}{
+		{
+			name:           "invalid semantic version returns error",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "invalid-version",
+			mockSetup: func(_ *mocks.Prompter) {
+				// No mock setup needed as function should return early
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "invalid semantic version",
+		},
+		{
+			name:           "user cancels immediately",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil)
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: true,
+			expectedError:     "",
+		},
+		{
+			name:           "user confirms empty allow list",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name: "user selects preview option",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+				ManagerAddresses: []common.Address{
+					common.HexToAddress("0x2222222222222222222222222222222222222222"),
+				},
+				EnabledAddresses: []common.Address{
+					common.HexToAddress("0x3333333333333333333333333333333333333333"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				// First select preview option
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Preview Allow List", nil).Once()
+				// Then cancel from main menu
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   true,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+			expectedOutput:      "0x1111111111111111111111111111111111111111", // Should contain addresses from preview
+		},
+		{
+			name:           "getNewAddresses fails for admin role",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Admin", nil)
+
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{}, errors.New("failed to capture admin addresses"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to capture admin addresses",
+		},
+		{
+			name:           "getNewAddresses fails for manager role",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Manager", nil)
+
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{}, errors.New("failed to capture manager addresses"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to capture manager addresses",
+		},
+		{
+			name:           "getNewAddresses fails for enabled role",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Enabled", nil)
+
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{}, errors.New("failed to capture enabled addresses"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to capture enabled addresses",
+		},
+		{
+			name:           "user says no to confirmation and continues editing",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Confirm Allow List", nil).Once()
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("No, keep editing", nil).Once()
+
+				// Back to main menu after saying no
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   true,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name:           "manager role not available in old version",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.6.0", // Before v0.6.4
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				// Just cancel immediately from main menu to test the version logic
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil)
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: true,
+			expectedError:     "",
+		},
+		{
+			name: "user removes existing address",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil)
+
+				removeRoleOptions := []string{"Admin", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Admin", nil)
+
+				removeAddressOptions := []string{
+					"0x1111111111111111111111111111111111111111",
+					"Cancel",
+				}
+				m.On("CaptureList", "Select the address you want to remove", removeAddressOptions).Return("0x1111111111111111111111111111111111111111", nil)
+
+				// Back to main menu after removal
+				mainOptionsAfterRemove := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptionsAfterRemove).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList: AllowList{
+				AdminAddresses:   []common.Address{},
+				ManagerAddresses: nil,
+				EnabledAddresses: nil,
+			},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name:           "main prompt fails",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("", errors.New("prompt failed"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "prompt failed",
+		},
+		{
+			name:           "user cancels from main menu",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil)
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   true,
+			expectedError:       "",
+			shouldCaptureStdout: false,
+		},
+		{
+			name:           "user adds admin address and confirms",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Admin", nil)
+
+				testAddress := common.HexToAddress("0x1111111111111111111111111111111111111111")
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{testAddress}, nil)
+
+				// Second iteration - confirm
+				mainOptionsWithRemove := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptionsWithRemove).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+				ManagerAddresses: nil,
+				EnabledAddresses: nil,
+			},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name: "removeAddress fails for admin role",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil)
+
+				removeRoleOptions := []string{"Admin", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Admin", nil)
+
+				removeAddressOptions := []string{
+					"0x1111111111111111111111111111111111111111",
+					"Cancel",
+				}
+				m.On("CaptureList", "Select the address you want to remove", removeAddressOptions).Return("", errors.New("failed to select address for removal"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to select address for removal",
+		},
+		{
+			name: "removeAddress fails for manager role",
+			inputAllowList: AllowList{
+				ManagerAddresses: []common.Address{
+					common.HexToAddress("0x2222222222222222222222222222222222222222"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil)
+
+				removeRoleOptions := []string{"Manager", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Manager", nil)
+
+				removeAddressOptions := []string{
+					"0x2222222222222222222222222222222222222222",
+					"Cancel",
+				}
+				m.On("CaptureList", "Select the address you want to remove", removeAddressOptions).Return("", errors.New("failed to select manager address for removal"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to select manager address for removal",
+		},
+		{
+			name: "removeAddress fails for enabled role",
+			inputAllowList: AllowList{
+				EnabledAddresses: []common.Address{
+					common.HexToAddress("0x3333333333333333333333333333333333333333"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil)
+
+				removeRoleOptions := []string{"Enabled", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Enabled", nil)
+
+				removeAddressOptions := []string{
+					"0x3333333333333333333333333333333333333333",
+					"Cancel",
+				}
+				m.On("CaptureList", "Select the address you want to remove", removeAddressOptions).Return("", errors.New("failed to select enabled address for removal"))
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: false,
+			expectedError:     "failed to select enabled address for removal",
+		},
+		{
+			name:           "user cancels during role selection",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil).Once()
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Cancel", nil).Once()
+
+				// Back to main menu after role selection cancel
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: true,
+			expectedError:     "",
+		},
+		{
+			name: "user cancels during remove role selection",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+				ManagerAddresses: []common.Address{
+					common.HexToAddress("0x2222222222222222222222222222222222222222"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil).Once()
+
+				removeRoleOptions := []string{"Admin", "Manager", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Cancel", nil).Once()
+
+				// Back to main menu after remove role selection cancel
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   true,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name: "user cancels during address selection for removal",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+					common.HexToAddress("0x4444444444444444444444444444444444444444"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil).Once()
+
+				removeRoleOptions := []string{"Admin", "Cancel"}
+				// First time: user selects Admin
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Admin", nil).Once()
+
+				removeAddressOptions := []string{
+					"0x1111111111111111111111111111111111111111",
+					"0x4444444444444444444444444444444444444444",
+					"Cancel",
+				}
+				// User cancels address selection - this returns keepAsking = true, so loop continues
+				m.On("CaptureList", "Select the address you want to remove", removeAddressOptions).Return("Cancel", nil).Once()
+
+				// Second time: user cancels role selection to exit remove loop
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("Cancel", nil).Once()
+
+				// Back to main menu after remove loop exits
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList:   AllowList{},
+			expectedCancelled:   true,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name:           "user cancels in old version during role selection",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.6.0", // Before v0.6.4 - no Manager role
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil).Once()
+
+				// Manager option should not be present in older versions
+				roleOptions := []string{"Admin", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Cancel", nil).Once()
+
+				// Back to main menu after role selection cancel
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil).Once()
+			},
+			expectedAllowList: AllowList{},
+			expectedCancelled: true,
+			expectedError:     "",
+		},
+		{
+			name:           "user adds manager address and confirms",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Manager", nil)
+
+				testAddress := common.HexToAddress("0x2222222222222222222222222222222222222222")
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{testAddress}, nil)
+
+				// Second iteration - confirm
+				mainOptionsWithRemove := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptionsWithRemove).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList: AllowList{
+				AdminAddresses: nil,
+				ManagerAddresses: []common.Address{
+					common.HexToAddress("0x2222222222222222222222222222222222222222"),
+				},
+				EnabledAddresses: nil,
+			},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name:           "user adds enabled address and confirms",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Enabled", nil)
+
+				testAddress := common.HexToAddress("0x3333333333333333333333333333333333333333")
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{testAddress}, nil)
+
+				// Second iteration - confirm
+				mainOptionsWithRemove := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptionsWithRemove).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList: AllowList{
+				AdminAddresses:   nil,
+				ManagerAddresses: nil,
+				EnabledAddresses: []common.Address{
+					common.HexToAddress("0x3333333333333333333333333333333333333333"),
+				},
+			},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+		},
+		{
+			name:           "user selects explain option then adds admin address",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				// First call returns explain option
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Explain the difference", nil).Once()
+				// Second call returns admin after explanation
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Admin", nil).Once()
+
+				testAddress := common.HexToAddress("0x1111111111111111111111111111111111111111")
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{testAddress}, nil)
+
+				// Second iteration - confirm
+				mainOptionsWithRemove := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptionsWithRemove).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("Yes", nil)
+			},
+			expectedAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+				ManagerAddresses: nil,
+				EnabledAddresses: nil,
+			},
+			expectedCancelled:   false,
+			expectedError:       "",
+			shouldCaptureStdout: true,
+			expectedOutput:      "Enabled addresses can perform the permissioned behavior", // Should contain explanation text
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mock prompter
+			mockPrompter := mocks.NewPrompter(t)
+
+			// Set up mock expectations
+			tt.mockSetup(mockPrompter)
+
+			// Create application with mock prompter
+			app := &application.Avalanche{
+				Prompt: mockPrompter,
+			}
+
+			var output string
+			if tt.shouldCaptureStdout {
+				// Capture stdout to verify printed messages
+				oldStdout := os.Stdout
+				r, w, _ := os.Pipe()
+				os.Stdout = w
+
+				// Call the function under test
+				resultAllowList, cancelled, err := GenerateAllowList(app, tt.inputAllowList, tt.action, tt.evmVersion)
+
+				// Restore stdout and read captured output
+				w.Close()
+				os.Stdout = oldStdout
+				var buf bytes.Buffer
+				_, readErr := buf.ReadFrom(r)
+				require.NoError(t, readErr)
+				output = strings.TrimSpace(buf.String())
+
+				// Assertions
+				if tt.expectedError != "" {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.expectedError)
+				} else {
+					require.NoError(t, err)
+				}
+
+				require.Equal(t, tt.expectedCancelled, cancelled, "Cancelled flag should match expected value")
+				require.Equal(t, tt.expectedAllowList, resultAllowList, "Result allow list should match expected")
+
+				if tt.expectedOutput != "" {
+					require.Contains(t, output, tt.expectedOutput, "Expected output should appear in captured output")
+				}
+			} else {
+				// Call the function under test without capturing stdout
+				resultAllowList, cancelled, err := GenerateAllowList(app, tt.inputAllowList, tt.action, tt.evmVersion)
+
+				// Assertions
+				if tt.expectedError != "" {
+					require.Error(t, err)
+					require.Contains(t, err.Error(), tt.expectedError)
+				} else {
+					require.NoError(t, err)
+				}
+
+				require.Equal(t, tt.expectedCancelled, cancelled, "Cancelled flag should match expected value")
+				require.Equal(t, tt.expectedAllowList, resultAllowList, "Result allow list should match expected")
+			}
+
+			// Verify all mock expectations were met
+			mockPrompter.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGenerateAllowListWithExistingAddresses(t *testing.T) {
+	// Test the initial preview when addresses already exist
+	t.Run("shows existing addresses on startup", func(t *testing.T) {
+		inputAllowList := AllowList{
+			AdminAddresses: []common.Address{
+				common.HexToAddress("0x1111111111111111111111111111111111111111"),
+			},
+			ManagerAddresses: []common.Address{
+				common.HexToAddress("0x2222222222222222222222222222222222222222"),
+			},
+			EnabledAddresses: []common.Address{
+				common.HexToAddress("0x3333333333333333333333333333333333333333"),
+			},
+		}
+
+		mockPrompter := mocks.NewPrompter(t)
+
+		mainOptions := []string{
+			"Add an address for a role to the allow list",
+			"Remove address from the allow list",
+			"Preview Allow List",
+			"Confirm Allow List",
+			"Cancel",
+		}
+		mockPrompter.On("CaptureList", "Configure the addresses that are allowed to mint tokens", mainOptions).Return("Cancel", nil)
+
+		app := &application.Avalanche{
+			Prompt: mockPrompter,
+		}
+
+		// Capture stdout to verify the preview is shown
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		resultAllowList, cancelled, err := GenerateAllowList(app, inputAllowList, "mint tokens", "v0.7.0")
+
+		// Restore stdout and read captured output
+		w.Close()
+		os.Stdout = oldStdout
+		var buf bytes.Buffer
+		_, readErr := buf.ReadFrom(r)
+		require.NoError(t, readErr)
+		output := strings.TrimSpace(buf.String())
+
+		require.NoError(t, err)
+		require.True(t, cancelled)
+		require.Equal(t, AllowList{}, resultAllowList)
+
+		// Verify that the preview was shown initially
+		require.Contains(t, output, "Addresses automatically allowed to mint tokens")
+		require.Contains(t, output, "0x1111111111111111111111111111111111111111")
+		require.Contains(t, output, "0x2222222222222222222222222222222222222222")
+		require.Contains(t, output, "0x3333333333333333333333333333333333333333")
+
+		mockPrompter.AssertExpectations(t)
+	})
+}
+
+func TestGenerateAllowListErrorCases(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputAllowList AllowList
+		action         string
+		evmVersion     string
+		mockSetup      func(*mocks.Prompter)
+		expectedError  string
+	}{
+		{
+			name:           "role selection prompt fails",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("", errors.New("role prompt failed"))
+			},
+			expectedError: "role prompt failed",
+		},
+		{
+			name:           "address capture fails",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Add an address for a role to the allow list", nil)
+
+				roleOptions := []string{"Admin", "Manager", "Enabled", "Explain the difference", "Cancel"}
+				m.On("CaptureList", "What role should the address have?", roleOptions).Return("Admin", nil)
+
+				m.On("CaptureAddresses", "Enter the address of the account (or multiple comma separated):").Return([]common.Address{}, errors.New("address capture failed"))
+			},
+			expectedError: "address capture failed",
+		},
+		{
+			name: "remove role selection fails",
+			inputAllowList: AllowList{
+				AdminAddresses: []common.Address{
+					common.HexToAddress("0x1111111111111111111111111111111111111111"),
+				},
+			},
+			action:     "test action",
+			evmVersion: "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Remove address from the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Remove address from the allow list", nil)
+
+				removeRoleOptions := []string{"Admin", "Cancel"}
+				m.On("CaptureList", "What role does the address that should be removed have?", removeRoleOptions).Return("", errors.New("remove role prompt failed"))
+			},
+			expectedError: "remove role prompt failed",
+		},
+		{
+			name:           "confirmation prompt fails",
+			inputAllowList: AllowList{},
+			action:         "test action",
+			evmVersion:     "v0.7.0",
+			mockSetup: func(m *mocks.Prompter) {
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				m.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Confirm Allow List", nil)
+
+				confirmOptions := []string{"Yes", "No, keep editing"}
+				m.On("CaptureList", "Confirm?", confirmOptions).Return("", errors.New("confirmation prompt failed"))
+			},
+			expectedError: "confirmation prompt failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPrompter := mocks.NewPrompter(t)
+			tt.mockSetup(mockPrompter)
+
+			app := &application.Avalanche{
+				Prompt: mockPrompter,
+			}
+
+			_, _, err := GenerateAllowList(app, tt.inputAllowList, tt.action, tt.evmVersion)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.expectedError)
+
+			mockPrompter.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGenerateAllowListManagerRoleVersioning(t *testing.T) {
+	// This test just verifies that the function correctly identifies semantic versions
+	// The role selection logic itself is tested in other test cases
+	tests := []struct {
+		name        string
+		evmVersion  string
+		expectError bool
+	}{
+		{
+			name:        "valid v0.6.4 version",
+			evmVersion:  "v0.6.4",
+			expectError: false,
+		},
+		{
+			name:        "valid v0.7.0 version",
+			evmVersion:  "v0.7.0",
+			expectError: false,
+		},
+		{
+			name:        "valid v0.6.3 version",
+			evmVersion:  "v0.6.3",
+			expectError: false,
+		},
+		{
+			name:        "invalid version",
+			evmVersion:  "invalid-version",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockPrompter := mocks.NewPrompter(t)
+
+			if !tt.expectError {
+				// Just cancel immediately to test version parsing
+				mainOptions := []string{
+					"Add an address for a role to the allow list",
+					"Preview Allow List",
+					"Confirm Allow List",
+					"Cancel",
+				}
+				mockPrompter.On("CaptureList", "Configure the addresses that are allowed to test action", mainOptions).Return("Cancel", nil)
+			}
+
+			app := &application.Avalanche{
+				Prompt: mockPrompter,
+			}
+
+			allowList := AllowList{}
+			result, cancelled, err := GenerateAllowList(app, allowList, "test action", tt.evmVersion)
+
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "invalid semantic version")
+			} else {
+				require.NoError(t, err)
+				require.True(t, cancelled)
+				require.Equal(t, AllowList{}, result)
+			}
+
+			mockPrompter.AssertExpectations(t)
+		})
+	}
 }

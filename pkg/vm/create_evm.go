@@ -32,6 +32,12 @@ var (
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
 
+// Variables for testing - can be monkey patched
+var (
+	setupSubnetEVM        = binutils.SetupSubnetEVM
+	getRPCProtocolVersion = GetRPCProtocolVersion
+)
+
 func CreateEvmSidecar(
 	sc *models.Sidecar,
 	app *application.Avalanche,
@@ -52,23 +58,23 @@ func CreateEvmSidecar(
 	}
 
 	if getRPCVersionFromBinary {
-		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
+		_, vmBin, err := setupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
 			return nil, fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
-		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
+		rpcVersion, err = getVMBinaryProtocolVersion(vmBin)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
-		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		rpcVersion, err = getRPCProtocolVersion(app, models.VMType(models.SubnetEvm), subnetEVMVersion)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	sc.Name = subnetName
-	sc.VM = models.SubnetEvm
+	sc.VM = models.VMType(models.SubnetEvm)
 	sc.VMVersion = subnetEVMVersion
 	sc.RPCVersion = rpcVersion
 	sc.Subnet = subnetName
