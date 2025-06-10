@@ -195,9 +195,6 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 
 		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 
-		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers(uris)
-		gomega.Expect(err).Should(gomega.BeNil())
-
 		subnetID, err := ids.FromString(subnetIDStr)
 		gomega.Expect(err).Should(gomega.BeNil())
 
