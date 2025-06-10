@@ -285,18 +285,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	// if user chose to upsize a local node to add another local validator
 	var localValidatorClusterName string
 	if createLocalValidator {
-		// TODO: make this to work even if there is no local cluster for the blockchain and network
-		targetClusters, err := localnet.GetFilteredLocalClusters(app, true, network, blockchainName)
-		if err != nil {
-			return err
-		}
-		if len(targetClusters) == 0 {
-			return fmt.Errorf("no local cluster is running for network %s and blockchain %s", network.Name(), blockchainName)
-		}
-		if len(targetClusters) != 1 {
-			return fmt.Errorf("too many local clusters running for network %s and blockchain %s", network.Name(), blockchainName)
-		}
-		localValidatorClusterName = targetClusters[0]
+		localValidatorClusterName = localnet.LocalClusterName(network, blockchainName)
 		node, err := localnet.AddNodeToLocalCluster(app, ux.Logger.PrintToUser, localValidatorClusterName, httpPort, stakingPort)
 		if err != nil {
 			return err
