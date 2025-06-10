@@ -548,9 +548,10 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
+	//if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+	//	return err
+	//}
+	fmt.Printf("addValidator extraAggregatorPeers %s \n", extraAggregatorPeers)
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		return err

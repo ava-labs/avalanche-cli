@@ -426,11 +426,11 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	}
 
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
-	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
+	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
-	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
+	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
 	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
@@ -468,7 +468,6 @@ func saveSignatureAggregatorFile(runFilePath string, pid, apiPort, metricsPort i
 	if err != nil {
 		return err
 	}
-	fmt.Printf("saveSignatureAggregatorFile %s \n", filepath.Dir(runFilePath))
 	if err := os.MkdirAll(filepath.Dir(runFilePath), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -527,6 +526,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 // It reads the run file to get the current ports and version, kills the existing process,
 // and starts a new one with the updated config.
 func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
+	fmt.Printf("we restartSignatureAggregator \n")
 	// Stop the existing signature aggregator
 	if err := stopSignatureAggregator(app, network); err != nil {
 		return fmt.Errorf("failed to stop signature aggregator: %w", err)
@@ -540,7 +540,7 @@ func restartSignatureAggregator(app *application.Avalanche, network models.Netwo
 
 	// Restart signature aggregator with updated config
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
-	logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "signature-aggregator.log")
+	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
 	pid, err := StartSignatureAggregator(app, network, configPath, logPath, logger, runFile.Version, signatureAggregatorEndpoint)
 	if err != nil {
@@ -555,7 +555,7 @@ func restartSignatureAggregator(app *application.Avalanche, network models.Netwo
 // If new peers are found, it updates the config and restarts the signature aggregator.
 func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer, logger logging.Logger) error {
 	// Get the config path
-	configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind), "config.json")
+	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 
 	// Read existing config
 	existingConfig, err := readExistingConfig(configPath)
