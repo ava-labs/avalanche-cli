@@ -560,6 +560,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	fmt.Printf("add validator extraAggregatorPeers %s \n", extraAggregatorPeers)
 	//err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
 	//if err != nil {
 	//	return err
@@ -638,6 +639,7 @@ func CallAddValidator(
 		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err

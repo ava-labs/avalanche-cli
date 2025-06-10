@@ -400,6 +400,7 @@ func FinishValidatorRemoval(
 		subnetID,
 		validationID,
 		false,
+		"",
 	)
 	if err != nil {
 		return nil, err

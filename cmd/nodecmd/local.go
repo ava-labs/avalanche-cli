@@ -707,6 +707,7 @@ func addAsValidator(
 		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
+		"",
 	); err != nil {
 		return err
 	}
