@@ -160,6 +160,7 @@ func (app *Avalanche) GetICMRelayerBinDir() string {
 func (app *Avalanche) GetSignatureAggregatorBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SignatureAggregator)
 }
+
 func (app *Avalanche) GetSignatureAggregatorRunDir(networkKind models.NetworkKind, subnetIDStr string) string {
 	networkDirName := strings.ReplaceAll(networkKind.String(), " ", "")
 	return filepath.Join(app.GetRunDir(), networkDirName, subnetIDStr, constants.SignatureAggregator)

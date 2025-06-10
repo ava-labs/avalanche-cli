@@ -148,7 +148,7 @@ func StartSignatureAggregator(app *application.Avalanche, configPath string, log
 	fmt.Printf("binPath %s \n", binPath)
 
 	// TODO: remove kill process below once cleanup is implemented
-	//Function to check if port is in use
+	// Function to check if port is in use
 	isPortInUse := func() bool {
 		conn, err := net.Dial("tcp", "localhost:8080")
 		if err == nil {
@@ -236,7 +236,7 @@ func StartSignatureAggregator(app *application.Avalanche, configPath string, log
 		}
 
 		// Check if the aggregator is ready
-		//if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
+		// if err := waitForAggregatorReady("http://localhost:8080/aggregate-signatures", 5*time.Second); err != nil {
 		fmt.Printf("waiting for %s \n", signatureAggregatorEndpoint)
 		if err := waitForAggregatorReady(signatureAggregatorEndpoint, 5*time.Second); err != nil {
 			_ = cmd.Process.Kill()
@@ -420,19 +420,19 @@ type PeerConfig struct {
 
 func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
 	// Create config file for signature aggregator
-	//apiPort, metricsPort, err := generateAPIMetricsPorts()
-	//if err != nil {
+	// apiPort, metricsPort, err := generateAPIMetricsPorts()
+	// if err != nil {
 	//	return fmt.Errorf("failed to generate api and metrics ports: %w", err)
-	//}
+	// }
 	apiPort := 8080
 	metricsPort := 8081
 	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
-	//configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "config.json")
+	// configPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "config.json")
 	configPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
-	//logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "signature-aggregator.log")
+	// logPath := filepath.Join(app.GetLocalSignatureAggregatorRunPath(network.Kind, subnetIDStr), "signature-aggregator.log")
 	logPath := filepath.Join(app.GetSignatureAggregatorBinDir(), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
 	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
@@ -445,43 +445,43 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort)
 }
 
-func isPortAvailable(port int) bool {
-	addr := fmt.Sprintf("localhost:%d", port)
-	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-	if err != nil {
-		// If we can't connect, the port is available
-		return true
-	}
-	// If we can connect, the port is in use
-	conn.Close()
-	return false
-}
+// func isPortAvailable(port int) bool {
+//	addr := fmt.Sprintf("localhost:%d", port)
+//	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+//	if err != nil {
+//		// If we can't connect, the port is available
+//		return true
+//	}
+//	// If we can connect, the port is in use
+//	if err := conn.Close(); err != nil {
+//		fmt.Printf("Failed to close connection while checking port availability: %v\n", err)
+//	}
+//	return false
+// }
 
-func generateAPIMetricsPorts() (int, int, error) {
-	// Create a context with a 30 second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Start with default ports and increment by 2 each time
-	apiPort := 8080
-	metricsPort := 8081
-
-	// Keep trying until we find available ports or timeout
-	for {
-		select {
-		case <-ctx.Done():
-			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
-		default:
-			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
-				fmt.Printf("both ports are availble %s and %s \n", apiPort, metricsPort)
-				return apiPort, metricsPort, nil
-			}
-			fmt.Printf("trying ports apiPort %s and metrics Port %s \n", apiPort, metricsPort)
-			apiPort += 2
-			metricsPort += 2
-		}
-	}
-}
+// func generateAPIMetricsPorts() (int, int, error) {
+//	// Create a context with a 30 second timeout
+//	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//	defer cancel()
+//
+//	// Start with default ports and increment by 2 each time
+//	apiPort := 8080
+//	metricsPort := 8081
+//
+//	// Keep trying until we find available ports or timeout
+//	for {
+//		select {
+//		case <-ctx.Done():
+//			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
+//		default:
+//			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
+//				return apiPort, metricsPort, nil
+//			}
+//			apiPort += 2
+//			metricsPort += 2
+//		}
+//	}
+// }
 
 func GetSignatureAggregatorEndpoint() (string, error) {
 	return "http://localhost:8080/aggregate-signatures", nil

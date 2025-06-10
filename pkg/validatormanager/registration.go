@@ -304,7 +304,6 @@ func GetRegisterL1ValidatorMessage(
 	//}
 	//signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	//chainIDHexStr := hex.EncodeToString(subnetID[:])
-	fmt.Printf("GetRegisterL1ValidatorMessage extraAggregatorPeers %s \n", aggregatorExtraPeerEndpoints)
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 
 	signedMessage, err := interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
@@ -333,18 +332,17 @@ func PoSWeightToValue(
 }
 
 func GetPChainL1ValidatorRegistrationMessage(
-	ctx context.Context,
+	_ context.Context,
 	network models.Network,
 	rpcURL string,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
+	_ []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
 	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
-	fmt.Printf("GetPChainL1ValidatorRegistrationMessage extrapeers %s \n", aggregatorExtraPeerEndpoints)
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
 		return nil, err
@@ -364,17 +362,6 @@ func GetPChainL1ValidatorRegistrationMessage(
 	if err != nil {
 		return nil, err
 	}
-	//signatureAggregator, err := interchain.NewSignatureAggregator(
-	//	ctx,
-	//	network.SDKNetwork(),
-	//	aggregatorLogger,
-	//	subnetID,
-	//	aggregatorQuorumPercentage,
-	//	aggregatorExtraPeerEndpoints,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
 	var justificationBytes []byte
 	if !registered {
 		justificationBytes, err = GetRegistrationJustification(rpcURL, validationID, subnetID)
@@ -382,7 +369,6 @@ func GetPChainL1ValidatorRegistrationMessage(
 			return nil, err
 		}
 	}
-	//return signatureAggregator.Sign(subnetConversionUnsignedMessage, justificationBytes)
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 	return interchain.SignMessage(messageHexStr, justification, subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
@@ -413,7 +399,6 @@ func CompleteValidatorRegistration(
 }
 
 func InitValidatorRegistration(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
