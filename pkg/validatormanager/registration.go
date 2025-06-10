@@ -399,6 +399,7 @@ func CompleteValidatorRegistration(
 }
 
 func InitValidatorRegistration(
+	_ context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
