@@ -30,6 +30,24 @@ func CleanNetwork() (string, error) {
 	return output, err
 }
 
+func CleanNetworkHard() (string, error) {
+	output, err := utils.TestCommand(
+		NetworkCmd,
+		"clean",
+		[]string{
+			"--hard",
+			"--" + constants.SkipUpdateFlag,
+		},
+		utils.GlobalFlags{},
+		utils.TestFlags{},
+	)
+	if err != nil {
+		fmt.Println(output)
+		utils.PrintStdErr(err)
+	}
+	return output, err
+}
+
 /* #nosec G204 */
 func StartNetwork() string {
 	return StartNetworkWithParams(map[string]string{
