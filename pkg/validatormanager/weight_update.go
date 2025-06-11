@@ -363,18 +363,6 @@ func GetPChainL1ValidatorWeightMessage(
 	if err != nil {
 		return nil, err
 	}
-	//signatureAggregator, err := interchain.NewSignatureAggregator(
-	//	ctx,
-	//	network.SDKNetwork(),
-	//	aggregatorLogger,
-	//	subnetID,
-	//	aggregatorQuorumPercentage,
-	//	aggregatorExtraPeerEndpoints,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return signatureAggregator.Sign(unsignedMessage, nil)
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
 	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 }

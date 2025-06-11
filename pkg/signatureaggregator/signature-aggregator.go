@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -147,7 +148,7 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	fmt.Printf("binPath %s \n", binPath)
 
 	// Stop any existing signature aggregator process
-	if err := stopSignatureAggregator(app, network); err != nil {
+	if err := StopSignatureAggregator(app, network); err != nil {
 		logger.Warn("Failed to stop existing signature aggregator",
 			zap.Error(err),
 		)
@@ -494,9 +495,9 @@ func getCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, net
 	return &runFile, nil
 }
 
-// stopSignatureAggregator stops the running signature aggregator process.
+// StopSignatureAggregator stops the running signature aggregator process.
 // It reads the run file to get the PID and kills the process if it's running.
-func stopSignatureAggregator(app *application.Avalanche, network models.Network) error {
+func StopSignatureAggregator(app *application.Avalanche, network models.Network) error {
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
 		return nil
@@ -528,7 +529,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
 	fmt.Printf("we restartSignatureAggregator \n")
 	// Stop the existing signature aggregator
-	if err := stopSignatureAggregator(app, network); err != nil {
+	if err := StopSignatureAggregator(app, network); err != nil {
 		return fmt.Errorf("failed to stop signature aggregator: %w", err)
 	}
 
@@ -601,4 +602,30 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 
 	// Restart the signature aggregator with the updated config
 	return restartSignatureAggregator(app, network, configPath, logger)
+}
+
+// SignatureAggregatorCleanup cleans up the signature aggregator process and files.
+// It removes the log file and run file, and stops the running process if any.
+func SignatureAggregatorCleanup(
+	app *application.Avalanche,
+	network models.Network,
+) error {
+	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		// If we can't get process details, just continue with cleanup
+		ux.Logger.RedXToUser("unable to get signature aggregator process details: %s", err)
+	} else {
+		// Force kill the process
+		if err := syscall.Kill(runFile.Pid, syscall.SIGKILL); err != nil {
+			// Just log the error and continue with cleanup
+			ux.Logger.RedXToUser("unable to kill signature aggregator process with pid %d: %s", runFile.Pid, err)
+		}
+	}
+
+	// Remove the entire signature aggregator directory regardless of process state
+	signatureAggregatorDir := app.GetSignatureAggregatorRunDir(network.Kind)
+	if err := os.RemoveAll(signatureAggregatorDir); err != nil {
+		return fmt.Errorf("failed removing signature aggregator directory %s: %w", signatureAggregatorDir, err)
+	}
+	return nil
 }
