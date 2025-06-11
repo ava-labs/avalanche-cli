@@ -33,7 +33,7 @@ var _ = ginkgo.Describe("[Local Network] Clean", ginkgo.Ordered, func() {
 		out := commands.StartNetwork()
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
-		out, err := commands.CleanNetwork()
+		_, err := commands.CleanNetworkHard()
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check if binaries are removed
