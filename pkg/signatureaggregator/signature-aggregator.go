@@ -513,13 +513,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 		process, err := os.FindProcess(runFile.Pid)
 		if err == nil {
 			if err := process.Kill(); err != nil {
-				ux.Logger.RedXToUser("unable to kill process %d: %s", runFile.Pid, err)
-				// If we can't kill the process, remove the entire directory
-				signatureAggregatorDir := app.GetSignatureAggregatorRunDir(network.Kind)
-				if err := os.RemoveAll(signatureAggregatorDir); err != nil {
-					return fmt.Errorf("failed removing signature aggregator directory %s: %w", signatureAggregatorDir, err)
-				}
-				return nil
+				ux.Logger.RedXToUser("Failed to kill process %d: %v\n", runFile.Pid, err)
 			}
 		}
 	}
