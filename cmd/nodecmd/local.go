@@ -642,6 +642,14 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
+
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
@@ -665,7 +673,7 @@ func addAsValidator(
 		validatorManagerAddressStr,
 		useACP99,
 		"",
-		"",
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
@@ -699,7 +707,7 @@ func addAsValidator(
 		validationID,
 		aggregatorLogger,
 		validatorManagerAddress,
-		"",
+		signatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
