@@ -381,7 +381,7 @@ func FinishValidatorRemoval(
 		subnetID,
 		validationID,
 		false,
-		"",
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return nil, err
