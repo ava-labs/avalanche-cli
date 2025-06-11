@@ -148,7 +148,7 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	fmt.Printf("binPath %s \n", binPath)
 
 	// Stop any existing signature aggregator process
-	if err := StopSignatureAggregator(app, network); err != nil {
+	if err := stopSignatureAggregator(app, network); err != nil {
 		logger.Warn("Failed to stop existing signature aggregator",
 			zap.Error(err),
 		)
@@ -495,9 +495,9 @@ func getCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, net
 	return &runFile, nil
 }
 
-// StopSignatureAggregator stops the running signature aggregator process.
+// stopSignatureAggregator stops the running signature aggregator process.
 // It reads the run file to get the PID and kills the process if it's running.
-func StopSignatureAggregator(app *application.Avalanche, network models.Network) error {
+func stopSignatureAggregator(app *application.Avalanche, network models.Network) error {
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
 		return nil
@@ -513,7 +513,13 @@ func StopSignatureAggregator(app *application.Avalanche, network models.Network)
 		process, err := os.FindProcess(runFile.Pid)
 		if err == nil {
 			if err := process.Kill(); err != nil {
-				fmt.Printf("Failed to kill process %d: %v\n", runFile.Pid, err)
+				ux.Logger.RedXToUser("unable to kill process %d: %s", runFile.Pid, err)
+				// If we can't kill the process, remove the entire directory
+				signatureAggregatorDir := app.GetSignatureAggregatorRunDir(network.Kind)
+				if err := os.RemoveAll(signatureAggregatorDir); err != nil {
+					return fmt.Errorf("failed removing signature aggregator directory %s: %w", signatureAggregatorDir, err)
+				}
+				return nil
 			}
 		}
 	}
@@ -528,10 +534,6 @@ func StopSignatureAggregator(app *application.Avalanche, network models.Network)
 // and starts a new one with the updated config.
 func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
 	fmt.Printf("we restartSignatureAggregator \n")
-	// Stop the existing signature aggregator
-	if err := StopSignatureAggregator(app, network); err != nil {
-		return fmt.Errorf("failed to stop signature aggregator: %w", err)
-	}
 
 	// Get current process details
 	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
