@@ -3,8 +3,8 @@
 package validatormanager
 
 import (
-	"context"
 	_ "embed"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -56,7 +55,6 @@ func InitializeValidatorWeightChange(
 }
 
 func InitValidatorWeightChange(
-	ctx context.Context,
 	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
@@ -66,11 +64,11 @@ func InitValidatorWeightChange(
 	ownerAddressStr string,
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	weight uint64,
 	initiateTxHash string,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -162,11 +160,9 @@ func InitValidatorWeightChange(
 	}
 
 	signedMsg, err := GetL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
 		blockchainID,
@@ -174,6 +170,7 @@ func InitValidatorWeightChange(
 		validationID,
 		nonce,
 		weight,
+		signatureAggregatorEndpoint,
 	)
 	return signedMsg, validationID, nil, err
 }
@@ -202,7 +199,6 @@ func CompleteValidatorWeightChange(
 }
 
 func FinishValidatorWeightChange(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -211,11 +207,11 @@ func FinishValidatorWeightChange(
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	subnetID, err := contract.GetSubnetID(
@@ -234,16 +230,15 @@ func FinishValidatorWeightChange(
 		}
 	}
 	signedMessage, err := GetPChainL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		l1ValidatorRegistrationSignedMessage,
 		validationID,
 		nonce,
 		weight,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return nil, err
@@ -277,20 +272,18 @@ func FinishValidatorWeightChange(
 }
 
 func GetL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
-	// needed to generate message
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	managerAddress common.Address,
 	validationID ids.ID,
 	nonce uint64,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	if unsignedMessage == nil {
 		addressedCallPayload, err := warpMessage.NewL1ValidatorWeight(
@@ -317,26 +310,14 @@ func GetL1ValidatorWeightMessage(
 			return nil, err
 		}
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return signatureAggregator.Sign(unsignedMessage, nil)
+	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
+	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 }
 
 func GetPChainL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	// message is given
 	l1SignedMessage *warp.Message,
@@ -344,6 +325,7 @@ func GetPChainL1ValidatorWeightMessage(
 	validationID ids.ID,
 	nonce uint64,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	if l1SignedMessage != nil {
 		addressedCall, err := warpPayload.ParseAddressedCall(l1SignedMessage.UnsignedMessage.Payload)
@@ -381,18 +363,20 @@ func GetPChainL1ValidatorWeightMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return signatureAggregator.Sign(unsignedMessage, nil)
+	//signatureAggregator, err := interchain.NewSignatureAggregator(
+	//	ctx,
+	//	network.SDKNetwork(),
+	//	aggregatorLogger,
+	//	subnetID,
+	//	aggregatorQuorumPercentage,
+	//	aggregatorExtraPeerEndpoints,
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return signatureAggregator.Sign(unsignedMessage, nil)
+	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
+	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 }
 
 func GetL1ValidatorWeightMessageFromTx(

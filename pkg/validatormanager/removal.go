@@ -3,10 +3,11 @@
 package validatormanager
 
 import (
-	"context"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -15,10 +16,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -139,15 +138,13 @@ func InitializeValidatorRemoval(
 }
 
 func GetUptimeProofMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
 	if err != nil {
@@ -165,22 +162,12 @@ func GetUptimeProofMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return signatureAggregator.Sign(uptimeProofUnsignedMessage, nil)
+
+	messageHexStr := hex.EncodeToString(uptimeProofUnsignedMessage.Bytes())
+	return interchain.SignMessage(messageHexStr, "", subnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
 }
 
 func InitValidatorRemoval(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -189,7 +176,6 @@ func InitValidatorRemoval(
 	ownerAddressStr string,
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	isPoS bool,
 	uptimeSec uint64,
@@ -197,6 +183,7 @@ func InitValidatorRemoval(
 	validatorManagerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -253,15 +240,13 @@ func InitValidatorRemoval(
 			}
 			ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
 			signedUptimeProof, err = GetUptimeProofMessage(
-				ctx,
 				network,
 				aggregatorLogger,
-				0,
-				aggregatorExtraPeerEndpoints,
 				subnetID,
 				blockchainID,
 				validationID,
 				uptimeSec,
+				signatureAggregatorEndpoint,
 			)
 			if err != nil {
 				return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime proof")
@@ -311,11 +296,9 @@ func InitValidatorRemoval(
 	}
 
 	signedMsg, err := GetL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
 		blockchainID,
@@ -323,6 +306,7 @@ func InitValidatorRemoval(
 		validationID,
 		nonce,
 		0,
+		signatureAggregatorEndpoint,
 	)
 	return signedMsg, validationID, nil, err
 }
@@ -378,6 +362,7 @@ func FinishValidatorRemoval(
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
+	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	subnetID, err := contract.GetSubnetID(
