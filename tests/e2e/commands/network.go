@@ -9,7 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/onsi/gomega"
 )
 
 /* #nosec G204 */
@@ -30,49 +29,16 @@ func CleanNetwork() (string, error) {
 	return output, err
 }
 
-func CleanNetworkHard() (string, error) {
-	output, err := utils.TestCommand(
-		NetworkCmd,
-		"clean",
-		[]string{
-			"--hard",
-			"--" + constants.SkipUpdateFlag,
-		},
-		utils.GlobalFlags{},
-		utils.TestFlags{},
-	)
-	if err != nil {
-		fmt.Println(output)
-		utils.PrintStdErr(err)
-	}
-	return output, err
-}
-
 /* #nosec G204 */
-func StartNetwork() string {
-	return StartNetworkWithParams(map[string]string{
-		"version": "",
-	})
+func StartNetwork() (string, error) {
+	return StartNetworkWithParams(map[string]interface{}{})
 }
 
-func StartNetworkWithParams(paramMap map[string]string) string {
-	cmdArgs := utils.GlobalFlags{}
-
-	for k, v := range paramMap {
-		switch k {
-		case "version":
-			if v != "" {
-				cmdArgs["avalanchego-version"] = v
-			}
-		case "number-of-nodes":
-			cmdArgs["num-nodes"] = v
-		}
-	}
-
+func StartNetworkWithParams(paramMap map[string]interface{}) (string, error) {
 	// in case we want to use specific avago for local tests
 	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
-		cmdArgs["avalanchego-path"] = debugAvalanchegoPath
+		paramMap["avalanchego-path"] = debugAvalanchegoPath
 	}
 	output, err := utils.TestCommand(
 		NetworkCmd,
@@ -80,15 +46,14 @@ func StartNetworkWithParams(paramMap map[string]string) string {
 		[]string{
 			"--" + constants.SkipUpdateFlag,
 		},
-		cmdArgs,
+		paramMap,
 		utils.TestFlags{},
 	)
 	if err != nil {
 		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return output
+	return output, err
 }
 
 /* #nosec G204 */

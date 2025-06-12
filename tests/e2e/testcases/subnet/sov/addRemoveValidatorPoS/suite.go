@@ -38,9 +38,10 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can create an Etna Local Network", func() {
-		output := commands.StartNetworkWithParams(map[string]string{
-			"version": avagoVersion,
+		output, err := commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": avagoVersion,
 		})
+		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
 

@@ -19,7 +19,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 	ginkgo.BeforeEach(func() {
 		_, err := commands.CreateKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.StartNetwork()
+		_, _ = commands.StartNetwork()
 		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 		commands.DeploySubnetLocallyNonSOV(subnetName)
 	})

@@ -17,19 +17,33 @@ var _ = ginkgo.Describe("[Local Network] Status", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can get status of started network", func() {
-		out := commands.StartNetwork()
+		out, err := commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
 		// https://github.com/ava-labs/avalanchego/blob/master/tests/fixture/tmpnet/defaults.go#L27
 		defaultNodeCount := 2
 
 		// check network status
-		out, err := commands.GetNetworkStatus()
+		out, err = commands.GetNetworkStatus()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network is Up"))
 		gomega.Expect(out).Should(gomega.ContainSubstring(fmt.Sprintf("Number of Nodes: %d", defaultNodeCount)))
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network Healthy: true"))
 		gomega.Expect(out).Should(gomega.ContainSubstring("Blockchains Healthy: true"))
+	})
+
+	ginkgo.It("fail to get status of failed-to-start network", func() {
+		out, err := commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": "no-such-version",
+		})
+		gomega.Expect(err).ShouldNot(gomega.BeNil())
+		gomega.Expect(out).Should(gomega.ContainSubstring("Error"))
+
+		// check network status
+		out, err = commands.GetNetworkStatus()
+		gomega.Expect(out).Should(gomega.ContainSubstring("network is not running"))
+		gomega.Expect(err).ShouldNot(gomega.BeNil())
 	})
 
 	ginkgo.It("can get status when no network is up", func() {

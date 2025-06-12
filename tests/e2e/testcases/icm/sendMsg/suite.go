@@ -25,7 +25,7 @@ var globalFlags = utils.GlobalFlags{
 
 var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 	ginkgo.BeforeEach(func() {
-		commands.StartNetwork()
+		_, _ = commands.StartNetwork()
 	})
 
 	ginkgo.AfterEach(func() {
