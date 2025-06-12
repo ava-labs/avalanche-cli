@@ -105,9 +105,11 @@ type AggregateSignaturesRequest struct {
 func SignMessage(message, justification, signingSubnetID string, quorumPercentage int, logger logging.Logger, signatureAggregatorEndpoint string) (*warp.Message, error) {
 	request := AggregateSignaturesRequest{
 		Message:          message,
-		Justification:    justification,
 		SigningSubnetID:  signingSubnetID,
 		QuorumPercentage: quorumPercentage,
+	}
+	if justification != "" {
+		request.Justification = justification
 	}
 
 	requestBody, err := json.Marshal(request)
