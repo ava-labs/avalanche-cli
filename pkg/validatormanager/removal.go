@@ -244,6 +244,7 @@ func InitValidatorRemoval(
 			signedUptimeProof, err = GetUptimeProofMessage(
 				network,
 				aggregatorLogger,
+				0,
 				subnetID,
 				blockchainID,
 				validationID,
