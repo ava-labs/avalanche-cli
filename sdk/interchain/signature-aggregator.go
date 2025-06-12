@@ -175,12 +175,9 @@ func SignMessage(message, justification, signingSubnetID string, quorumPercentag
 			zap.String("response", string(body)),
 			zap.Int("attempt", attempt+1),
 		)
-		fmt.Printf("Received response from signature aggregator, status code %s, attempt %s \n", resp.Status, attempt+1)
-		fmt.Printf("Received response  % \n", string(body))
 
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("signature aggregator returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
-			fmt.Printf("Received non-200 status code attempt %s \n", attempt+1)
 			logger.Error("Received non-200 status code",
 				zap.Int("status_code", resp.StatusCode),
 				zap.String("body", string(body)),
