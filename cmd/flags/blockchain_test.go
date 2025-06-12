@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/mocks"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )

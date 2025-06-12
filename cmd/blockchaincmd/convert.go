@@ -265,7 +265,7 @@ func InitializeValidatorManager(
 	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}

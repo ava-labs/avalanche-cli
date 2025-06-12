@@ -189,6 +189,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with multiple avalanchego versions non SOV", func() {
+		if binaryToVersion[utils.MultiAvago1Key] == binaryToVersion[utils.MultiAvago2Key] {
+			ginkgo.Skip("this needs two different rpc-compatible avalanchego to be available")
+		}
 		// check avago install precondition
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago1Key])).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago2Key])).Should(gomega.BeFalse())

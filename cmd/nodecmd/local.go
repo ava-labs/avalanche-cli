@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -435,10 +436,10 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if stakeAmount == 0 {
 		stakeAmount, err = app.Prompt.CaptureUint64Compare(
 			"Enter the amount of token to stake for each validator",
-			[]prompts.Comparator{
+			[]comparator.Comparator{
 				{
 					Label: "Positive",
-					Type:  prompts.MoreThan,
+					Type:  comparator.MoreThan,
 					Value: 0,
 				},
 			},
@@ -560,7 +561,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
