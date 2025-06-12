@@ -612,6 +612,10 @@ func SignatureAggregatorCleanup(
 	app *application.Avalanche,
 	network models.Network,
 ) error {
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
+		return nil
+	}
 	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		// If we can't get process details, just continue with cleanup
