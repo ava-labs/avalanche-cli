@@ -20,10 +20,11 @@ var _ = ginkgo.Describe("[Local Network] Stop", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can stop a started network", func() {
-		out := commands.StartNetwork()
+		out, err := commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
-		err := commands.StopNetwork()
+		err = commands.StopNetwork()
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check network status
@@ -40,10 +41,11 @@ var _ = ginkgo.Describe("[Local Network] Stop", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can stop a started network with --dont-save", func() {
-		out := commands.StartNetwork()
+		out, err := commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
-		err := commands.StopNetwork("--dont-save")
+		err = commands.StopNetwork("--dont-save")
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		out, err = commands.GetNetworkStatus()
@@ -57,11 +59,12 @@ var _ = ginkgo.Describe("[Local Network] Stop", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can stop a started network with --snapshot-name", func() {
-		out := commands.StartNetwork()
+		out, err := commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 
 		testSnapshotName := "test-snapshot"
-		err := commands.StopNetwork("--snapshot-name", testSnapshotName)
+		err = commands.StopNetwork("--snapshot-name", testSnapshotName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		out, err = commands.GetNetworkStatus()

@@ -32,7 +32,7 @@ var evmClient evm.Client
 var _ = ginkgo.Describe("[ICM] deploy", func() {
 	ginkgo.Context("with valid input", func() {
 		ginkgo.BeforeEach(func() {
-			commands.StartNetwork()
+			_, _ = commands.StartNetwork()
 
 			var err error
 			evmClient, err = evm.GetClient(cChainRPCUrl)
@@ -354,7 +354,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 	})
 	ginkgo.Context("with invalid input", func() {
 		ginkgo.BeforeEach(func() {
-			commands.StartNetwork()
+			_, _ = commands.StartNetwork()
 		})
 
 		ginkgo.AfterEach(func() {
