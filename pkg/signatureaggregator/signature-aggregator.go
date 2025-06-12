@@ -145,7 +145,6 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	if err != nil {
 		return 0, err
 	}
-	fmt.Printf("binPath %s \n", binPath)
 
 	// Stop any existing signature aggregator process
 	if err := stopSignatureAggregator(app, network); err != nil {
@@ -168,7 +167,6 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	cmd := exec.Command(binPath, "--config-file", configPath)
 	cmd.Stdout = logWriter
 	cmd.Stderr = logWriter
-	fmt.Printf("cmd %s \n", cmd.Path)
 	if err := cmd.Start(); err != nil {
 		if closeErr := logWriter.Close(); closeErr != nil {
 			return 0, closeErr
@@ -192,7 +190,6 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	}
 
 	// Check if the aggregator is ready
-	fmt.Printf("waiting for %s \n", signatureAggregatorEndpoint)
 	if err := waitForAggregatorReady(signatureAggregatorEndpoint, 5*time.Second); err != nil {
 		_ = cmd.Process.Kill()
 		return 0, fmt.Errorf("signature-aggregator not ready: %w", err)
@@ -216,14 +213,27 @@ func waitForAggregatorReady(url string, timeout time.Duration) error {
 		case <-ticker.C:
 			resp, err := http.Get(url)
 			if err != nil {
-				fmt.Printf("obtained error %s \n", err)
+				continue
 			}
-			if err == nil && resp.StatusCode == http.StatusBadRequest {
+
+			// Close response body immediately after checking status
+			statusCode := resp.StatusCode
+			resp.Body.Close()
+
+			// Check for various status codes
+			switch statusCode {
+			case http.StatusBadRequest:
 				// A 400 means the service is up but received a malformed request
-				if closeErr := resp.Body.Close(); closeErr != nil {
-					fmt.Printf("Failed to close response body: %v\n", closeErr)
-				}
 				return nil
+			case http.StatusOK:
+				// Service is up and responding correctly
+				return nil
+			case http.StatusServiceUnavailable:
+				// Service is not ready yet
+				continue
+			default:
+				// Log unexpected status codes but continue trying
+				continue
 			}
 		}
 	}
@@ -280,7 +290,6 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 
 // WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
 func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
-	fmt.Printf("config path %s \n", configPath)
 	// Read existing config if it exists
 	existingConfig, err := readExistingConfig(configPath)
 	if err != nil {
@@ -374,7 +383,6 @@ func isPortAvailable(port int) bool {
 	}
 	// If we can connect, the port is in use
 	if err := conn.Close(); err != nil {
-		fmt.Printf("Failed to close connection while checking port availability: %v\n", err)
 	}
 	return false
 }
@@ -433,7 +441,6 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	}
 	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
-	fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
@@ -447,7 +454,6 @@ func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.N
 	if err != nil {
 		return "", fmt.Errorf("failed to get process details: %w", err)
 	}
-	fmt.Printf("obtained GetSignatureAggregatorEndpoint %s \n", fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort))
 	return fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort), nil
 }
 
@@ -527,8 +533,6 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 // It reads the run file to get the current ports and version, kills the existing process,
 // and starts a new one with the updated config.
 func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
-	fmt.Printf("we restartSignatureAggregator \n")
-
 	// Get current process details
 	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
@@ -562,7 +566,6 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 	if existingConfig == nil {
 		return fmt.Errorf("no existing config found at %s", configPath)
 	}
-	fmt.Printf("initial existinConfig %s \n", existingConfig)
 	// Convert existing peers to a map for easy lookup
 	existingPeers := make(map[string]PeerConfig)
 	for _, peer := range existingConfig.ManuallyTrackedPeers {
@@ -590,7 +593,6 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 		return nil
 	}
 
-	fmt.Printf("updating WriteSignatureAggregatorConfig %s \n", existingConfig)
 	// Write updated config
 	if err := WriteSignatureAggregatorConfig(existingConfig, configPath); err != nil {
 		return fmt.Errorf("failed to write updated config: %w", err)

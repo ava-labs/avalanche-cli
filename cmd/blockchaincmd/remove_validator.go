@@ -336,7 +336,6 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("remove validator %s \n", signatureAggregatorEndpoint)
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
 		app,

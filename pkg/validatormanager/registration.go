@@ -292,9 +292,6 @@ func GetRegisterL1ValidatorMessage(
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 	signedMessage, err := interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 	if err != nil {
-		fmt.Printf("firs stage err %s \n", err)
-		fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
-		fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
 	}
 	return signedMessage, validationID, err
