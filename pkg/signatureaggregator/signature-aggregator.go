@@ -218,7 +218,9 @@ func waitForAggregatorReady(url string, timeout time.Duration) error {
 
 			// Close response body immediately after checking status
 			statusCode := resp.StatusCode
-			resp.Body.Close()
+			if err = resp.Body.Close(); err != nil {
+				return fmt.Errorf("error waiting for signature-aggregator readiness %w", err)
+			}
 
 			// Check for various status codes
 			switch statusCode {
@@ -382,7 +384,9 @@ func isPortAvailable(port int) bool {
 		return true
 	}
 	// If we can connect, the port is in use
-	if err := conn.Close(); err != nil {
+	if err = conn.Close(); err != nil {
+		// Log the error but still return false since port is in use
+		ux.Logger.RedXToUser("failed to close connection while checking port %d: %s", port, err)
 	}
 	return false
 }
