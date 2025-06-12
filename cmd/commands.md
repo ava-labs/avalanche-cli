@@ -2067,7 +2067,6 @@ avalanche network clean [subcommand] [flags]
 **Flags:**
 
 ```bash
---hard                 Also clean downloaded avalanchego and plugin binaries
 -h, --help             help for clean
 --config string        config file (default is $HOME/.avalanche-cli/config.json)
 --log-level string     log level for the application (default "ERROR")
