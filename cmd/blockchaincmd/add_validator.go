@@ -569,7 +569,6 @@ func CallAddValidator(
 		remainingBalanceOwners,
 		disableOwners,
 		weight,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		pos,
 		delegationFee,

@@ -20,7 +20,6 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -201,7 +200,6 @@ func GetRegisterL1ValidatorMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	_ []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	managerAddress common.Address,
@@ -294,7 +292,9 @@ func GetRegisterL1ValidatorMessage(
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 	signedMessage, err := interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 	if err != nil {
-		fmt.Printf("firs stage err  \n")
+		fmt.Printf("firs stage err %s \n", err)
+		fmt.Printf("aggregatorQuorumPercentage %s \n", aggregatorQuorumPercentage)
+		fmt.Printf("signatureAggregatorEndpoint %s \n", signatureAggregatorEndpoint)
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
 	}
 	return signedMessage, validationID, err
@@ -396,7 +396,6 @@ func InitValidatorRegistration(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	isPos bool,
 	delegationFee uint16,
@@ -523,7 +522,6 @@ func InitValidatorRegistration(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
 		managerAddress,

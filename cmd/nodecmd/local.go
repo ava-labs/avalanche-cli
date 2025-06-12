@@ -664,7 +664,6 @@ func addAsValidator(
 		remainingBalanceOwners,
 		disableOwners,
 		0,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		true,
 		delegationFee,
