@@ -18,6 +18,21 @@ jobs:
         with:
           node-version: "16.x"
         
+      - name: Yarn Install
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: yarn --cwd ./tests/e2e/hardhat
+
+      - name: Install Typescript
+        shell: bash
+        run: |
+          npm install -g typescript
+          npm install -g ts-node
+          npm install -g tsx
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
