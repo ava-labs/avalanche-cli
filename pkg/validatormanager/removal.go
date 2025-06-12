@@ -141,6 +141,7 @@ func InitializeValidatorRemoval(
 func GetUptimeProofMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
+	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	validationID ids.ID,
@@ -165,7 +166,7 @@ func GetUptimeProofMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(uptimeProofUnsignedMessage.Bytes())
-	return interchain.SignMessage(messageHexStr, "", subnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
+	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
 }
 
 func InitValidatorRemoval(

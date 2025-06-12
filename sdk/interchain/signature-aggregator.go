@@ -26,6 +26,8 @@ import (
 const (
 	DefaultQuorumPercentage   = uint64(67)
 	DefaultSignatureCacheSize = uint64(1024 * 1024)
+	MaxRetries                = 3
+	InitialBackoff            = 1 * time.Second
 )
 
 type SignatureAggregator struct {
@@ -125,62 +127,105 @@ func SignMessage(message, justification, signingSubnetID string, quorumPercentag
 		Timeout: 30 * time.Second,
 	}
 
-	resp, err := client.Post(
-		signatureAggregatorEndpoint,
-		"application/json",
-		bytes.NewBuffer(requestBody),
-	)
-	if err != nil {
-		logger.Error("Error making request to signature aggregator",
-			zap.Error(err),
+	var lastErr error
+	backoff := InitialBackoff
+
+	for attempt := 0; attempt < MaxRetries; attempt++ {
+		if attempt > 0 {
+			logger.Info("Retrying signature aggregator request",
+				zap.Int("attempt", attempt+1),
+				zap.Duration("backoff", backoff),
+			)
+			time.Sleep(backoff)
+			backoff *= 2 // Exponential backoff
+		}
+
+		resp, err := client.Post(
+			signatureAggregatorEndpoint,
+			"application/json",
+			bytes.NewBuffer(requestBody),
 		)
-		return nil, fmt.Errorf("failed to make request: %w", err)
-	}
-	defer func() {
+		if err != nil {
+			lastErr = fmt.Errorf("failed to make request: %w", err)
+			logger.Error("Error making request to signature aggregator",
+				zap.Error(err),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
+
+		// Read response body
+		body, err := io.ReadAll(resp.Body)
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			logger.Warn("Failed to close response body",
 				zap.Error(closeErr),
 			)
 		}
-	}()
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response body: %w", err)
+			logger.Error("Error reading response body",
+				zap.Error(err),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
 
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Error("Error reading response body",
-			zap.Error(err),
+		logger.Info("Received response from signature aggregator",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("response", string(body)),
+			zap.Int("attempt", attempt+1),
 		)
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		fmt.Printf("Received response from signature aggregator, status code %s, attempt %s \n", resp.Status, attempt+1)
+		fmt.Printf("Received response  % \n", string(body))
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("signature aggregator returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
+			fmt.Printf("Received non-200 status code attempt %s \n", attempt+1)
+			logger.Error("Received non-200 status code",
+				zap.Int("status_code", resp.StatusCode),
+				zap.String("body", string(body)),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
+
+		// Parse the response to get the signed message hex
+		var response struct {
+			SignedMessage string `json:"signed-message"`
+		}
+		if err := json.Unmarshal(body, &response); err != nil {
+			lastErr = fmt.Errorf("failed to parse response: %w", err)
+			logger.Error("Error parsing response",
+				zap.Error(err),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
+
+		// Decode the hex string
+		signedMessageBytes, err := hex.DecodeString(response.SignedMessage)
+		if err != nil {
+			lastErr = fmt.Errorf("error decoding hex: %w", err)
+			logger.Error("Error decoding hex",
+				zap.Error(err),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
+
+		// Parse the signed message
+		signedMessage, err := warp.ParseMessage(signedMessageBytes)
+		if err != nil {
+			lastErr = fmt.Errorf("error parsing signed message: %w", err)
+			logger.Error("Error parsing signed message",
+				zap.Error(err),
+				zap.Int("attempt", attempt+1),
+			)
+			continue
+		}
+
+		return signedMessage, nil
 	}
 
-	logger.Info("Received response from signature aggregator",
-		zap.Int("status_code", resp.StatusCode),
-		zap.String("response", string(body)),
-	)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("signature aggregator returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse the response to get the signed message hex
-	var response struct {
-		SignedMessage string `json:"signed-message"`
-	}
-	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	// Decode the hex string
-	signedMessageBytes, err := hex.DecodeString(response.SignedMessage)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding hex: %w", err)
-	}
-
-	// Parse the signed message
-	signedMessage, err := warp.ParseMessage(signedMessageBytes)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing signed message: %w", err)
-	}
-
-	return signedMessage, nil
+	return nil, fmt.Errorf("failed after %d attempts, last error: %w", MaxRetries, lastErr)
 }
