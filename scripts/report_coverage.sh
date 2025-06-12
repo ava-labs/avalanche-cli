@@ -12,9 +12,7 @@ go tool covdata merge -i=$PWD/coverage/e2e,$PWD/coverage/ut -o $PWD/coverage/mer
 
 go tool covdata textfmt -i $PWD/coverage/merged/ -o profile.txt
 
-cat profile.txt\
-	| grep -v github.com/ava-labs/avalanche-cli/internal/mocks\
-	| grep -v github.com/ava-labs/avalanche-cli/sdk/mocks > profile.tmp
+cat profile.txt | grep -v mocks > profile.tmp
 mv profile.tmp profile.txt
 
 go tool cover -func profile.txt > coverage.txt
@@ -64,3 +62,4 @@ echo Total functions: $total_functions
 echo Covered functions: $covered_functions
 echo Coverage: $coverage
 
+go tool cover -html profile.txt -o coverage.html
