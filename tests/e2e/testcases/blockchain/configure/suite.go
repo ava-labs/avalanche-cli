@@ -246,7 +246,8 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 			// start
-			out := commands.StartNetwork()
+			out, err := commands.StartNetwork()
+			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 			// check a new config is set after restart
 			AssertBlockchainConfigIsSet(nodesInfo, blockchainID, newRPCTxFeeCap2, nil)
@@ -310,7 +311,8 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 			// start
-			out := commands.StartNetwork()
+			out, err := commands.StartNetwork()
+			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 			// check a new config is set after restart
 			AssertBlockchainConfigIsSet(nodesInfo, blockchainID, defaultRPCTxFeeCap, nodesRPCTxFeeCap)
@@ -362,7 +364,8 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 			// start
-			out := commands.StartNetwork()
+			out, err := commands.StartNetwork()
+			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 			// check a new config is set after restart
 			AssertSubnetConfigIsSet(nodesInfo, node2ID)
@@ -414,7 +417,8 @@ var _ = ginkgo.Describe("[Blockchain Configure]", ginkgo.Ordered, func() {
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 			// start
-			out := commands.StartNetwork()
+			out, err := commands.StartNetwork()
+			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(out).Should(gomega.ContainSubstring("Network ready to use"))
 			// check a new config is set after restart
 			AssertNodeConfigIsSet(nodesInfo, acpSupport2)

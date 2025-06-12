@@ -79,9 +79,10 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		_, avagoVersion := commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
 
 		// local network
-		commands.StartNetworkWithParams(map[string]string{
+		_, err = commands.StartNetworkWithParams(map[string]string{
 			"version": avagoVersion,
 		})
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.AfterEach(func() {

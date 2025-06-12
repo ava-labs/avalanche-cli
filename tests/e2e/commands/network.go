@@ -9,7 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/onsi/gomega"
 )
 
 /* #nosec G204 */
@@ -30,32 +29,14 @@ func CleanNetwork() (string, error) {
 	return output, err
 }
 
-func CleanNetworkHard() (string, error) {
-	output, err := utils.TestCommand(
-		NetworkCmd,
-		"clean",
-		[]string{
-			"--hard",
-			"--" + constants.SkipUpdateFlag,
-		},
-		utils.GlobalFlags{},
-		utils.TestFlags{},
-	)
-	if err != nil {
-		fmt.Println(output)
-		utils.PrintStdErr(err)
-	}
-	return output, err
-}
-
 /* #nosec G204 */
-func StartNetwork() string {
+func StartNetwork() (string, error) {
 	return StartNetworkWithParams(map[string]string{
 		"version": "",
 	})
 }
 
-func StartNetworkWithParams(paramMap map[string]string) string {
+func StartNetworkWithParams(paramMap map[string]string) (string, error) {
 	cmdArgs := utils.GlobalFlags{}
 
 	for k, v := range paramMap {
@@ -87,8 +68,7 @@ func StartNetworkWithParams(paramMap map[string]string) string {
 		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return output
+	return output, err
 }
 
 /* #nosec G204 */

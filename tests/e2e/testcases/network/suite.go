@@ -57,7 +57,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 
 		err = commands.StopNetwork()
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.StartNetwork()
+		_, err = commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// Check greeter contract has right value
 		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)
@@ -104,7 +105,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 
 		err = commands.StopNetwork()
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.StartNetwork()
+		_, err = commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// Check greeter contract has right value
 		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)

@@ -27,7 +27,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, err = commands.CreateKey(key2Name)
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.StartNetwork()
+		_, _ = commands.StartNetwork()
 	})
 
 	ginkgo.AfterEach(func() {

@@ -31,7 +31,8 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 			_, err := commands.CreateKey(keyName)
 			gomega.Expect(err).Should(gomega.BeNil())
 
-			commands.StartNetwork()
+			_, err = commands.StartNetwork()
+			gomega.Expect(err).Should(gomega.BeNil())
 		})
 
 		ginkgo.AfterEach(func() {
