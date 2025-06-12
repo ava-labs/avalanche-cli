@@ -1,0 +1,79 @@
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+package signatureAggregatorCmd
+
+import (
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
+	"github.com/spf13/cobra"
+)
+
+var stopNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Fuji,
+}
+
+type StopFlags struct {
+	Network networkoptions.NetworkFlags
+}
+
+var stopFlags StopFlags
+
+// avalanche interchain relayer stop
+func newStopCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: "stops signature aggregator",
+		Long:  `Stops locally run signature aggregator for the specified network (Currently only for local network, cluster).`,
+		RunE:  stop,
+		Args:  cobrautils.ExactArgs(0),
+	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &stopFlags.Network, true, stopNetworkOptions)
+	return cmd
+}
+
+func stop(_ *cobra.Command, args []string) error {
+	return CallStop(args, stopFlags, models.UndefinedNetwork)
+}
+
+func CallStop(_ []string, flags StopFlags, network models.Network) error {
+	var err error
+	if network == models.UndefinedNetwork {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			flags.Network,
+			false,
+			false,
+			stopNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+	}
+	b, _, _, err := relayer.RelayerIsUp(
+		app.GetLocalRelayerRunPath(network.Kind),
+	)
+	if err != nil {
+		return err
+	}
+	if !b {
+		return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Kind)
+	}
+	if err := relayer.RelayerCleanup(
+		app.GetLocalRelayerRunPath(network.Kind),
+		app.GetLocalRelayerLogPath(network.Kind),
+		app.GetLocalRelayerStorageDir(network.Kind),
+	); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Kind)
+	return nil
+}
