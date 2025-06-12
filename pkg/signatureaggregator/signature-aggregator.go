@@ -88,7 +88,7 @@ func InstallSignatureAggregator(app *application.Avalanche, version *string) (st
 	if err != nil {
 		return "", err
 	}
-	bs, err := utils.Download(url)
+	bs, err := application.NewDownloader().Download(url)
 	if err != nil {
 		return "", err
 	}
