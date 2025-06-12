@@ -178,7 +178,8 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 			return nil, fmt.Errorf("failure downloading %s: %w", url, err)
 		}
 		if resp.StatusCode != http.StatusOK {
-			if resp.StatusCode == http.StatusTooManyRequests {
+			// http.StatusForbidden is also obtained when hitting github API rate limits
+			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
 				if retries <= 5 {
 					retries++
 					toSleep := time.Duration(retries) * 10 * time.Second
