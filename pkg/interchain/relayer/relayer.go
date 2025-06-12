@@ -256,7 +256,7 @@ func InstallRelayer(binDir, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bs, err := utils.Download(url)
+	bs, err := application.NewDownloader().Download(url)
 	if err != nil {
 		return "", err
 	}
