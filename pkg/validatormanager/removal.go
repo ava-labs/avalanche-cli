@@ -7,8 +7,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"math/big"
+
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"

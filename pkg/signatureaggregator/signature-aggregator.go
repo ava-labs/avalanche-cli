@@ -562,7 +562,6 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 	if existingConfig == nil {
 		return fmt.Errorf("no existing config found at %s", configPath)
 	}
-	fmt.Printf("initial existinConfig %s \n", existingConfig)
 	// Convert existing peers to a map for easy lookup
 	existingPeers := make(map[string]PeerConfig)
 	for _, peer := range existingConfig.ManuallyTrackedPeers {
@@ -590,7 +589,6 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 		return nil
 	}
 
-	fmt.Printf("updating WriteSignatureAggregatorConfig %s \n", existingConfig)
 	// Write updated config
 	if err := WriteSignatureAggregatorConfig(existingConfig, configPath); err != nil {
 		return fmt.Errorf("failed to write updated config: %w", err)
