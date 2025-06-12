@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ const (
 // interface to your application object.
 type Downloader interface {
 	Download(url string) ([]byte, error)
+	DownloadWithTee(url string, path string) ([]byte, error)
 	GetLatestReleaseVersion(org, repo, component string) (string, error)
 	GetLatestPreReleaseVersion(org, repo, component string) (string, error)
 	GetAllReleasesForRepo(org, repo, component string, kind ReleaseKind) ([]string, error)
@@ -54,7 +56,22 @@ func (d downloader) Download(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer body.Close()
-	return io.ReadAll(body)
+	bs, err := io.ReadAll(body)
+	if err != nil {
+		return nil, fmt.Errorf("failure downloading %s: %w", url, err)
+	}
+	return bs, nil
+}
+
+func (d downloader) DownloadWithTee(url string, path string) ([]byte, error) {
+	bs, err := d.Download(url)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
 // GetLatestPreReleaseVersion returns the latest available pre release or release version from github
@@ -150,7 +167,7 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 	for {
 		request, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create request for %s: %w", url, err)
+			return nil, fmt.Errorf("failed to create http request to download %s: %w", url, err)
 		}
 		if token != "" {
 			// avoid rate limitation issues at CI
@@ -158,7 +175,7 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 		}
 		resp, err := http.DefaultClient.Do(request)
 		if err != nil {
-			return nil, fmt.Errorf("failed doing request to %s: %w", url, err)
+			return nil, fmt.Errorf("failure downloading %s: %w", url, err)
 		}
 		if resp.StatusCode != http.StatusOK {
 			if resp.StatusCode == http.StatusTooManyRequests {
@@ -169,7 +186,7 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 					continue
 				}
 			}
-			return nil, fmt.Errorf("failed doing request %s: unexpected http status code: %d", url, resp.StatusCode)
+			return nil, fmt.Errorf("failure downloading %s: unexpected http status code: %d", url, resp.StatusCode)
 		}
 		return resp.Body, nil
 	}

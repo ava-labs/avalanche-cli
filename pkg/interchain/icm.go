@@ -175,7 +175,7 @@ func (t *ICMDeployer) DownloadAssets(
 			}
 		} else {
 			// get target icm messenger contract address
-			messengerContractAddressBytes, err = utils.DownloadWithTee(messengerContractAddressURL, messengerContractAddressPath)
+			messengerContractAddressBytes, err = application.NewDownloader().DownloadWithTee(messengerContractAddressURL, messengerContractAddressPath)
 			if err != nil {
 				return err
 			}
@@ -193,7 +193,7 @@ func (t *ICMDeployer) DownloadAssets(
 			}
 		} else {
 			// get icm deployer address
-			messengerDeployerAddressBytes, err = utils.DownloadWithTee(messengerDeployerAddressURL, messengerDeployerAddressPath)
+			messengerDeployerAddressBytes, err = application.NewDownloader().DownloadWithTee(messengerDeployerAddressURL, messengerDeployerAddressPath)
 			if err != nil {
 				return err
 			}
@@ -208,7 +208,7 @@ func (t *ICMDeployer) DownloadAssets(
 				return err
 			}
 		} else {
-			messengerDeployerTxBytes, err = utils.DownloadWithTee(messengerDeployerTxURL, messengerDeployerTxPath)
+			messengerDeployerTxBytes, err = application.NewDownloader().DownloadWithTee(messengerDeployerTxURL, messengerDeployerTxPath)
 			if err != nil {
 				return err
 			}
@@ -223,7 +223,7 @@ func (t *ICMDeployer) DownloadAssets(
 				return err
 			}
 		} else {
-			registryBytecodeBytes, err = utils.DownloadWithTee(registryBydecodeURL, registryBytecodePath)
+			registryBytecodeBytes, err = application.NewDownloader().DownloadWithTee(registryBydecodeURL, registryBytecodePath)
 			if err != nil {
 				return err
 			}

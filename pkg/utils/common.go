@@ -12,12 +12,10 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -272,42 +270,6 @@ func Sum(s []int) int {
 		sum += v
 	}
 	return sum
-}
-
-func Download(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(
-			"failed downloading %s: unexpected http status code: %d",
-			url,
-			resp.StatusCode,
-		)
-	}
-	defer resp.Body.Close()
-	bs, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
-	}
-	return bs, nil
-}
-
-func DownloadStr(url string) (string, error) {
-	bs, err := Download(url)
-	return string(bs), err
-}
-
-func DownloadWithTee(url string, path string) ([]byte, error) {
-	bs, err := Download(url)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
-		return nil, err
-	}
-	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
 func ScriptLog(nodeID string, msg string, args ...interface{}) string {
