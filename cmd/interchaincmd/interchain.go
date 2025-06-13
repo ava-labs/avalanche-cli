@@ -5,6 +5,7 @@ package interchaincmd
 import (
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/signatureAggregatorCmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -29,5 +30,7 @@ set and manage interoperability between blockchains.`,
 	cmd.AddCommand(relayercmd.NewCmd(app))
 	// interchain messenger
 	cmd.AddCommand(messengercmd.NewCmd(app))
+	// interchain signatureAggregator
+	cmd.AddCommand(signatureAggregatorCmd.NewCmd(app))
 	return cmd
 }
