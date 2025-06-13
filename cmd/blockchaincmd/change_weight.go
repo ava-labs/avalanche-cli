@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
@@ -372,12 +371,14 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
-
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
-
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
-		aggregatorCtx,
 		ux.Logger.PrintToUser,
 		app,
 		network,
@@ -387,11 +388,11 @@ func changeWeightACP99(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		weight,
 		initiateTxHash,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
@@ -429,10 +430,7 @@ func changeWeightACP99(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
-		aggregatorCtx,
 		app,
 		network,
 		changeWeightFlags.RPC,
@@ -441,11 +439,11 @@ func changeWeightACP99(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		signedMessage,
 		newWeight,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
