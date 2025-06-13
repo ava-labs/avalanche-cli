@@ -30,9 +30,12 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 		)
 	})
 	ginkgo.It("Can deploy blockchain to localhost and upsize it", func() {
-		output := commands.StartNetworkWithVersion(avagoVersion)
+		output, err := commands.StartNetworkWithParams(map[string]string{
+			"version": avagoVersion,
+		})
+		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
-		output, err := commands.DeployEtnaBlockchain(
+		output, err = commands.DeployEtnaBlockchain(
 			utils.BlockchainName,
 			"",
 			nil,
@@ -60,7 +63,8 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 	})
 
 	ginkgo.It("Can destroy Etna Local Network", func() {
-		commands.CleanNetwork()
+		_, err := commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("Can remove Etna Subnet Config", func() {

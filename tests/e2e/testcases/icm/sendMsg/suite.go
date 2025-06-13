@@ -25,11 +25,11 @@ var globalFlags = utils.GlobalFlags{
 
 var _ = ginkgo.Describe("[ICM] sendMsg", func() {
 	ginkgo.BeforeEach(func() {
-		commands.StartNetwork()
+		_, _ = commands.StartNetwork()
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
