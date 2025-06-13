@@ -52,7 +52,7 @@ func Retry[T any](
 	)
 }
 
-// RetryWithContext retries the given function until it succeeds or the maximum number of attempts is reached.
+// RetryWithContextGen retries the given function until it succeeds or the maximum number of attempts is reached.
 // For each retry, it generates a fresh context to be used on the call
 func RetryWithContextGen[T any](
 	ctxGen func() (context.Context, context.CancelFunc),
