@@ -55,12 +55,6 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	if hard {
-		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
-		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-		cleanBins(binDir)
-	}
-
 	if err := app.ResetPluginsDir(); err != nil {
 		return err
 	}
