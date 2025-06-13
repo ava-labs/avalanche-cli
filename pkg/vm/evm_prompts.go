@@ -4,6 +4,7 @@ package vm
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 
@@ -31,9 +32,12 @@ const (
 )
 
 const (
-	latest                       = "latest"
-	preRelease                   = "pre-release"
-	explainOption                = "Explain the difference"
+	latest        = "latest"
+	preRelease    = "pre-release"
+	explainOption = "Explain the difference"
+)
+
+var (
 	enableExternalGasTokenPrompt = false
 
 	// Options for native token allocation in genesis configuration
@@ -255,22 +259,16 @@ func promptGasTokenKind(
 	if useExternalGasToken {
 		params.UseExternalGasToken = true
 	} else if enableExternalGasTokenPrompt && defaultsKind == NoDefaults {
-		var err error
 		nativeTokenOption := "The blockchain's native token"
 		externalTokenOption := "A token from another blockchain"
 		options := []string{nativeTokenOption, externalTokenOption, explainOption}
 		for {
-			var option string
-			if enableExternalGasTokenPrompt {
-				option, err = app.Prompt.CaptureList(
-					"Which token will be used for transaction fee payments?",
-					options,
-				)
-				if err != nil {
-					return SubnetEVMGenesisParams{}, err
-				}
-			} else {
-				option = nativeTokenOption
+			option, err := app.Prompt.CaptureList(
+				"Which token will be used for transaction fee payments?",
+				options,
+			)
+			if err != nil {
+				return SubnetEVMGenesisParams{}, err
 			}
 			switch option {
 			case externalTokenOption:
@@ -329,9 +327,9 @@ func PromptDefaults(
 	return defaultsKind, nil
 }
 
-func displayAllocations(alloc core.GenesisAlloc) {
+func displayAllocations(alloc core.GenesisAlloc, writer io.Writer) {
 	header := []string{"Address", "Balance"}
-	table := tablewriter.NewWriter(os.Stdout)
+	table := tablewriter.NewWriter(writer)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -391,7 +389,7 @@ func getNativeGasTokenAllocationConfig(
 		if len(allocations) != 0 {
 			fmt.Println()
 			fmt.Println(logging.Bold.Wrap("Addresses automatically allocated"))
-			displayAllocations(allocations)
+			displayAllocations(allocations, os.Stdout)
 		}
 		for {
 			// Prompt for the action the user wants to take on the allocation list.
@@ -463,9 +461,9 @@ func getNativeGasTokenAllocationConfig(
 
 				delete(allocations, address)
 			case previewAddressAllocationOption:
-				displayAllocations(allocations)
+				displayAllocations(allocations, os.Stdout)
 			case confirmAddressAllocationOption:
-				displayAllocations(allocations)
+				displayAllocations(allocations, os.Stdout)
 				confirm, err := app.Prompt.CaptureYesNo("Are you sure you want to finalize this allocation list?")
 				if err != nil {
 					return err
