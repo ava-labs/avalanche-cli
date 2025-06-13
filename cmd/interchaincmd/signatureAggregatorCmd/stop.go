@@ -3,10 +3,9 @@
 package signatureAggregatorCmd
 
 import (
-	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -30,7 +29,7 @@ func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "stops signature aggregator",
-		Long:  `Stops locally run signature aggregator for the specified network (Currently only for local network, cluster).`,
+		Long:  `Stops locally run signature aggregator for the specified network.`,
 		RunE:  stop,
 		Args:  cobrautils.ExactArgs(0),
 	}
@@ -58,22 +57,10 @@ func CallStop(_ []string, flags StopFlags, network models.Network) error {
 			return err
 		}
 	}
-	b, _, _, err := relayer.RelayerIsUp(
-		app.GetLocalRelayerRunPath(network.Kind),
-	)
-	if err != nil {
+	// Clean up signature aggregator
+	if err := signatureaggregator.SignatureAggregatorCleanup(app, network); err != nil {
 		return err
 	}
-	if !b {
-		return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Kind)
-	}
-	if err := relayer.RelayerCleanup(
-		app.GetLocalRelayerRunPath(network.Kind),
-		app.GetLocalRelayerLogPath(network.Kind),
-		app.GetLocalRelayerStorageDir(network.Kind),
-	); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Kind)
+	ux.Logger.GreenCheckmarkToUser("Local Signature Aggregator successfully stopped for %s", network.Kind)
 	return nil
 }
