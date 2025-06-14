@@ -712,9 +712,7 @@ func (client Client) CreateDummyBlocks(
 		}
 		blockNumber++
 		nonce++
-		if i != numBlocks-1 {
-			time.Sleep(5 * time.Second)
-		}
+		time.Sleep(5 * time.Second)
 	}
 	return nil
 }
