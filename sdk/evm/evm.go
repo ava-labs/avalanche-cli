@@ -676,14 +676,27 @@ func (client Client) CreateDummyBlocks(
 	}
 	gasPrice := big.NewInt(legacy.BaseFee)
 	txSigner := types.LatestSignerForChainID(chainID)
+	blockNumber, err := client.BlockNumber()
+	if err != nil {
+		return fmt.Errorf("client.BlockNumber failure: %w", err)
+	}
+	nonce, err := client.NonceAt(addr.Hex())
+	if err != nil {
+		return fmt.Errorf("client.NonceAt failure: %w", err)
+	}
 	for i := 0; i < numBlocks; i++ {
-		prevBlockNumber, err := client.BlockNumber()
-		if err != nil {
+		// it may be the case that we hit an outdated node with the rpc, so lets not fully trust the API
+		if blockNumberFromAPI, err := client.BlockNumber(); err != nil {
 			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
+		} else if blockNumberFromAPI > blockNumber {
+			// changes from outside
+			blockNumber = blockNumberFromAPI
 		}
-		nonce, err := client.NonceAt(addr.Hex())
-		if err != nil {
+		if nonceFromAPI, err := client.NonceAt(addr.Hex()); err != nil {
 			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
+		} else if nonceFromAPI > nonce {
+			// changes from outside
+			nonce = nonceFromAPI
 		}
 		// send Big1 to himself
 		tx := types.NewTransaction(nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
@@ -694,8 +707,13 @@ func (client Client) CreateDummyBlocks(
 		if err := client.SendTransaction(triggerTx); err != nil {
 			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
-		if err := client.WaitForNewBlock(prevBlockNumber, 0); err != nil {
+		if err := client.WaitForNewBlock(blockNumber, 0); err != nil {
 			return fmt.Errorf("WaitForNewBlock failure at step %d: %w", i, err)
+		}
+		blockNumber++
+		nonce++
+		if i != numBlocks-1 {
+			time.Sleep(5 * time.Second)
 		}
 	}
 	return nil
