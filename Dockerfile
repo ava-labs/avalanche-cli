@@ -1,5 +1,5 @@
 # ============= Build Stage ================
-FROM golang:1.22.10-bookworm AS builder
+FROM golang:1.23.7-bookworm AS builder
 
 WORKDIR /build
 # Copy and download avalanche dependencies using go mod
