@@ -5,6 +5,7 @@ package metrics
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -23,6 +24,19 @@ var (
 	telemetryInstance = "https://app.posthog.com"
 	sent              = false
 )
+
+func GetCLIVersion() string {
+	wdPath, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	versionPath := filepath.Join(wdPath, "VERSION")
+	content, err := os.ReadFile(versionPath)
+	if err != nil {
+		return ""
+	}
+	return string(content)
+}
 
 func getMetricsUserID(app *application.Avalanche) string {
 	if !app.Conf.ConfigFileExists() || !app.Conf.ConfigValueIsSet(constants.ConfigMetricsUserIDKey) {
@@ -94,7 +108,10 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr er
 		app.Log.Warn(fmt.Sprintf("failure creating metrics client: %s", err))
 	}
 
-	version := app.GetVersion()
+	version := app.Version
+	if version == "" {
+		version = GetCLIVersion()
+	}
 
 	userID := getMetricsUserID(app)
 
