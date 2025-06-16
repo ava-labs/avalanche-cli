@@ -822,6 +822,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// needs to first stop relayer so non sovereign subnets successfully restart
+	if sidecar.TeleporterReady && !icmSpec.SkipICMDeploy && !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+		_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
+	}
+
 	tracked := false
 
 	if sidecar.Sovereign {
@@ -954,7 +959,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
-				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
 				if network.Kind == models.Local && icmSpec.RelayerBinPath == "" && icmSpec.RelayerVersion == constants.DefaultRelayerVersion {
 					if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 						return err
