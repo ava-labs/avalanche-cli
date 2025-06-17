@@ -116,7 +116,7 @@ func InitValidatorWeightChange(
 	}
 
 	if unsignedMessage == nil {
-		unsignedMessage, err = SearchForL1ValidatorWeightMessage(rpcURL, validationID, weight)
+		unsignedMessage, err = SearchForL1ValidatorWeightMessage(ctx, rpcURL, validationID, weight)
 		if err != nil {
 			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
 		}
@@ -155,7 +155,7 @@ func InitValidatorWeightChange(
 
 	var nonce uint64
 	if unsignedMessage == nil {
-		nonce, err = GetValidatorNonce(rpcURL, validationID)
+		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
@@ -228,7 +228,7 @@ func FinishValidatorWeightChange(
 	}
 	var nonce uint64
 	if l1ValidatorRegistrationSignedMessage == nil {
-		nonce, err = GetValidatorNonce(rpcURL, validationID)
+		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
 		if err != nil {
 			return nil, err
 		}
@@ -426,6 +426,7 @@ func GetL1ValidatorWeightMessageFromTx(
 }
 
 func SearchForL1ValidatorWeightMessage(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 	weight uint64,
@@ -442,6 +443,11 @@ func SearchForL1ValidatorWeightMessage(
 	maxBlock := int64(height)
 	minBlock := max(maxBlock-maxBlocksToSearch, 0)
 	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
+		select {
+	        case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		block, err := client.BlockByNumber(big.NewInt(blockNumber))
 		if err != nil {
 			return nil, err

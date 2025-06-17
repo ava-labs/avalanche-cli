@@ -3,8 +3,8 @@
 package validatormanager
 
 import (
-	_ "embed"
 	"math/big"
+	"context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
@@ -18,6 +18,7 @@ import (
 )
 
 func GetValidatorNonce(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 ) (uint64, error) {
@@ -33,6 +34,11 @@ func GetValidatorNonce(
 	maxBlock := int64(height)
 	minBlock := int64(0)
 	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
+		select {
+	        case <-ctx.Done():
+			return 0, ctx.Err()
+		default:
+		}
 		block, err := client.BlockByNumber(big.NewInt(blockNumber))
 		if err != nil {
 			return 0, err
