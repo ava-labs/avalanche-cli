@@ -643,20 +643,20 @@ func SearchForRegisterL1ValidatorMessage(
 	maxBlock := int64(height)
 	minBlock := int64(0)
 	blockStep := int64(5000)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-=blockStep {
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
 		select {
-	        case <-ctx.Done():
+		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
-		fromBlock := big.NewInt(blockNumber-blockStep)
+		fromBlock := big.NewInt(blockNumber - blockStep)
 		if fromBlock.Sign() < 0 {
 			fromBlock = big.NewInt(0)
 		}
 		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
 			FromBlock: fromBlock,
-			ToBlock: toBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {

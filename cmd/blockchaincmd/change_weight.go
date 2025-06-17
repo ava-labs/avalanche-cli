@@ -25,12 +25,12 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -424,11 +424,10 @@ func changeWeightACP99(
 	if !skipPChain {
 		txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 		if err != nil {
-			if newWeight == 0 && strings.Contains(err.Error(), "could not load L1 validator: not found") {
-				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step"))
-			} else {
+			if newWeight != 0 || !strings.Contains(err.Error(), "could not load L1 validator: not found") {
 				return err
 			}
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step"))
 		} else {
 			ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 			if err := blockchain.UpdatePChainHeight(

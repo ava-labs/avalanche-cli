@@ -431,7 +431,7 @@ func SearchForL1ValidatorWeightMessage(
 	validationID ids.ID,
 	weight uint64,
 ) (*warp.UnsignedMessage, error) {
-	const maxBlocksToSearch = 500
+	maxBlocksToSearch := int64(5000000)
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return nil, err
@@ -442,19 +442,21 @@ func SearchForL1ValidatorWeightMessage(
 	}
 	maxBlock := int64(height)
 	minBlock := max(maxBlock-maxBlocksToSearch, 0)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
+	blockStep := int64(5000)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
 		select {
-	        case <-ctx.Done():
+		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
-		block, err := client.BlockByNumber(big.NewInt(blockNumber))
-		if err != nil {
-			return nil, err
+		fromBlock := big.NewInt(blockNumber - blockStep)
+		if fromBlock.Sign() < 0 {
+			fromBlock = big.NewInt(0)
 		}
-		blockHash := block.Hash()
+		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
-			BlockHash: &blockHash,
+			FromBlock: fromBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {

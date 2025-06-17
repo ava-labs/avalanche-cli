@@ -3,8 +3,8 @@
 package validatormanager
 
 import (
-	"math/big"
 	"context"
+	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
@@ -33,19 +33,21 @@ func GetValidatorNonce(
 	count := uint64(0)
 	maxBlock := int64(height)
 	minBlock := int64(0)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
+	blockStep := int64(5000)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
 		select {
-	        case <-ctx.Done():
+		case <-ctx.Done():
 			return 0, ctx.Err()
 		default:
 		}
-		block, err := client.BlockByNumber(big.NewInt(blockNumber))
-		if err != nil {
-			return 0, err
+		fromBlock := big.NewInt(blockNumber - blockStep)
+		if fromBlock.Sign() < 0 {
+			fromBlock = big.NewInt(0)
 		}
-		blockHash := block.Hash()
+		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
-			BlockHash: &blockHash,
+			FromBlock: fromBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {
