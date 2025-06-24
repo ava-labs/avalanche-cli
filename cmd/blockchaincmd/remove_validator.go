@@ -313,10 +313,7 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
+
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		removeValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		removeValidatorFlags.SigAggFlags.AggregatorLogToStdout,
@@ -328,14 +325,23 @@ func removeValidatorSOV(
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
+	var signatureAggregatorEndpoint string
+	if removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
+		if err != nil {
+			return err
+		}
+		if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		signatureAggregatorEndpoint = removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint
+	}
 
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
-	}
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
 		app,

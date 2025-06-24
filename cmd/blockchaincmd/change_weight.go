@@ -45,7 +45,7 @@ type BlockchainChangeWeightFlags struct {
 	SigAggFlags flags.SignatureAggregatorFlags
 }
 
-// avalanche blockchain addValidator
+// avalanche blockchain changeWeight
 func newChangeWeightCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "changeWeight [blockchainName]",
@@ -359,10 +359,7 @@ func changeWeightACP99(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), changeWeightFlags.RPC)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
+
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		changeWeightFlags.SigAggFlags.AggregatorLogLevel,
 		changeWeightFlags.SigAggFlags.AggregatorLogToStdout,
@@ -371,12 +368,21 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	var signatureAggregatorEndpoint string
+	if changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
+		if err != nil {
+			return err
+		}
+		if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		signatureAggregatorEndpoint = changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		ux.Logger.PrintToUser,

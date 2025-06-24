@@ -642,7 +642,6 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
-
 	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
 		return err
 	}

@@ -536,10 +536,7 @@ func CallAddValidator(
 		Threshold: 1,
 		Addresses: disableOwnerAddrID,
 	}
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
-	if err != nil {
-		return err
-	}
+	var signatureAggregatorEndpoint string
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
@@ -548,12 +545,20 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	if addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
+		if err != nil {
+			return err
+		}
+		if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		signatureAggregatorEndpoint = addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		app,

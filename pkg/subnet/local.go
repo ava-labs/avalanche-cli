@@ -67,6 +67,7 @@ type ICMSpec struct {
 	RelayerVersion               string
 	RelayerBinPath               string
 	RelayerLogLevel              string
+	SignatureAggregatorEndpoint  string
 }
 
 type DeployInfo struct {
