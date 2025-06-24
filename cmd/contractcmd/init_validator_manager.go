@@ -150,10 +150,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := scNetwork.ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogLevel,
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
@@ -186,14 +182,25 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		OwnerAddress:        &ownerAddress,
 		RPC:                 initValidatorManagerFlags.RPC,
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
-	if err != nil {
-		return err
+
+	var signatureAggregatorEndpoint string
+	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
+		if err != nil {
+			return err
+		}
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+		if err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
-	}
+
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)

@@ -374,11 +374,6 @@ func InitializeValidatorManager(
 		}
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return tracked, err
-	}
-
 	subnetSDK := blockchainSDK.Subnet{
 		SubnetID:            subnetID,
 		BlockchainID:        blockchainID,
@@ -394,14 +389,23 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	// TODO: replace latest below with sig agg version in flags for convert and deploy
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
-	if err != nil {
-		return tracked, err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return tracked, err
+	var signatureAggregatorEndpoint string
+	if convertFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
+		if err != nil {
+			return tracked, err
+		}
+		// TODO: replace latest below with sig agg version in flags for convert and deploy
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+		if err != nil {
+			return tracked, err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return tracked, err
+		}
+	} else {
+		signatureAggregatorEndpoint = convertFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)

@@ -23,27 +23,27 @@ type StartFlags struct {
 
 var startFlags StartFlags
 
-// avalanche interchain signatureAggregator stop
-func newStopCmd() *cobra.Command {
+// avalanche interchain signatureAggregator start
+func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "stops signature aggregator",
-		Long:  `Stops locally run signature aggregator for the specified network.`,
-		RunE:  stop,
+		Use:   "start",
+		Short: "starts signature aggregator",
+		Long:  `Starts locally run signature aggregator for the specified network with the L1's aggregator peers'`,
+		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &stopFlags.Network, true, stopNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &startFlags.Network, true, startNetworkOptions)
 	return cmd
 }
 
-func stop(_ *cobra.Command, _ []string) error {
+func start(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		stopFlags.Network,
+		startFlags.Network,
 		false,
 		false,
-		stopNetworkOptions,
+		startNetworkOptions,
 		"",
 	)
 	if err != nil {

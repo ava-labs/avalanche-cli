@@ -20,6 +20,7 @@ and configuring ICM signature aggregator.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
+	cmd.AddCommand(newStartCmd())
 	cmd.AddCommand(newStopCmd())
 	cmd.AddCommand(newListCmd())
 	return cmd
