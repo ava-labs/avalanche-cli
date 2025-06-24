@@ -423,7 +423,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	// Check if run file exists and read ports from it
 	if _, err := os.Stat(runFilePath); err == nil {
 		// File exists, get process details
-		runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+		runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 		if err != nil {
 			return fmt.Errorf("failed to get process details: %w", err)
 		}
@@ -454,7 +454,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 }
 
 func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.Network) (string, error) {
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return "", fmt.Errorf("failed to get process details: %w", err)
 	}
@@ -488,9 +488,9 @@ func saveSignatureAggregatorFile(runFilePath string, pid, apiPort, metricsPort i
 	return nil
 }
 
-// getCurrentSignatureAggregatorProcessDetails reads the run file and returns the current process details.
+// GetCurrentSignatureAggregatorProcessDetails reads the run file and returns the current process details.
 // It returns the run file information including PID, ports, and version.
-func getCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, network models.Network) (*signatureAggregatorRunFile, error) {
+func GetCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, network models.Network) (*signatureAggregatorRunFile, error) {
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 	runFileBytes, err := os.ReadFile(runFilePath)
 	if err != nil {
@@ -513,7 +513,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 		return nil
 	}
 
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return fmt.Errorf("failed to get process details: %w", err)
 	}
@@ -538,7 +538,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 // and starts a new one with the updated config.
 func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
 	// Get current process details
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return fmt.Errorf("failed to get process details: %w", err)
 	}
@@ -616,7 +616,7 @@ func SignatureAggregatorCleanup(
 	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
 		return nil
 	}
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		// If we can't get process details, just continue with cleanup
 		ux.Logger.RedXToUser("unable to get signature aggregator process details: %s", err)

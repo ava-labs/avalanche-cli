@@ -6,7 +6,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -24,7 +23,7 @@ type StopFlags struct {
 
 var stopFlags StopFlags
 
-// avalanche interchain relayer stop
+// avalanche interchain signatureAggregator stop
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
@@ -37,25 +36,18 @@ func newStopCmd() *cobra.Command {
 	return cmd
 }
 
-func stop(_ *cobra.Command, args []string) error {
-	return CallStop(args, stopFlags, models.UndefinedNetwork)
-}
-
-func CallStop(_ []string, flags StopFlags, network models.Network) error {
-	var err error
-	if network == models.UndefinedNetwork {
-		network, err = networkoptions.GetNetworkFromCmdLineFlags(
-			app,
-			"",
-			flags.Network,
-			false,
-			false,
-			stopNetworkOptions,
-			"",
-		)
-		if err != nil {
-			return err
-		}
+func stop(_ *cobra.Command, _ []string) error {
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		stopFlags.Network,
+		false,
+		false,
+		stopNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
 	}
 	// Clean up signature aggregator
 	if err := signatureaggregator.SignatureAggregatorCleanup(app, network); err != nil {

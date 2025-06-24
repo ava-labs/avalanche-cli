@@ -21,5 +21,6 @@ and configuring ICM signature aggregator.`,
 	}
 	app = injectedApp
 	cmd.AddCommand(newStopCmd())
+	cmd.AddCommand(newListCmd())
 	return cmd
 }

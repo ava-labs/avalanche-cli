@@ -6,6 +6,7 @@ package deploy
 import (
 	"encoding/hex"
 	"fmt"
+	"os/exec"
 	"regexp"
 	"runtime"
 
@@ -48,6 +49,12 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "list", "--local")
+		outputBytes, err := listSigAggCmd.CombinedOutput()
+		gomega.Expect(err).Should(gomega.BeNil())
+		output := string(outputBytes)
+		gomega.Expect(output).Should(gomega.ContainSubstring("No locally run signature aggregator found for Local Network"))
+
 		// Cleanup test subnet config
 		commands.DeleteSubnetConfig(subnetName)
 	})
@@ -65,7 +72,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		localClusterUris, err := utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
-		// check that validator manager type is proof of authoiryt
+		// check that validator manager type is proof of authority
 		sc, err := utils.GetSideCar(blockchainCmdArgs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		subnetInfo, _ := blockchain.GetSubnet(sc.Networks["Local Network"].SubnetID, models.NewLocalNetwork())
@@ -74,6 +81,11 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		valType, _ := validatorManagerSDK.GetValidatorManagerType(uri, common.HexToAddress(validatorManagerAddress))
 		expectedValType := validatormanagertypes.ValidatorManagementTypeFromString(validatormanagertypes.ProofOfAuthority)
 		gomega.Expect(valType).Should(gomega.Equal(expectedValType))
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "list", "--local")
+		outputBytes, err := listSigAggCmd.CombinedOutput()
+		gomega.Expect(err).Should(gomega.BeNil())
+		output = string(outputBytes)
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("No locally run signature aggregator found for Local Network"))
 	})
 
 	ginkgo.It("HAPPY PATH: local deploy with avalanchego path set", func() {
