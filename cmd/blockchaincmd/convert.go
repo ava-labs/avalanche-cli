@@ -390,7 +390,7 @@ func InitializeValidatorManager(
 		return tracked, err
 	}
 	var signatureAggregatorEndpoint string
-	if convertFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
 		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 		if err != nil {
 			return tracked, err
@@ -405,7 +405,7 @@ func InitializeValidatorManager(
 			return tracked, err
 		}
 	} else {
-		signatureAggregatorEndpoint = convertFlags.SigAggFlags.SignatureAggregatorEndpoint
+		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)

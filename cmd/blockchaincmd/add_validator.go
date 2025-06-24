@@ -343,6 +343,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		addValidatorFlags.RPC,
+		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint
 	); err != nil {
 		return err
 	}
@@ -376,6 +377,7 @@ func CallAddValidator(
 	disableOwnerAddr string,
 	sc models.Sidecar,
 	rpcURL string,
+	signatureAggregatorEndpoint string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -536,7 +538,6 @@ func CallAddValidator(
 		Threshold: 1,
 		Addresses: disableOwnerAddrID,
 	}
-	var signatureAggregatorEndpoint string
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
@@ -545,7 +546,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+	if signatureAggregatorEndpoint == "" {
 		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
 		if err != nil {
 			return err
@@ -557,8 +558,6 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-	} else {
-		signatureAggregatorEndpoint = addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		app,

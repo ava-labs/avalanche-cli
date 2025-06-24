@@ -237,6 +237,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			blockchainName,
 			nodeID,
 			newWeight,
+			changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 		)
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
@@ -279,6 +280,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
 		changeWeightFlags.RPC,
+		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
@@ -310,6 +312,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		changeWeightFlags.RPC,
+		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	)
 }
 
@@ -319,6 +322,7 @@ func changeWeightACP99(
 	blockchainName string,
 	nodeID ids.NodeID,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -368,8 +372,7 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
-	var signatureAggregatorEndpoint string
-	if changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+	if signatureAggregatorEndpoint == "" {
 		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 		if err != nil {
 			return err
@@ -381,8 +384,6 @@ func changeWeightACP99(
 		if err != nil {
 			return err
 		}
-	} else {
-		signatureAggregatorEndpoint = changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		ux.Logger.PrintToUser,
