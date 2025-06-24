@@ -34,7 +34,7 @@ func newListCmd() *cobra.Command {
 		RunE:  list,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &stopFlags.Network, true, stopNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &listFlags.Network, true, listNetworkOptions)
 	return cmd
 }
 
@@ -42,10 +42,10 @@ func list(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		stopFlags.Network,
+		listFlags.Network,
 		false,
 		false,
-		stopNetworkOptions,
+		listNetworkOptions,
 		"",
 	)
 	if err != nil {
