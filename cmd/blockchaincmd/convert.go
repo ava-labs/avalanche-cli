@@ -4,12 +4,12 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanchego/api/info"
 	"math/big"
 	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -391,12 +391,17 @@ func InitializeValidatorManager(
 	}
 	var signatureAggregatorEndpoint string
 	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
-		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-		if err != nil {
-			return tracked, err
-		}
+		//extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
+		//if err != nil {
+		//	return tracked, err
+		//}
+		extraAggregatorPeers := []info.Peer{}
 		// TODO: replace latest below with sig agg version in flags for convert and deploy
-		err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+		//err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+		//if err != nil {
+		//	return tracked, err
+		//}
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, "", network, extraAggregatorPeers, aggregatorLogger, "latest")
 		if err != nil {
 			return tracked, err
 		}

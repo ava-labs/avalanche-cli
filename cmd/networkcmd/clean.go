@@ -98,7 +98,7 @@ func clean(*cobra.Command, []string) error {
 
 func removeLocalDeployInfoFromSidecars() error {
 	// Remove all local deployment info from sidecar files
-	deployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	deployedSubnets, err := subnet.GetDeployedSubnetsFromFile(app, models.Local.String())
 	if err != nil {
 		return err
 	}

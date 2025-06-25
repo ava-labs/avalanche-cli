@@ -264,13 +264,24 @@ func readExistingConfig(configPath string) (*SignatureAggregatorConfig, error) {
 }
 
 func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort int) *SignatureAggregatorConfig {
+	//config := &SignatureAggregatorConfig{
+	//	LogLevel:             "debug",
+	//	PChainAPI:            APIConfig{BaseURL: networkEndpoint},
+	//	InfoAPI:              APIConfig{BaseURL: networkEndpoint},
+	//	SignatureCacheSize:   1048576,
+	//	AllowPrivateIPs:      true,
+	//	TrackedSubnetIDs:     []string{subnetID},
+	//	ManuallyTrackedPeers: make([]PeerConfig, 0),
+	//	APIPort:              apiPort,
+	//	MetricsPort:          metricsPort,
+	//}
 	config := &SignatureAggregatorConfig{
 		LogLevel:             "debug",
 		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
 		InfoAPI:              APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
 		AllowPrivateIPs:      true,
-		TrackedSubnetIDs:     []string{subnetID},
+		TrackedSubnetIDs:     []string{},
 		ManuallyTrackedPeers: make([]PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,

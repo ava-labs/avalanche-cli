@@ -154,7 +154,7 @@ func selectNetworkToUpgrade(sc models.Sidecar, upgradeOptions []string) (string,
 	}
 
 	// get locally deployed subnets from file since network is shut down
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	locallyDeployedSubnets, err := subnet.GetDeployedSubnetsFromFile(app, models.Local.String())
 	if err != nil {
 		return "", fmt.Errorf("unable to read deployed subnets: %w", err)
 	}

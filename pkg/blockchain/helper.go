@@ -30,6 +30,8 @@ func GetAggregatorExtraPeers(
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("GetAggregatorExtraPeers clusterName %s \n", clusterName)
+	fmt.Printf("GetAggregatorExtraPeers uris %s \n", uris)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
 	return UrisToPeers(uris)

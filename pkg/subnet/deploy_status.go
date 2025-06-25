@@ -7,11 +7,10 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, error) {
+func GetDeployedSubnetsFromFile(app *application.Avalanche, networkStr string) ([]string, error) {
 	allSubnetDirs, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err
@@ -36,7 +35,7 @@ func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, er
 
 		// check if sidecar contains local deployment info in Networks map
 		// if so, add to list of deployed subnets
-		if _, ok := sc.Networks[models.Local.String()]; ok {
+		if _, ok := sc.Networks[networkStr]; ok {
 			deployedSubnets = append(deployedSubnets, sc.Name)
 		}
 	}
