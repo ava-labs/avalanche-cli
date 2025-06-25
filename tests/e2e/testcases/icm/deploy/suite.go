@@ -415,7 +415,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 			output, err := utils.TestCommand(cmd.ICMCmd, "deploy", commandArguments, globalFlags, testFlags)
 			gomega.Expect(err).Should(gomega.HaveOccurred())
 			gomega.Expect(output).
-				Should(gomega.ContainSubstring("failed downloading"))
+				Should(gomega.ContainSubstring("failure downloading"))
 		})
 	})
 })

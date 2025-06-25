@@ -5,6 +5,7 @@ package vm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -24,18 +25,18 @@ type AllowList struct {
 	EnabledAddresses []common.Address
 }
 
-func preview(allowList AllowList) {
-	table := tablewriter.NewWriter(os.Stdout)
+func preview(allowList AllowList, writer io.Writer) {
+	table := tablewriter.NewWriter(writer)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	addRoleToPreviewTable(table, "Admins", allowList.AdminAddresses)
 	addRoleToPreviewTable(table, "Manager", allowList.ManagerAddresses)
 	addRoleToPreviewTable(table, "Enabled", allowList.EnabledAddresses)
 	table.Render()
-	fmt.Println()
+	fmt.Fprintln(writer)
 	if len(allowList.AdminAddresses) == 0 && len(allowList.ManagerAddresses) == 0 && len(allowList.EnabledAddresses) == 0 {
-		fmt.Println(logging.Red.Wrap("Caution: Allow lists are empty. You will not be able to easily change the precompile settings in the future."))
-		fmt.Println()
+		fmt.Fprintln(writer, logging.Red.Wrap("Caution: Allow lists are empty. You will not be able to easily change the precompile settings in the future."))
+		fmt.Fprintln(writer)
 	}
 }
 
@@ -125,7 +126,7 @@ func GenerateAllowList(
 	if len(allowList.AdminAddresses) != 0 || len(allowList.ManagerAddresses) != 0 || len(allowList.EnabledAddresses) != 0 {
 		fmt.Println()
 		fmt.Printf(logging.Bold.Wrap("Addresses automatically allowed to %s\n"), action)
-		preview(allowList)
+		preview(allowList, os.Stdout)
 	}
 
 	for {
@@ -216,9 +217,9 @@ func GenerateAllowList(
 				}
 			}
 		case previewOption:
-			preview(allowList)
+			preview(allowList, os.Stdout)
 		case confirmOption:
-			preview(allowList)
+			preview(allowList, os.Stdout)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
 			noOption := "No, keep editing"

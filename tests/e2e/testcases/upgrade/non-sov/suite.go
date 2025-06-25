@@ -51,7 +51,7 @@ var (
 // need to have this outside the normal suite because of the BeforeEach
 var _ = ginkgo.Describe("[Upgrade expect network failure non SOV]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetworkHard()
+		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -91,7 +91,7 @@ var _ = ginkgo.Describe("[Upgrade expect network failure non SOV]", ginkgo.Order
 // and then check the file is there and has the correct content.
 var _ = ginkgo.Describe("[Upgrade public network non SOV]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetworkHard()
+		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -158,7 +158,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetworkHard()
+		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
