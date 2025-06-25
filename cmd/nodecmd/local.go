@@ -27,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -542,10 +541,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		localValidateFlags.SigAggFlags.AggregatorLogLevel,
 		localValidateFlags.SigAggFlags.AggregatorLogToStdout,
@@ -572,7 +567,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 			node.URI,
 			chainSpec,
 			remainingBalanceOwners, disableOwners,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			kc,
 			balance,
@@ -594,7 +588,6 @@ func addAsValidator(
 	nodeURI string,
 	chainSpec contract.ChainSpec,
 	remainingBalanceOwners, disableOwners warpMessage.PChainOwner,
-	extraAggregatorPeers []info.Peer,
 	aggregatorLogger logging.Logger,
 	kc *keychain.Keychain,
 	balance uint64,
@@ -643,9 +636,9 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
+	//if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+	//	return err
+	//}
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		return err

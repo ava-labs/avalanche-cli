@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/api/info"
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -263,29 +262,29 @@ func readExistingConfig(configPath string) (*SignatureAggregatorConfig, error) {
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort int) *SignatureAggregatorConfig {
+func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort int) *SignatureAggregatorConfig {
 	config := &SignatureAggregatorConfig{
 		LogLevel:             "debug",
 		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
 		InfoAPI:              APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
 		AllowPrivateIPs:      true,
-		TrackedSubnetIDs:     []string{subnetID},
+		TrackedSubnetIDs:     []string{},
 		ManuallyTrackedPeers: make([]PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
 	}
 
-	for _, peer := range peers {
-		// Skip peers with invalid IP addresses
-		if !peer.Info.PublicIP.IsValid() {
-			continue
-		}
-		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, PeerConfig{
-			ID: peer.Info.ID.String(),
-			IP: peer.Info.PublicIP.String(),
-		})
-	}
+	//for _, peer := range peers {
+	//	// Skip peers with invalid IP addresses
+	//	if !peer.Info.PublicIP.IsValid() {
+	//		continue
+	//	}
+	//	config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, PeerConfig{
+	//		ID: peer.Info.ID.String(),
+	//		IP: peer.Info.PublicIP.String(),
+	//	})
+	//}
 
 	return config
 }
@@ -415,7 +414,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 	}
 }
 
-func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
+func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, version string) error {
 	// Create config file for signature aggregator
 	var apiPort, metricsPort int
 	var err error
@@ -438,7 +437,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 		}
 	}
 
-	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
+	config := CreateSignatureAggregatorConfig(network.Endpoint, apiPort, metricsPort)
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
@@ -558,53 +557,53 @@ func restartSignatureAggregator(app *application.Avalanche, network models.Netwo
 
 // UpdateSignatureAggregatorPeers updates the existing signature aggregator config with new peers.
 // If new peers are found, it updates the config and restarts the signature aggregator.
-func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer, logger logging.Logger) error {
-	// Get the config path
-	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
-
-	// Read existing config
-	existingConfig, err := readExistingConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read existing config: %w", err)
-	}
-	if existingConfig == nil {
-		return fmt.Errorf("no existing config found at %s", configPath)
-	}
-	// Convert existing peers to a map for easy lookup
-	existingPeers := make(map[string]PeerConfig)
-	for _, peer := range existingConfig.ManuallyTrackedPeers {
-		existingPeers[peer.ID] = peer
-	}
-
-	// Check for new peers
-	hasNewPeers := false
-	for _, peer := range extraAggregatorPeers {
-		if !peer.Info.PublicIP.IsValid() {
-			continue
-		}
-		peerID := peer.Info.ID.String()
-		if _, exists := existingPeers[peerID]; !exists {
-			hasNewPeers = true
-			existingConfig.ManuallyTrackedPeers = append(existingConfig.ManuallyTrackedPeers, PeerConfig{
-				ID: peerID,
-				IP: peer.Info.PublicIP.String(),
-			})
-		}
-	}
-
-	// If no new peers, no need to update
-	if !hasNewPeers {
-		return nil
-	}
-
-	// Write updated config
-	if err := WriteSignatureAggregatorConfig(existingConfig, configPath); err != nil {
-		return fmt.Errorf("failed to write updated config: %w", err)
-	}
-
-	// Restart the signature aggregator with the updated config
-	return restartSignatureAggregator(app, network, configPath, logger)
-}
+//func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer, logger logging.Logger) error {
+//	// Get the config path
+//	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
+//
+//	// Read existing config
+//	existingConfig, err := readExistingConfig(configPath)
+//	if err != nil {
+//		return fmt.Errorf("failed to read existing config: %w", err)
+//	}
+//	if existingConfig == nil {
+//		return fmt.Errorf("no existing config found at %s", configPath)
+//	}
+//	// Convert existing peers to a map for easy lookup
+//	existingPeers := make(map[string]PeerConfig)
+//	for _, peer := range existingConfig.ManuallyTrackedPeers {
+//		existingPeers[peer.ID] = peer
+//	}
+//
+//	// Check for new peers
+//	hasNewPeers := false
+//	for _, peer := range extraAggregatorPeers {
+//		if !peer.Info.PublicIP.IsValid() {
+//			continue
+//		}
+//		peerID := peer.Info.ID.String()
+//		if _, exists := existingPeers[peerID]; !exists {
+//			hasNewPeers = true
+//			existingConfig.ManuallyTrackedPeers = append(existingConfig.ManuallyTrackedPeers, PeerConfig{
+//				ID: peerID,
+//				IP: peer.Info.PublicIP.String(),
+//			})
+//		}
+//	}
+//
+//	// If no new peers, no need to update
+//	if !hasNewPeers {
+//		return nil
+//	}
+//
+//	// Write updated config
+//	if err := WriteSignatureAggregatorConfig(existingConfig, configPath); err != nil {
+//		return fmt.Errorf("failed to write updated config: %w", err)
+//	}
+//
+//	// Restart the signature aggregator with the updated config
+//	return restartSignatureAggregator(app, network, configPath, logger)
+//}
 
 // SignatureAggregatorCleanup cleans up the signature aggregator process and files.
 // It removes the log file and run file, and stops the running process if any.
