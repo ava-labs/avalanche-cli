@@ -343,7 +343,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		addValidatorFlags.RPC,
-		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint
+		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
