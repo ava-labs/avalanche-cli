@@ -4,6 +4,8 @@ package networkcmd
 
 import (
 	"errors"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
@@ -13,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"os"
 
 	"github.com/spf13/cobra"
 )
