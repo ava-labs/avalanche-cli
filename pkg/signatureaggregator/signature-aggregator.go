@@ -521,29 +521,6 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 	return nil
 }
 
-// restartSignatureAggregator restarts the signature aggregator with the given config.
-// It reads the run file to get the current ports and version, kills the existing process,
-// and starts a new one with the updated config.
-func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
-	// Get current process details
-	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
-	if err != nil {
-		return fmt.Errorf("failed to get process details: %w", err)
-	}
-
-	// Restart signature aggregator with updated config
-	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
-	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
-	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
-	pid, err := StartSignatureAggregator(app, network, configPath, logPath, logger, runFile.Version, signatureAggregatorEndpoint)
-	if err != nil {
-		return fmt.Errorf("failed to restart signature aggregator: %w", err)
-	}
-
-	// Update run file with new PID
-	return saveSignatureAggregatorFile(runFilePath, pid, runFile.APIPort, runFile.MetricsPort, runFile.Version)
-}
-
 // SignatureAggregatorCleanup cleans up the signature aggregator process and files.
 // It removes the log file and run file, and stops the running process if any.
 func SignatureAggregatorCleanup(
