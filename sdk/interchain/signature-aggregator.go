@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"io"
 	"net/http"
 	"time"
@@ -35,6 +36,11 @@ type AggregateSignaturesRequest struct {
 // SignMessage sends a request to the signature aggregator to sign a message.
 // It returns the signed warp message or an error if the operation fails.
 func SignMessage(message, justification, signingSubnetID string, quorumPercentage int, logger logging.Logger, signatureAggregatorEndpoint string) (*warp.Message, error) {
+	if quorumPercentage == 0 {
+		quorumPercentage = constants.DefaultQuorumPercentage
+	} else if quorumPercentage > 100 {
+		return nil, fmt.Errorf("quorum percentage cannot be greater than 100")
+	}
 	request := AggregateSignaturesRequest{
 		Message:          message,
 		SigningSubnetID:  signingSubnetID,
