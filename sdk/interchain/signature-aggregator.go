@@ -11,15 +11,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/message"
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/ava-labs/icm-services/peers"
-	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
-	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -29,69 +22,6 @@ const (
 	MaxRetries                = 3
 	InitialBackoff            = 1 * time.Second
 )
-
-type SignatureAggregator struct {
-	subnetID         ids.ID
-	quorumPercentage uint64
-	aggregator       *aggregator.SignatureAggregator
-	network          peers.AppRequestNetwork
-}
-
-// initSignatureAggregator initializes a new SignatureAggregator instance.
-//
-// network is the network to create the aggregator for.
-// logger is the logger to use for logging.
-// subnetID is the subnet ID to create the aggregator for.
-// quorumPercentage is the quorum percentage to use for the aggregator.
-//
-// Returns a new SignatureAggregator instance, or an error if initialization fails.
-func initSignatureAggregator(
-	network peers.AppRequestNetwork,
-	logger logging.Logger,
-	registerer prometheus.Registerer,
-	subnetID ids.ID,
-	quorumPercentage uint64,
-) (*SignatureAggregator, error) {
-	sa := &SignatureAggregator{}
-	// set quorum percentage
-	sa.quorumPercentage = quorumPercentage
-	if quorumPercentage == 0 {
-		sa.quorumPercentage = DefaultQuorumPercentage
-	} else if quorumPercentage > 100 {
-		return nil, fmt.Errorf("quorum percentage cannot be greater than 100")
-	}
-	sa.subnetID = subnetID
-
-	messageCreator, err := message.NewCreator(
-		logger,
-		registerer,
-		constants.DefaultNetworkCompressionType,
-		constants.DefaultNetworkMaximumInboundTimeout,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create message creator: %w", err)
-	}
-
-	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
-	signatureAggregator, err := aggregator.NewSignatureAggregator(
-		network,
-		logger,
-		messageCreator,
-		DefaultSignatureCacheSize,
-		metricsInstance,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signature aggregator: %w", err)
-	}
-	sa.aggregator = signatureAggregator
-	sa.network = network
-	return sa, nil
-}
-
-// SignatureAggregatorRunFile represents the run file structure for the signature aggregator
-type SignatureAggregatorRunFile struct {
-	Pid int `json:"pid"`
-}
 
 // AggregateSignaturesRequest represents the request structure for aggregating signatures
 type AggregateSignaturesRequest struct {
@@ -110,9 +40,7 @@ func SignMessage(message, justification, signingSubnetID string, quorumPercentag
 		SigningSubnetID:  signingSubnetID,
 		QuorumPercentage: quorumPercentage,
 	}
-	if justification != "" {
-		request.Justification = justification
-	}
+	request.Justification = justification
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
