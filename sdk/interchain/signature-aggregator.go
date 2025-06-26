@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	DefaultQuorumPercentage = 67
-	MaxRetries              = 3
-	InitialBackoff          = 1 * time.Second
+	SignatureAggregatorRequestTimeout = 30 * time.Second
+	DefaultQuorumPercentage           = 67
+	MaxRetries                        = 3
+	InitialBackoff                    = 1 * time.Second
 )
 
 // AggregateSignaturesRequest represents the request structure for aggregating signatures
@@ -56,7 +57,7 @@ func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, mess
 	)
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: SignatureAggregatorRequestTimeout,
 	}
 
 	var lastErr error
