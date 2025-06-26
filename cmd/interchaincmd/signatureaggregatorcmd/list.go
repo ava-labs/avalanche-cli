@@ -1,6 +1,6 @@
 // Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package signatureAggregatorCmd
+package signatureaggregatorcmd
 
 import (
 	"fmt"
@@ -62,7 +62,6 @@ func list(_ *cobra.Command, _ []string) error {
 		ux.Logger.PrintToUser("  Signature Aggregator %s Network API Endpoint: %s", network.Name(), fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort))
 		ux.Logger.PrintToUser("  Signature Aggregator %s Network API Port: %d", network.Name(), runFile.APIPort)
 		ux.Logger.PrintToUser("  Signature Aggregator %s Network Metrics Port: %d", network.Name(), runFile.MetricsPort)
-
 	} else {
 		ux.Logger.PrintToUser("No locally run signature aggregator found for %s", network.Name())
 	}
