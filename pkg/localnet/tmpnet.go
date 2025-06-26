@@ -224,7 +224,24 @@ func TmpNetStop(
 	}
 	ctx, cancel := sdkutils.GetTimedContext(2 * time.Minute)
 	defer cancel()
-	return network.Stop(ctx)
+	var errs []error
+	// Initiate stop on all nodes
+	for _, node := range network.Nodes {
+		node.URI = "" // avoid saving metrics snapshot
+		if err := node.InitiateStop(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("failed to stop node %s: %w", node.NodeID, err))
+		}
+	}
+	// Wait for stop to complete on all nodes
+	for _, node := range network.Nodes {
+		if err := node.WaitForStopped(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("failed to wait for node %s to stop: %w", node.NodeID, err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to stop network:\n%w", errors.Join(errs...))
+	}
+	return nil
 }
 
 // Indicates whether the given network has all, part, or none of its nodes running
