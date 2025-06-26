@@ -31,24 +31,6 @@ func CleanNetwork() {
 }
 
 /* #nosec G204 */
-func CleanNetworkHard() {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
-		"clean",
-		"--hard",
-		"--"+constants.SkipUpdateFlag,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-}
-
-/* #nosec G204 */
 func StartNetwork() string {
 	return StartNetworkWithVersion("")
 }

@@ -16,6 +16,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+// execCommand is a function variable that can be monkey patched in tests
+var execCommand = exec.Command
+
+// getVMBinaryProtocolVersion is a function variable that can be monkey patched in tests
+var getVMBinaryProtocolVersion = GetVMBinaryProtocolVersion
+
 func CreateCustomSidecar(
 	sc *models.Sidecar,
 	app *application.Avalanche,
@@ -77,7 +83,7 @@ func CreateCustomSidecar(
 		}
 	}
 
-	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
+	rpcVersion, err := getVMBinaryProtocolVersion(vmPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get RPC version: %w", err)
 	}
@@ -135,7 +141,7 @@ func SetCustomVMSourceCodeFields(app *application.Avalanche, sc *models.Sidecar,
 }
 
 func CheckGitIsInstalled() error {
-	err := exec.Command("git", "--version").Run()
+	err := execCommand("git", "--version").Run()
 	if err != nil {
 		ux.Logger.PrintToUser("Git tool is not available. It is a necessary dependency for CLI to import a custom VM.")
 		ux.Logger.PrintToUser("")
@@ -161,25 +167,25 @@ func BuildCustomVM(
 		return err
 	}
 	// get branch from repo
-	cmd := exec.Command("git", "init", "-q")
+	cmd := execCommand("git", "init", "-q")
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not init git directory on %s: %w", repoDir, err)
 	}
-	cmd = exec.Command("git", "remote", "add", "origin", sc.CustomVMRepoURL)
+	cmd = execCommand("git", "remote", "add", "origin", sc.CustomVMRepoURL)
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not add origin %s on git: %w", sc.CustomVMRepoURL, err)
 	}
-	cmd = exec.Command("git", "fetch", "--depth", "1", "origin", sc.CustomVMBranch, "-q")
+	cmd = execCommand("git", "fetch", "--depth", "1", "origin", sc.CustomVMBranch, "-q")
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not fetch git branch/commit %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
 	}
-	cmd = exec.Command("git", "checkout", sc.CustomVMBranch)
+	cmd = execCommand("git", "checkout", sc.CustomVMBranch)
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
@@ -190,7 +196,7 @@ func BuildCustomVM(
 	_ = os.RemoveAll(vmPath)
 
 	// build
-	cmd = exec.Command(sc.CustomVMBuildScript, vmPath)
+	cmd = execCommand(sc.CustomVMBuildScript, vmPath)
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
