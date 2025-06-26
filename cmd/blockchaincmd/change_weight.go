@@ -359,19 +359,12 @@ func changeWeightACP99(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), changeWeightFlags.RPC)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		changeWeightFlags.SigAggFlags.AggregatorLogLevel,
 		changeWeightFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {
-		return err
-	}
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
 		return err
 	}
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
