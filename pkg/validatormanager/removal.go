@@ -166,7 +166,7 @@ func GetUptimeProofMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(uptimeProofUnsignedMessage.Bytes())
-	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage))
 }
 
 func InitValidatorRemoval(
@@ -301,7 +301,6 @@ func InitValidatorRemoval(
 	signedMsg, err := GetL1ValidatorWeightMessage(
 		network,
 		aggregatorLogger,
-		0,
 		unsignedMessage,
 		subnetID,
 		blockchainID,

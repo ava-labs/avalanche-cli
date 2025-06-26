@@ -407,7 +407,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 
-	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
+	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
@@ -497,7 +497,7 @@ func (c *Subnet) InitializeProofOfStake(
 	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 
-	signedMessage, err := interchain.SignMessage(messageHexStr, chainIDHexStr, c.SubnetID.String(), 0, aggregatorLogger, signatureAggregatorEndpoint)
+	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
