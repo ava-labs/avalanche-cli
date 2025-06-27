@@ -162,7 +162,6 @@ func InitValidatorWeightChange(
 	signedMsg, err := GetL1ValidatorWeightMessage(
 		network,
 		aggregatorLogger,
-		0,
 		unsignedMessage,
 		subnetID,
 		blockchainID,
@@ -274,7 +273,6 @@ func FinishValidatorWeightChange(
 func GetL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
 	subnetID ids.ID,
@@ -311,7 +309,7 @@ func GetL1ValidatorWeightMessage(
 		}
 	}
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
-	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), 0)
 }
 
 func GetPChainL1ValidatorWeightMessage(
@@ -364,7 +362,7 @@ func GetPChainL1ValidatorWeightMessage(
 		return nil, err
 	}
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
-	return interchain.SignMessage(messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage), aggregatorLogger, signatureAggregatorEndpoint)
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage))
 }
 
 func GetL1ValidatorWeightMessageFromTx(
