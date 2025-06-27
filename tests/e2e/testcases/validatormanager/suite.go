@@ -195,9 +195,6 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 
 		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 
-		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers(uris)
-		gomega.Expect(err).Should(gomega.BeNil())
-
 		subnetID, err := ids.FromString(subnetIDStr)
 		gomega.Expect(err).Should(gomega.BeNil())
 
@@ -215,17 +212,16 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 			BootstrapValidators: avaGoBootstrapValidators,
 		}
 
-		ctx, cancel := utils.GetSignatureAggregatorContext()
+		_, cancel := utils.GetSignatureAggregatorContext()
 		defer cancel()
 		err = subnetSDK.InitializeProofOfAuthority(
-			ctx,
 			logging.NoLog{},
 			network.SDKNetwork(),
 			k.PrivKeyHex(),
-			extraAggregatorPeers,
 			logging.NoLog{},
 			ProxyContractAddress,
 			true,
+			"",
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
