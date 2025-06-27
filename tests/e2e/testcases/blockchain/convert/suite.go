@@ -5,6 +5,10 @@ package convert
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
+	"os"
+	"os/exec"
 	"runtime"
 
 	"github.com/ava-labs/avalanche-cli/cmd"
@@ -185,6 +189,29 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 				gomega.Expect(output).To(gomega.ContainSubstring("Validator Balance: 0.30000 AVAX"))
 			}
 		}
+	})
+
+	ginkgo.It("HAPPY PATH: local convert with signature aggregator endpoint set", func() {
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
+		_, err := listSigAggCmd.CombinedOutput()
+		//fmt.Printf("outputbytes %s \n", string(outputBytes))
+		gomega.Expect(err).Should(gomega.BeNil())
+		app := utils.GetApp()
+		runFilePath := app.GetLocalSignatureAggregatorRunPath(models.Local)
+		signatureAggregatorEndpoint := ""
+		// Check if run file exists and read ports from it
+		if _, err := os.Stat(runFilePath); err == nil {
+			// File exists, get process details
+			runFile, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, models.NewLocalNetwork())
+			gomega.Expect(err).Should(gomega.BeNil())
+			signatureAggregatorEndpoint = fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
+		}
+		testFlags := utils.TestFlags{
+			"signature-aggregator-endpoint": signatureAggregatorEndpoint,
+		}
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("HAPPY PATH: local convert with change owner address", func() {

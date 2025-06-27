@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
@@ -54,6 +55,15 @@ func start(_ *cobra.Command, _ []string) error {
 	)
 	if err != nil {
 		return err
+	}
+	if network.Kind == models.Local {
+		isRunning, err := localnet.IsLocalNetworkRunning(app)
+		if err != nil {
+			return err
+		}
+		if !isRunning {
+			return fmt.Errorf("unable to start local signature aggregator for local network as local network is not running. Run avalanche network start to start local networl")
+		}
 	}
 	if err = createLocalSignatureAggregator(network); err != nil {
 		return err
