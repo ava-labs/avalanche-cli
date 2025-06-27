@@ -304,7 +304,7 @@ func InitValidatorRemoval(
 
 	var nonce uint64
 	if unsignedMessage == nil {
-		nonce, err = GetValidatorNonce(rpcURL, validationID)
+		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
