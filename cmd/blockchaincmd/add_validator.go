@@ -343,6 +343,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		addValidatorFlags.RPC,
+		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
@@ -376,6 +377,7 @@ func CallAddValidator(
 	disableOwnerAddr string,
 	sc models.Sidecar,
 	rpcURL string,
+	signatureAggregatorEndpoint string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -544,9 +546,11 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	if signatureAggregatorEndpoint == "" {
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		app,

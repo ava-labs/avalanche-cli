@@ -228,6 +228,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
 		removeValidatorFlags.RPC,
+		removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
@@ -266,6 +267,7 @@ func removeValidatorSOV(
 	isBootstrapValidator bool,
 	force bool,
 	rpcURL string,
+	signatureAggregatorEndpoint string,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -324,10 +326,11 @@ func removeValidatorSOV(
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
-
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	if signatureAggregatorEndpoint == "" {
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
 	}
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(

@@ -181,13 +181,18 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		OwnerAddress:        &ownerAddress,
 		RPC:                 initValidatorManagerFlags.RPC,
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
-	if err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	var signatureAggregatorEndpoint string
+	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+		if err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 	switch {
 	case sc.PoA(): // PoA
