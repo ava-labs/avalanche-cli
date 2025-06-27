@@ -6,6 +6,8 @@ package deploy
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
+	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -256,6 +258,32 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		localClusterUris, err := utils.GetLocalClusterUris()
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(1))
+	})
+
+	ginkgo.It("HAPPY PATH: local deploy with signature aggregator endpoint set", func() {
+		_, err := utils.TestCommand(cmd.NetworkCmd, "start", nil, nil, nil)
+		gomega.Expect(err).Should(gomega.BeNil())
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
+		_, err = listSigAggCmd.CombinedOutput()
+		//fmt.Printf("outputbytes %s \n", string(outputBytes))
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		app := utils.GetApp()
+		runFilePath := app.GetLocalSignatureAggregatorRunPath(models.Local)
+		signatureAggregatorEndpoint := ""
+		// Check if run file exists and read ports from it
+		if _, err := os.Stat(runFilePath); err == nil {
+			// File exists, get process details
+			runFile, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, models.NewLocalNetwork())
+			gomega.Expect(err).Should(gomega.BeNil())
+			signatureAggregatorEndpoint = fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
+		}
+		testFlags := utils.TestFlags{
+			"signature-aggregator-endpoint": signatureAggregatorEndpoint,
+		}
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("HAPPY PATH: local deploy set num bootstrap validators", func() {

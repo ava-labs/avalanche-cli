@@ -388,14 +388,19 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	// TODO: replace latest below with sig agg version in flags for convert and deploy
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
-	if err != nil {
-		return tracked, err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return tracked, err
+	var signatureAggregatorEndpoint string
+	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
+		// TODO: replace latest below with sig agg version in flags for convert and deploy
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+		if err != nil {
+			return tracked, err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return tracked, err
+		}
+	} else {
+		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
