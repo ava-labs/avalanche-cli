@@ -123,6 +123,7 @@ configuration, pass the -f flag.`,
 
 	customVMGroup := flags.RegisterFlagGroup(cmd, "Custom VM Flags", "show-custom-vm-flags", true, func(set *pflag.FlagSet) {
 		set.StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
+		set.StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
 		set.BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM")
 		set.StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 		set.StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
