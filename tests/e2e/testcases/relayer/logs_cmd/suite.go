@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -60,7 +61,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 			logsArgs := []string{
 				"logs",
 			}
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, utils.TestFlags{})
@@ -96,7 +97,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 				"logs",
 				"--raw",
 			}
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, utils.TestFlags{})
@@ -135,7 +136,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 				"logs",
 				"--raw",
 			}
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, logsFlags)
@@ -176,7 +177,7 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 				"logs",
 				"--raw",
 			}
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", logsArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, logsFlags)

@@ -1,6 +1,7 @@
 package start
 
 import (
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -61,7 +62,7 @@ var _ = ginkgo.Describe("[Relayer] start", func() {
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			// Start the relayer
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", []string{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", []string{
 				"start",
 			}, utils.GlobalFlags{
 				"local":             true,
@@ -88,7 +89,7 @@ var _ = ginkgo.Describe("[Relayer] start", func() {
 	ginkgo.Context("With invalid input", func() {
 		ginkgo.It("should fail to start the relayer when there is no relayer config", func() {
 			// Start the relayer
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", []string{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", []string{
 				"start",
 			}, utils.GlobalFlags{
 				"local":             true,
@@ -123,7 +124,7 @@ var _ = ginkgo.Describe("[Relayer] start", func() {
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			// Start the relayer
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", []string{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", []string{
 				"start",
 			}, utils.GlobalFlags{
 				"local":             true,

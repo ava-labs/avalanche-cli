@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func SetupValidatorManagerAtProxy(
+func SetupValidatorProxyImplementation(
 	rpcURL string,
 	proxyManagerPrivateKey string,
 	validatorManager common.Address,
@@ -24,24 +24,24 @@ func SetupValidatorManagerAtProxy(
 		false,
 		common.Address{},
 		proxyManagerPrivateKey,
-		common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress),
+		common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress),
 		big.NewInt(0),
-		"set proxy to PoS",
+		"set validator proxy implementation",
 		validatorManagerSDK.ErrorSignatureToError,
 		"upgrade(address,address)",
-		common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
+		common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress),
 		validatorManager,
 	)
 }
 
-func GetProxyValidatorManager(
+func GetValidatorProxyImplementation(
 	rpcURL string,
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
-		common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress),
+		common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress),
 		"getProxyImplementation(address)->(address)",
-		common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
+		common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress),
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -49,10 +49,10 @@ func GetProxyValidatorManager(
 	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
 }
 
-func ProxyHasValidatorManagerSet(
+func ValidatorProxyHasImplementationSet(
 	rpcURL string,
 ) (bool, error) {
-	validatorManagerAddress, err := GetProxyValidatorManager(rpcURL)
+	validatorManagerAddress, err := GetValidatorProxyImplementation(rpcURL)
 	if err != nil {
 		return false, err
 	}
@@ -62,5 +62,40 @@ func ProxyHasValidatorManagerSet(
 	}
 	return client.ContractAlreadyDeployed(
 		validatorManagerAddress.Hex(),
+	)
+}
+
+func GetSpecializedValidatorProxyImplementation(
+	rpcURL string,
+) (common.Address, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
+		"getProxyImplementation(address)->(address)",
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
+}
+
+func SetupSpecializationProxyImplementation(
+	rpcURL string,
+	proxyManagerPrivateKey string,
+	validatorManager common.Address,
+) (*types.Transaction, *types.Receipt, error) {
+	return contract.TxToMethod(
+		rpcURL,
+		false,
+		common.Address{},
+		proxyManagerPrivateKey,
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
+		big.NewInt(0),
+		"set specialization proxy implementation",
+		validatorManagerSDK.ErrorSignatureToError,
+		"upgrade(address,address)",
+		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
+		validatorManager,
 	)
 }

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -21,7 +24,14 @@ func SetupAvalancheGoBinary(
 	avalancheGoVersion string,
 	avalancheGoBinaryPath string,
 ) (string, error) {
+	var err error
 	if avalancheGoBinaryPath == "" {
+		if avalancheGoVersion == constants.DefaultAvalancheGoVersion {
+			avalancheGoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, models.NewLocalNetwork(), nil)
+			if err != nil {
+				return "", err
+			}
+		}
 		_, avalancheGoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
 		if err != nil {
 			return "", fmt.Errorf("failed setting up avalanchego binary: %w", err)

@@ -10,18 +10,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-	"github.com/spf13/pflag"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
@@ -29,13 +26,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -51,6 +49,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 const skipRelayerFlagName = "skip-relayer"
@@ -336,15 +335,15 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 			ux.Logger.PrintToUser("Enter your blockchain's ChainID. It can be any positive integer != %d.", originalChainID)
 			newChainID, err := app.Prompt.CapturePositiveInt(
 				"ChainID",
-				[]prompts.Comparator{
+				[]comparator.Comparator{
 					{
 						Label: "Zero",
-						Type:  prompts.MoreThan,
+						Type:  comparator.MoreThan,
 						Value: 0,
 					},
 					{
 						Label: "Original Chain ID",
-						Type:  prompts.NotEq,
+						Type:  comparator.NotEq,
 						Value: originalChainID,
 					},
 				},
@@ -824,10 +823,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// needs to first stop relayer so non sovereign subnets successfully restart
+	if sidecar.TeleporterReady && !icmSpec.SkipICMDeploy && !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+		_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
+	}
+
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerStr := validatorManagerSDK.ProxyContractAddress
+		validatorManagerStr := validatormanagerSDK.ValidatorProxyContractAddress
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
@@ -873,6 +877,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		)
 		if err != nil {
 			return err
+		}
+		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			sidecar, err := app.LoadSidecar(chain)
+			if err != nil {
+				return err
+			}
+			networkInfo := sidecar.Networks[network.Name()]
+			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
+			sidecar.Networks[network.Name()] = networkInfo
+			if err := app.UpdateSidecar(&sidecar); err != nil {
+				return err
+			}
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
@@ -944,7 +960,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
-				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
 				if network.Kind == models.Local && icmSpec.RelayerBinPath == "" && icmSpec.RelayerVersion == constants.DefaultRelayerVersion {
 					if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 						return err

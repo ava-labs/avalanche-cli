@@ -265,6 +265,8 @@ func AddEtnaSubnetValidatorToCluster(
 		ewoqPChainAddress,
 		"--delegation-fee",
 		"100",
+		"--rewards-recipient",
+		utils.EwoqEVMAddress,
 		"--staking-period",
 		"100s",
 		"--weight",

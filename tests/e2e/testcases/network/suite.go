@@ -116,31 +116,4 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
-
-	ginkgo.It("clean hard deletes plugin binaries non SOV", func() {
-		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-
-		// check that plugin binaries exist
-		plugins, err := utils.GetPluginBinaries()
-		// should have only subnet-evm binary
-		gomega.Expect(len(plugins)).Should(gomega.Equal(1))
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.CleanNetwork()
-
-		// check that plugin binaries exist
-		plugins, err = utils.GetPluginBinaries()
-		// should be empty
-		gomega.Expect(len(plugins)).Should(gomega.Equal(0))
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
 })

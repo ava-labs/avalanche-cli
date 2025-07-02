@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -37,6 +38,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -59,6 +61,7 @@ var (
 	disableOwnerAddr             string
 	delegationFee                uint16
 	minimumStakeDuration         uint64
+	rewardsRecipientAddr         string
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
@@ -380,6 +383,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
+	cmd.Flags().StringVar(&rewardsRecipientAddr, "rewards-recipient", "", "EVM address that will receive the validation rewards")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
@@ -433,10 +437,10 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if stakeAmount == 0 {
 		stakeAmount, err = app.Prompt.CaptureUint64Compare(
 			"Enter the amount of token to stake for each validator",
-			[]prompts.Comparator{
+			[]comparator.Comparator{
 				{
 					Label: "Positive",
-					Type:  prompts.MoreThan,
+					Type:  comparator.MoreThan,
 					Value: 0,
 				},
 			},
@@ -558,7 +562,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
@@ -609,6 +613,22 @@ func addAsValidator(
 		return err
 	}
 
+	if rewardsRecipientAddr == "" {
+		rewardsRecipientAddr, err = prompts.PromptAddress(
+			app.Prompt,
+			"receive the validation rewards",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			network,
+			prompts.EVMFormat,
+			"Address",
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	ux.Logger.PrintToUser(" ")
 	ux.Logger.PrintToUser("Adding validator %s", nodeIDStr)
 	ux.Logger.PrintToUser(" ")
@@ -646,6 +666,7 @@ func addAsValidator(
 		true,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
+		common.HexToAddress(rewardsRecipientAddr),
 		validatorManagerAddressStr,
 		useACP99,
 		"",

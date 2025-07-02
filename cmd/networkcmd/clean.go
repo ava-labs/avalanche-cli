@@ -5,7 +5,6 @@ package networkcmd
 import (
 	"errors"
 	"os"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -19,8 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var hard bool
-
 func newCleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean",
@@ -31,13 +28,6 @@ configuration.`,
 		RunE: clean,
 		Args: cobrautils.ExactArgs(0),
 	}
-
-	cmd.Flags().BoolVar(
-		&hard,
-		"hard",
-		false,
-		"Also clean downloaded avalanchego and plugin binaries",
-	)
 
 	return cmd
 }
@@ -57,12 +47,6 @@ func clean(*cobra.Command, []string) error {
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
-	}
-
-	if hard {
-		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
-		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-		cleanBins(binDir)
 	}
 
 	if err := app.ResetPluginsDir(); err != nil {
