@@ -160,10 +160,10 @@ func preAddChecks(args []string) error {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
 	if nodeEndpoint != "" && (nodeIDStr != "" || publicKey != "" || pop != "") {
-		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint used")
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint is used")
 	}
 	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
-		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator is used")
 	}
 	if len(args) == 0 && createLocalValidator {
 		return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
@@ -172,7 +172,7 @@ func preAddChecks(args []string) error {
 	return nil
 }
 
-func addValidator(cmd *cobra.Command, args []string) error {
+func addValidator(_ *cobra.Command, args []string) error {
 	var sc models.Sidecar
 	blockchainName := ""
 	networkOption := networkoptions.DefaultSupportedNetworkOptions

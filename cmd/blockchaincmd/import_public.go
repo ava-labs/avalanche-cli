@@ -30,7 +30,6 @@ import (
 
 var (
 	blockchainIDStr string
-	nodeURL         string
 	useSubnetEvm    bool
 	useCustomVM     bool
 	rpcURL          string
