@@ -678,11 +678,11 @@ func (client Client) CreateDummyBlocks(
 	txSigner := types.LatestSignerForChainID(chainID)
 	blockNumber, err := client.BlockNumber()
 	if err != nil {
-		return fmt.Errorf("client.BlockNumber failure: %w", err)
+		return fmt.Errorf("unable to get block number: %w", err)
 	}
 	nonce, err := client.NonceAt(addr.Hex())
 	if err != nil {
-		return fmt.Errorf("client.NonceAt failure: %w", err)
+		return fmt.Errorf("unable to get nonce: %w", err)
 	}
 	for i := 0; i < numBlocks; i++ {
 		// it may be the case that we hit an outdated node with the rpc, so lets not fully trust the API
