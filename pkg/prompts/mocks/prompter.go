@@ -5,14 +5,14 @@ package mocks
 import (
 	big "math/big"
 
-	ids "github.com/ava-labs/avalanchego/ids"
+	comparator "github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
 	common "github.com/ethereum/go-ethereum/common"
+
+	ids "github.com/ava-labs/avalanchego/ids"
 
 	mock "github.com/stretchr/testify/mock"
 
 	models "github.com/ava-labs/avalanche-cli/pkg/models"
-
-	prompts "github.com/ava-labs/avalanche-cli/pkg/prompts"
 
 	time "time"
 
@@ -653,7 +653,7 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 }
 
 // CapturePositiveInt provides a mock function with given fields: promptStr, comparators
-func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.Comparator) (int, error) {
+func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []comparator.Comparator) (int, error) {
 	ret := _m.Called(promptStr, comparators)
 
 	if len(ret) == 0 {
@@ -662,16 +662,16 @@ func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.C
 
 	var r0 int
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (int, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, []comparator.Comparator) (int, error)); ok {
 		return rf(promptStr, comparators)
 	}
-	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) int); ok {
+	if rf, ok := ret.Get(0).(func(string, []comparator.Comparator) int); ok {
 		r0 = rf(promptStr, comparators)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, []prompts.Comparator) error); ok {
+	if rf, ok := ret.Get(1).(func(string, []comparator.Comparator) error); ok {
 		r1 = rf(promptStr, comparators)
 	} else {
 		r1 = ret.Error(1)
@@ -905,7 +905,7 @@ func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 }
 
 // CaptureUint64Compare provides a mock function with given fields: promptStr, comparators
-func (_m *Prompter) CaptureUint64Compare(promptStr string, comparators []prompts.Comparator) (uint64, error) {
+func (_m *Prompter) CaptureUint64Compare(promptStr string, comparators []comparator.Comparator) (uint64, error) {
 	ret := _m.Called(promptStr, comparators)
 
 	if len(ret) == 0 {
@@ -914,16 +914,16 @@ func (_m *Prompter) CaptureUint64Compare(promptStr string, comparators []prompts
 
 	var r0 uint64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (uint64, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, []comparator.Comparator) (uint64, error)); ok {
 		return rf(promptStr, comparators)
 	}
-	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) uint64); ok {
+	if rf, ok := ret.Get(0).(func(string, []comparator.Comparator) uint64); ok {
 		r0 = rf(promptStr, comparators)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, []prompts.Comparator) error); ok {
+	if rf, ok := ret.Get(1).(func(string, []comparator.Comparator) error); ok {
 		r1 = rf(promptStr, comparators)
 	} else {
 		r1 = ret.Error(1)

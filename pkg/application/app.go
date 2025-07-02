@@ -989,3 +989,19 @@ func (app *Avalanche) GetNetworkFromSidecarNetworkName(
 	}
 	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
 }
+
+func (app *Avalanche) GetVersion() string {
+	if app.Version != "" {
+		return app.Version
+	}
+	wdPath, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	versionPath := filepath.Join(wdPath, "VERSION")
+	content, err := os.ReadFile(versionPath)
+	if err != nil {
+		return ""
+	}
+	return string(content)
+}

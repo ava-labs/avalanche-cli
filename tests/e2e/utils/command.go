@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"golang.org/x/exp/maps"
 )
 
@@ -14,20 +15,10 @@ type GlobalFlags map[string]interface{}
 
 type TestFlags map[string]interface{}
 
-// CommandGroup represents the different command groups available in the CLI
-type CommandGroup string
-
-const (
-	BlockchainCmd CommandGroup = "blockchain"
-	ValidatorCmd  CommandGroup = "validator"
-	ICMCmd        CommandGroup = "icm"
-	InterchainCmd CommandGroup = "interchain"
-)
-
 var avalancheBinaryPath = "./bin/avalanche"
 
 // TestCommand tests a CLI command with flag inputs
-func TestCommand(commandGroup CommandGroup, command string, args []string, globalFlags GlobalFlags, testFlags TestFlags) (string, error) {
+func TestCommand(commandGroup cmd.CommandGroup, command string, args []string, globalFlags GlobalFlags, testFlags TestFlags) (string, error) {
 	// Build command arguments
 	cmdArgs := []string{string(commandGroup), command}
 

@@ -3,6 +3,7 @@ package deploy
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -76,7 +77,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -137,7 +138,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"deploy",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -200,7 +201,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -336,7 +337,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -419,7 +420,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -480,7 +481,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"deploy",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -543,7 +544,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -679,7 +680,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 					"--cchain",
 				}
 
-				output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 					"local":             true,
 					"skip-update-check": true,
 				}, deployFlags)
@@ -758,13 +759,13 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			_, err = utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			_, err = utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
 			gomega.Expect(err).Should(gomega.BeNil())
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
@@ -784,7 +785,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
@@ -815,7 +816,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
@@ -861,7 +862,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
@@ -892,7 +893,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)
@@ -939,7 +940,7 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				"--cchain",
 			}
 
-			output, err := utils.TestCommand(utils.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
+			output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
 				"local":             true,
 				"skip-update-check": true,
 			}, deployFlags)

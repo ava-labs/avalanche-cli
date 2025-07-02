@@ -299,7 +299,7 @@ func removeValidatorSOV(
 	}
 
 	if sc.UseACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
@@ -428,7 +428,7 @@ func removeValidatorSOV(
 		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
-		sc.PoA() && sc.UseACP99,
+		sc.UseACP99,
 	)
 	if err != nil {
 		return err

@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.BeforeEach(func() {
-		commands.CleanNetworkHard()
+		commands.CleanNetwork()
 	})
 
 	ginkgo.AfterEach(func() {
@@ -42,9 +42,11 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a subnet with subnet-evm version non SOV", func() {
-		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.SoloAvagoKey])).Should(gomega.BeFalse())
+		// remove installed subnet-evm if detected
+		if utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1]) ||
+			utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloAvagoKey]) {
+			_ = utils.DeleteBins()
+		}
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1], false)
 		deployOutput := commands.DeploySubnetLocallyWithVersionNonSOV(subnetName, binaryToVersion[utils.SoloAvagoKey])
@@ -73,9 +75,10 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
 		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
 
-		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(evmVersion)).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion)).Should(gomega.BeFalse())
+		// remove subnet-evm if installed version detected
+		if utils.CheckSubnetEVMExists(evmVersion) || utils.CheckAvalancheGoExists(avagoVersion) {
+			_ = utils.DeleteBins()
+		}
 
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, evmVersion)
 		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, avagoVersion)
@@ -101,9 +104,11 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy multiple subnet-evm versions non SOV", func() {
-		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2])).Should(gomega.BeFalse())
+		// remove installed subnet-evm if detected
+		if utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1]) ||
+			utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2]) {
+			_ = utils.DeleteBins()
+		}
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1], false)
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, binaryToVersion[utils.SoloSubnetEVMKey2], false)
@@ -145,9 +150,10 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy multiple subnet-evm versions SOV", func() {
-		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2])).Should(gomega.BeFalse())
+		if utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1]) ||
+			utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2]) {
+			_ = utils.DeleteBins()
+		}
 
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey1])
 		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey2])
@@ -189,6 +195,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with multiple avalanchego versions non SOV", func() {
+		if binaryToVersion[utils.MultiAvago1Key] == binaryToVersion[utils.MultiAvago2Key] {
+			ginkgo.Skip("this needs two different rpc-compatible avalanchego to be available")
+		}
 		// check avago install precondition
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago1Key])).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago2Key])).Should(gomega.BeFalse())
