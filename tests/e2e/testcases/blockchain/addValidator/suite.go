@@ -5,6 +5,7 @@ package addValidator
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	utilsPkg "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -51,7 +52,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"skip-update-check": true,
 		}
 		blockchainCmdArgs := []string{subnetName}
-		_, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
+		_, err := utils.TestCommand(cmd.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, nil)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -87,7 +88,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"bls-public-key":          publicKey,
 			"bls-proof-of-possession": pop,
 		}
-		_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", nil, globalFlags, testFlags)
+		_, err = utils.TestCommand(cmd.BlockchainCmd, "addValidator", nil, globalFlags, testFlags)
 		if err != nil {
 			fmt.Printf("err %s \n", err.Error())
 		}
@@ -108,7 +109,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"bls-public-key":          publicKey,
 			"bls-proof-of-possession": pop,
 		}
-		_, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		_, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		if err != nil {
 			fmt.Printf("err %s \n", err.Error())
 		}
@@ -121,7 +122,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"node-endpoint": currentLocalMachineURI[0],
 		}
-		_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		_, err = utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		// checkConvertOnlyOutput(output, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 
@@ -156,7 +157,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 		testFlags := utils.TestFlags{
 			"create-local-validator": true,
 		}
-		_, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		_, err = utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// we should have two local machine instances
@@ -203,7 +204,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"weight":                 50,
 			"create-local-validator": true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		fmt.Printf("err %s \n", err.Error())
 		fmt.Printf("output %s \n", output)
@@ -214,7 +215,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"weight":                 0,
 			"create-local-validator": true,
 		}
-		output, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err = utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("weight has to be greater than 0"))
 	})
@@ -236,7 +237,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"key":                    keyName,
 			"create-local-validator": true,
 		}
-		output, err = utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err = utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("error building tx: insufficient funds:"))
 		err = utils.DeleteKey(keyName)
@@ -248,7 +249,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"validator-manager-owner": "0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf",
 			"create-local-validator":  true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("private key for validator manager owner 0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf is not found"))
 	})
@@ -257,7 +258,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"node-endpoint":          "http://127.0.0.1:63283",
 			"create-local-validator": true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set both --node-endpoint and --create-local-validator"))
 	})
@@ -268,7 +269,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"bls-proof-of-possession": pop,
 			"create-local-validator":  true,
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used"))
 	})
@@ -279,7 +280,7 @@ var _ = ginkgo.Describe("[Blockchain Add Validator]", ginkgo.Ordered, func() {
 			"bls-proof-of-possession": pop,
 			"node-endpoint":           "http://127.0.0.1:63283",
 		}
-		output, err := utils.TestCommand(utils.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "addValidator", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --node-endpoint used"))
 	})
