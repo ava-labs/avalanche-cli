@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
@@ -373,11 +372,7 @@ func changeWeightACP99(
 		return err
 	}
 
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
-
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
-		aggregatorCtx,
 		ux.Logger.PrintToUser,
 		app,
 		network,
@@ -429,10 +424,7 @@ func changeWeightACP99(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
-		aggregatorCtx,
 		app,
 		network,
 		changeWeightFlags.RPC,

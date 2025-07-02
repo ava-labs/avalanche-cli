@@ -5,7 +5,6 @@ package blockchain
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -340,7 +339,6 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
-	ctx context.Context,
 	log logging.Logger,
 	network network.Network,
 	privateKey string,
@@ -394,7 +392,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -425,7 +422,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 }
 
 func (c *Subnet) InitializeProofOfStake(
-	ctx context.Context,
 	log logging.Logger,
 	network network.Network,
 	privateKey string,
@@ -482,7 +478,6 @@ func (c *Subnet) InitializeProofOfStake(
 		log.Info("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,

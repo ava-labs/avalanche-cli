@@ -3,18 +3,19 @@
 package validatormanager
 
 import (
-	"context"
 	_ "embed"
 	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -56,7 +57,6 @@ func InitializeValidatorWeightChange(
 }
 
 func InitValidatorWeightChange(
-	ctx context.Context,
 	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
@@ -162,7 +162,6 @@ func InitValidatorWeightChange(
 	}
 
 	signedMsg, err := GetL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -202,7 +201,6 @@ func CompleteValidatorWeightChange(
 }
 
 func FinishValidatorWeightChange(
-	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -234,7 +232,6 @@ func FinishValidatorWeightChange(
 		}
 	}
 	signedMessage, err := GetPChainL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -277,7 +274,6 @@ func FinishValidatorWeightChange(
 }
 
 func GetL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -317,8 +313,10 @@ func GetL1ValidatorWeightMessage(
 			return nil, err
 		}
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
+		aggregatorCtx,
 		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
@@ -332,7 +330,6 @@ func GetL1ValidatorWeightMessage(
 }
 
 func GetPChainL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -381,8 +378,10 @@ func GetPChainL1ValidatorWeightMessage(
 	if err != nil {
 		return nil, err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
+		aggregatorCtx,
 		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
