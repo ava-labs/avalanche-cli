@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
@@ -105,6 +106,9 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 	if _, err := deployer.IncreaseValidatorPChainBalance(validationID, balance); err != nil {
 		return err
 	}
+
+	// add a delay to safely retrieve updated balance (to avoid issues when connecting to a different API node)
+	time.Sleep(5 * time.Second)
 
 	balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
 	if err != nil {
