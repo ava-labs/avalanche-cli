@@ -59,7 +59,7 @@ const (
 
 	ANRRequestTimeout      = 3 * time.Minute
 	APIRequestTimeout      = 10 * time.Second
-	APIRequestLargeTimeout = 10 * time.Second
+	APIRequestLargeTimeout = 30 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
 	FujiBootstrapTimeout    = 15 * time.Minute

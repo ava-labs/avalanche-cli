@@ -701,7 +701,7 @@ func getXChainBalanceStr(xClient avm.Client, addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel = utils.GetAPIContext()
+	ctx, cancel = utils.GetAPILargeContext()
 	defer cancel()
 	resp, err := xClient.GetBalance(ctx, xID, asset.AssetID.String(), false)
 	if err != nil {
