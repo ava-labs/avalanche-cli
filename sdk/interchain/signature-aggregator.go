@@ -173,12 +173,13 @@ func (s *SignatureAggregator) waitForHealthy(ctx context.Context) error {
 	subnets = append(subnets, constants.PrimaryNetworkID)
 	healthy := peers.GetNetworkHealthFunc(s.network, subnets)
 	for {
-		if err := healthy(ctx); err == nil {
+		err := healthy(ctx)
+		if err == nil {
 			return nil
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for signature aggregation being healthy: %w", ctx.Err())
+			return fmt.Errorf("timeout waiting for signature aggregation being healthy: %w: %w", err, ctx.Err())
 		case <-time.After(1 * time.Second):
 		}
 	}
