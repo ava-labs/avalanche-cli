@@ -191,6 +191,7 @@ func importBlockchain(
 	if err != nil {
 		return models.Sidecar{}, nil, err
 	}
+	printFunc("  Sovereign: %v", !subnetInfo.IsPermissioned)
 
 	sc := models.Sidecar{
 		Name: blockchainName,
@@ -223,7 +224,7 @@ func importBlockchain(
 		if rpcURL != "" {
 			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
-				return models.Sidecar{}, nil, fmt.Errorf("could not obtain infer manager type")
+				return models.Sidecar{}, nil, fmt.Errorf("could not infer validator manager type")
 			}
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
