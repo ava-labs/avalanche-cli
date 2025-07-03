@@ -221,17 +221,29 @@ func importBlockchain(
 		sc.Networks[network.Name()] = e
 		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
 		if rpcURL != "" {
-			sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
-			if err != nil {
-				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type: %w", err)
+			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
+			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
+				return models.Sidecar{}, nil, fmt.Errorf("could not obtain infer manager type")
 			}
-			printFunc("  Validation Kind: %s", sc.ValidatorManagement)
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 				if err != nil {
 					return models.Sidecar{}, nil, err
 				}
-				sc.ValidatorManagerOwner = owner.String()
+				// check if the owner is a specialized validator manager
+				validatorManagement := validatorManagerSDK.GetValidatorManagerType(rpcURL, owner)
+				if validatorManagement != validatormanagertypes.UndefinedValidatorManagement {
+					printFunc("  Specialized Validator Manager Address: %s", owner)
+					e := sc.Networks[network.Name()]
+					e.ValidatorManagerAddress = owner.String()
+					sc.Networks[network.Name()] = e
+					sc.ValidatorManagement = validatorManagement
+				} else {
+					sc.ValidatorManagerOwner = owner.String()
+				}
+			}
+			printFunc("  Validation Kind: %s", sc.ValidatorManagement)
+			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 				printFunc("  Validator Manager Owner: %s", sc.ValidatorManagerOwner)
 			}
 		}
