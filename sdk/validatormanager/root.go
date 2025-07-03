@@ -4,14 +4,15 @@
 package validatormanager
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -206,7 +207,6 @@ func (p PoSParams) Verify() error {
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetToL1ConversionMessage(
-	ctx context.Context,
 	network network.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -253,8 +253,10 @@ func GetPChainSubnetToL1ConversionMessage(
 	if err != nil {
 		return nil, err
 	}
+	aggregatorCtx, aggregatorCancel := utils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
+		aggregatorCtx,
 		network,
 		aggregatorLogger,
 		subnetID,

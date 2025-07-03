@@ -24,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -330,12 +329,8 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
 
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
-
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
-		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -362,10 +357,7 @@ func removeValidatorSOV(
 		if !force {
 			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
 		}
-		aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-		defer aggregatorCancel()
 		signedMessage, validationID, _, err = validatormanager.InitValidatorRemoval(
-			aggregatorCtx,
 			app,
 			network,
 			rpcURL,
@@ -413,10 +405,7 @@ func removeValidatorSOV(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
-		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

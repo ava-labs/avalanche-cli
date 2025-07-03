@@ -12,4 +12,7 @@ const (
 	// node
 	UserOnlyWriteReadPerms     = 0o600
 	UserOnlyWriteReadExecPerms = 0o700
+
+	// sigagg
+	SignatureAggregatorTimeout = 60 * time.Second
 )
