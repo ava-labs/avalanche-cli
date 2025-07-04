@@ -216,23 +216,48 @@ func importBlockchain(
 	if !subnetInfo.IsPermissioned {
 		sc.Sovereign = true
 		sc.UseACP99 = true
-		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+		validatorManagerAddress := "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+		validatorManagerRPCEndpoint := ""
+		validatorManagerBlockchainID := subnetInfo.ManagerChainID
+		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
+		printFunc("  Validator Manager BlockchainID: %s", subnetInfo.ManagerChainID)
+		if blockchainID == subnetInfo.ManagerChainID {
+			// manager lives at L1
+			validatorManagerRPCEndpoint = rpcURL
+		} else {
+			cChainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{CChain: true})
+			if err != nil {
+				return models.Sidecar{}, nil, fmt.Errorf("could not get C-Chain ID for %s: %w", network.Name(), err)
+			}
+			if cChainID == subnetInfo.ManagerChainID {
+				// manager lives at C-Chain
+				validatorManagerRPCEndpoint = network.CChainEndpoint()
+			} else {
+				printFunc("The Validator Manager is not deployed on L1 or on C-Chain")
+				validatorManagerRPCEndpoint, err = app.Prompt.CaptureURL("What is the Validator Manager RPC endpoint?", false)
+				if err != nil {
+					return models.Sidecar{}, nil, err
+				}
+			}
+		}
+		printFunc("  Validator Manager RPC: %s", validatorManagerRPCEndpoint)
 		e := sc.Networks[network.Name()]
 		e.ValidatorManagerAddress = validatorManagerAddress
+		e.ValidatorManagerBlockchainID = validatorManagerBlockchainID
+		e.ValidatorManagerRPCEndpoint = validatorManagerRPCEndpoint
 		sc.Networks[network.Name()] = e
-		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
-		if rpcURL != "" {
-			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
+		if validatorManagerRPCEndpoint != "" {
+			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress))
 			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
 				return models.Sidecar{}, nil, fmt.Errorf("could not infer validator manager type")
 			}
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
-				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+				owner, err := contract.GetContractOwner(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress))
 				if err != nil {
 					return models.Sidecar{}, nil, err
 				}
 				// check if the owner is a specialized validator manager
-				validatorManagement := validatorManagerSDK.GetValidatorManagerType(rpcURL, owner)
+				validatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, owner)
 				if validatorManagement != validatormanagertypes.UndefinedValidatorManagement {
 					printFunc("  Specialized Validator Manager Address: %s", owner)
 					e := sc.Networks[network.Name()]
