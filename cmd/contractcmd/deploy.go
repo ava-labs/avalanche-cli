@@ -18,5 +18,7 @@ smart contracts.`,
 	}
 	// contract deploy erc20
 	cmd.AddCommand(newDeployERC20Cmd())
+	// contract deploy validatorManager
+	cmd.AddCommand(newDeployValidatorManagerCmd())
 	return cmd
 }

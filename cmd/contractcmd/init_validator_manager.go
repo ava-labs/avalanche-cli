@@ -208,7 +208,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(initValidatorManagerFlags.RPC)
+		deployed, err := validatormanager.GenesisValidatorProxyHasImplementationSet(initValidatorManagerFlags.RPC)
 		if err != nil {
 			return err
 		}
@@ -225,15 +225,16 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 			if sc.UseACP99 {
-				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				)
 				if err != nil {
 					return err
 				}
-				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -242,9 +243,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 					return err
 				}
 			} else {
-				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				); err != nil {
 					return err

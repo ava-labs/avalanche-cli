@@ -330,7 +330,7 @@ func InitializeValidatorManager(
 	ownerAddress := common.HexToAddress(validatorManagerOwner)
 
 	if pos {
-		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
+		deployed, err := validatormanager.GenesisValidatorProxyHasImplementationSet(rpcURL)
 		if err != nil {
 			return tracked, err
 		}
@@ -347,15 +347,16 @@ func InitializeValidatorManager(
 				return tracked, err
 			}
 			if useACP99 {
-				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					rpcURL,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				)
 				if err != nil {
 					return tracked, err
 				}
-				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -364,9 +365,10 @@ func InitializeValidatorManager(
 					return tracked, err
 				}
 			} else {
-				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 					rpcURL,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				); err != nil {
 					return tracked, err
