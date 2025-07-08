@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -38,7 +39,7 @@ var validatorMessagesV2_0_0Bytecode []byte
 func DeployValidatorMessagesV2_0_0Contract(
 	rpcURL string,
 	privateKey string,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	validatorMessagesBytes := []byte(strings.TrimSpace(string(validatorMessagesV2_0_0Bytecode)))
 	return contract.DeployContract(
 		rpcURL,
@@ -104,14 +105,14 @@ func DeployValidatorManagerV2_0_0Contract(
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	validatorManagerString := strings.TrimSpace(string(validatorManagerV2_0_0Bytecode))
 	if validatorMessagesAtGenesis {
 		validatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(validatorManagerString)
 	} else {
-		validatorMessagesContractAddress, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
+		validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
 		if err != nil {
-			return common.Address{}, err
+			return common.Address{}, nil, nil, err
 		}
 		validatorManagerString = fillValidatorMessagesAddressPlaceholder(validatorManagerString, validatorMessagesContractAddress.Hex())
 	}
@@ -131,7 +132,7 @@ func DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	validatorMessagesAtGenesis bool,
 	proxyOwnerPrivateKey string,
 ) (common.Address, error) {
-	validatorManagerAddress, err := DeployValidatorManagerV2_0_0Contract(
+	validatorManagerAddress, _, _, err := DeployValidatorManagerV2_0_0Contract(
 		rpcURL,
 		privateKey,
 		validatorMessagesAtGenesis,
@@ -156,14 +157,14 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV1_0_0Bytecode))
 	if validatorMessagesAtGenesis {
 		posValidatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(posValidatorManagerString)
 	} else {
-		validatorMessagesContractAddress, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
+		validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
 		if err != nil {
-			return common.Address{}, err
+			return common.Address{}, nil, nil, err
 		}
 		posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString, validatorMessagesContractAddress.Hex())
 	}
@@ -183,7 +184,7 @@ func DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 	validatorMessagesAtGenesis bool,
 	proxyOwnerPrivateKey string,
 ) (common.Address, error) {
-	posValidatorManagerAddress, err := DeployPoSValidatorManagerV1_0_0Contract(
+	posValidatorManagerAddress, _, _, err := DeployPoSValidatorManagerV1_0_0Contract(
 		rpcURL,
 		privateKey,
 		validatorMessagesAtGenesis,
@@ -207,7 +208,7 @@ var posValidatorManagerV2_0_0Bytecode []byte
 func DeployPoSValidatorManagerV2_0_0Contract(
 	rpcURL string,
 	privateKey string,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV2_0_0Bytecode))
 	posValidatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(posValidatorManagerString)
 	posValidatorManagerBytes := []byte(posValidatorManagerString)
@@ -225,7 +226,7 @@ func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	privateKey string,
 	proxyOwnerPrivateKey string,
 ) (common.Address, error) {
-	posValidatorManagerAddress, err := DeployPoSValidatorManagerV2_0_0Contract(
+	posValidatorManagerAddress, _, _, err := DeployPoSValidatorManagerV2_0_0Contract(
 		rpcURL,
 		privateKey,
 	)

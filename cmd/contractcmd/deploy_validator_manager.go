@@ -3,13 +3,17 @@
 package contractcmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -141,10 +145,14 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 	// TODO: ask for confirmation for the full set of operations
 	var proxyAdminAddress common.Address
 	if flags.proxyAdmin == "" {
-		proxyAdminAddress, err = validatormanager.DeployProxyAdmin(
+		proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
+		if err != nil {
+			return err
+		}
+		proxyAdminAddress, _, _, err = validatormanager.DeployProxyAdmin(
 			flags.rpcEndpoint,
 			privateKey,
-			common.HexToAddress(proxyOwnerPrivateKey),
+			proxyOwnerAddress,
 		)
 		if err != nil {
 			return err
@@ -154,32 +162,53 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 	} else {
 		proxyAdminAddress = common.HexToAddress(flags.proxyAdmin)
 	}
-	var transparentProxyAddress common.Address 
-	if flags.transparentProxy == "" {
-		transparentProxyAddress, err = validatormanager.DeployTransparentProxy(
-			flags.rpcEndpoint,
-			privateKey,
-			proxyAdminAddress,
-			proxyAdminAddress,
-		)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Transparent Proxy Address: %s", transparentProxyAddress.Hex())
-	} else {
-		transparentProxyAddress = common.HexToAddress(flags.transparentProxy)
-	}
-	validatorManagerAddress, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+	validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
 			privateKey,
 			false,
-			proxyOwnerPrivateKey,
 	)
 	if err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Validator Manager Address: %s", validatorManagerAddress.Hex())
+	var transparentProxyAddress common.Address 
+	if flags.transparentProxy == "" {
+		proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
+		if err != nil {
+			return err
+		}
+		var receipt *types.Receipt
+		transparentProxyAddress, _, receipt, err = validatormanager.DeployTransparentProxy(
+			flags.rpcEndpoint,
+			privateKey,
+			validatorManagerAddress,
+			proxyOwnerAddress,
+		)
+		if err != nil {
+			return err
+		}
+		event, err := evm.GetEventFromLogs(receipt.Logs, validatormanager.ParseAdminChanged)
+		if err != nil {
+			return err
+		}
+		proxyAdminAddress = event.NewAdmin
+		fmt.Printf("%#v\n", event)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Transparent Proxy Address: %s", transparentProxyAddress.Hex())
+	} else {
+		transparentProxyAddress = common.HexToAddress(flags.transparentProxy)
+	}
+	_, _, err = validatormanager.SetupProxyImplementation(
+		flags.rpcEndpoint,
+		proxyAdminAddress,
+		transparentProxyAddress,
+		proxyOwnerPrivateKey,
+		validatorManagerAddress,
+		"test",
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }

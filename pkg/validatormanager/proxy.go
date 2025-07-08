@@ -22,7 +22,7 @@ func DeployProxyAdmin(
 	rpcURL string,
 	privateKey string,
 	owner common.Address,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	proxyAdminBytes := []byte(strings.TrimSpace(string(proxyAdminBytecode)))
 	return contract.DeployContract(
 		rpcURL,
@@ -41,7 +41,7 @@ func DeployTransparentProxy(
 	privateKey string,
 	implementation common.Address,
 	admin common.Address,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	transparentProxyBytes := []byte(strings.TrimSpace(string(transparentProxyBytecode)))
 	return contract.DeployContract(
 		rpcURL,
@@ -62,6 +62,32 @@ func SetupProxyImplementation(
 	implementation common.Address,
 	description string,
 ) (*types.Transaction, *types.Receipt, error) {
+	useUpgradeAndCall := false
+	if out, err := contract.CallToMethod(
+		rpcURL,
+		proxyAdminContractAddress,
+		"UPGRADE_INTERFACE_VERSION()->(string)",
+	); err == nil {
+		if v, err := contract.GetSmartContractCallResult[string]("UPGRADE_INTERFACE_VERSION", out); err == nil && v == "5.0.0" {
+			useUpgradeAndCall = true
+		}
+	}
+	if useUpgradeAndCall {
+		return contract.TxToMethod(
+			rpcURL,
+			false,
+			common.Address{},
+			proxyOwnerPrivateKey,
+			proxyAdminContractAddress,
+			big.NewInt(0),
+			description,
+			validatorManagerSDK.ErrorSignatureToError,
+			"upgradeAndCall(address,address,bytes)",
+			transparentProxyContractAddress,
+			implementation,
+			[]byte{},
+		)
+	}
 	return contract.TxToMethod(
 		rpcURL,
 		false,
@@ -94,6 +120,24 @@ func GetProxyImplementation(
 	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
 }
 
+type TransparentUpgradeableProxyAdminChanged struct {
+        PreviousAdmin common.Address
+        NewAdmin      common.Address
+        Raw           types.Log
+}
+
+func ParseAdminChanged(log types.Log) (*TransparentUpgradeableProxyAdminChanged, error) {
+	event := new(TransparentUpgradeableProxyAdminChanged)
+	if err := contract.UnpackLog(
+		"AdminChanged(address,address)",
+		[]int{},
+		log,
+		event,
+	); err != nil {
+		return nil, err
+	}
+	return event, nil
+}
 
 func SetupGenesisValidatorProxyImplementation(
 	rpcURL string,
