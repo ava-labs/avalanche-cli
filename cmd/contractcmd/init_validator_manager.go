@@ -237,6 +237,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				)
 				if err != nil {

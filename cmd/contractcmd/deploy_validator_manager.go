@@ -9,11 +9,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -26,7 +25,8 @@ type DeployValidatorManagerFlags struct {
 	chainFlags           contract.ChainSpec
 	rpcEndpoint          string
 	proxyAdmin           string
-	transparentProxy     string
+	proxy                string
+	deployProxy          bool
 }
 
 var deployValidatorManagerFlags DeployValidatorManagerFlags
@@ -49,15 +49,16 @@ func newDeployValidatorManagerCmd() *cobra.Command {
 	deployValidatorManagerFlags.chainFlags.AddToCmd(cmd, "deploy a Validator Manager contract into %s")
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.proxyAdmin, "proxy-admin", "", "use the given proxy admin")
-	cmd.Flags().StringVar(&deployValidatorManagerFlags.transparentProxy, "transparent-proxy", "", "use the given transparent proxy")
+	cmd.Flags().StringVar(&deployValidatorManagerFlags.proxy, "proxy", "", "use the given proxy")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.deployProxy, "deploy-proxy", false, "deploy a new proxy and admin for the validator manager")
 	return cmd
 }
 
-func deployValidatorManager(_ *cobra.Command, _ []string) error {
-	return CallDeployValidatorManager(deployValidatorManagerFlags)
+func deployValidatorManager(cmd *cobra.Command, _ []string) error {
+	return CallDeployValidatorManager(cmd, deployValidatorManagerFlags)
 }
 
-func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
+func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManagerFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -124,15 +125,46 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 			return err
 		}
 	}
+
+	if flag := cmd.Flags().Lookup("deploy-proxy"); flag != nil && !flag.Changed {
+		flags.deployProxy, err = app.Prompt.CaptureNoYes("Do you want to deploy a new proxy altogether with the validator manager?")
+		if err != nil {
+			return err
+		}
+	}
+
+	if flags.deployProxy && (flags.proxyAdmin != "" || flags.proxy != "") {
+		return fmt.Errorf("can't ask to deploy a proxy while providing either proxy admin or proxy address as input")
+	}
+
+	if !flags.deployProxy {
+		if flags.proxy == "" {
+			addr, err := app.Prompt.CaptureAddress("Which is the proxy contract address?")
+			if err != nil {
+				return err
+			}
+			flags.proxy = addr.Hex()
+		}
+		if flags.proxyAdmin == "" {
+			addr, err := app.Prompt.CaptureAddress("Which is the proxy admin contract address?")
+			if err != nil {
+				return err
+			}
+			flags.proxyAdmin = addr.Hex()
+		}
+	}
+
 	proxyOwnerPrivateKey, err := flags.proxyOwnerPrivateKey.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}
 	if proxyOwnerPrivateKey == "" {
-		ux.Logger.PrintToUser("A private key is needed as owner of the validator manager proxy")
+		if flags.deployProxy {
+			ux.Logger.PrintToUser("A private key is needed as owner of the new proxy")
+		}
 		proxyOwnerPrivateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"own the validator manager proxy",
+			"set up the proxy",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -142,59 +174,57 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 			return err
 		}
 	}
-	return nil
-	// TODO: ask for confirmation for the full set of operations
-	var proxyAdminAddress common.Address
-	if flags.proxyAdmin != "" {
-		proxyAdminAddress = common.HexToAddress(flags.proxyAdmin)
-	}
+
+	ux.Logger.PrintToUser("Deploying validator manager contract")
 	validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
-			flags.rpcEndpoint,
-			privateKey,
-			false,
+		flags.rpcEndpoint,
+		privateKey,
+		false,
 	)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Validator Manager Address: %s", validatorManagerAddress.Hex())
-	var transparentProxyAddress common.Address 
-	if flags.transparentProxy == "" {
-		proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
-		if err != nil {
-			return err
-		}
-		var receipt *types.Receipt
-		transparentProxyAddress, _, receipt, err = validatormanager.DeployTransparentProxy(
+	ux.Logger.PrintToUser("")
+
+	if !flags.deployProxy {
+		ux.Logger.PrintToUser("Updating proxy")
+		_, _, err = validatormanager.SetupProxyImplementation(
 			flags.rpcEndpoint,
-			privateKey,
+			common.HexToAddress(flags.proxyAdmin),
+			common.HexToAddress(flags.proxy),
+			proxyOwnerPrivateKey,
 			validatorManagerAddress,
-			proxyOwnerAddress,
+			"setup deployed VMC at proxy",
 		)
 		if err != nil {
 			return err
 		}
-		event, err := evm.GetEventFromLogs(receipt.Logs, validatormanager.ParseAdminChanged)
-		if err != nil {
-			return err
-		}
-		proxyAdminAddress = event.NewAdmin
-		fmt.Printf("%#v\n", event)
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Transparent Proxy Address: %s", transparentProxyAddress.Hex())
-	} else {
-		transparentProxyAddress = common.HexToAddress(flags.transparentProxy)
+		ux.Logger.PrintToUser("Proxy successfully configured")
+		return nil
 	}
-	_, _, err = validatormanager.SetupProxyImplementation(
+
+	ux.Logger.PrintToUser("Deploying proxy contracts")
+
+	proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
+	if err != nil {
+		return err
+	}
+	proxy, _, receipt, err := validatormanager.DeployTransparentProxy(
 		flags.rpcEndpoint,
-		proxyAdminAddress,
-		transparentProxyAddress,
-		proxyOwnerPrivateKey,
+		privateKey,
 		validatorManagerAddress,
-		"setup deployed VMC at proxy",
+		proxyOwnerAddress,
 	)
 	if err != nil {
 		return err
 	}
+	event, err := evm.GetEventFromLogs(receipt.Logs, validatormanager.ParseAdminChanged)
+	if err != nil {
+		return err
+	}
+	proxyAdmin := event.NewAdmin
+	ux.Logger.PrintToUser("Proxy Address: %s", proxy.Hex())
+	ux.Logger.PrintToUser("Proxy Admin Address: %s", proxyAdmin.Hex())
 	return nil
 }

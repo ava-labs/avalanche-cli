@@ -11,10 +11,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -47,6 +47,15 @@ func DeployValidatorMessagesV2_0_0Contract(
 		validatorMessagesBytes,
 		"()",
 	)
+}
+
+func hasValidatorMessagesAddressPlaceholder(
+	contract string,
+) bool {
+	return strings.Index(
+		contract,
+		"__$fd0c147b4031eef6079b0498cbafa865f0$__",
+	) != -1
 }
 
 func fillValidatorMessagesAddressPlaceholder(
@@ -98,23 +107,23 @@ func AddValidatorManagerV2_0_0ContractToAllocations(
 	}
 }
 
-//go:embed smart_contracts/validator_manager_bytecode_v2.0.0.txt
-var validatorManagerV2_0_0Bytecode []byte
-
-func DeployValidatorManagerV2_0_0Contract(
+func DeployValidatorManagerContract(
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
+	validatorManagerBytecode string,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
-	validatorManagerString := strings.TrimSpace(string(validatorManagerV2_0_0Bytecode))
-	if validatorMessagesAtGenesis {
-		validatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(validatorManagerString)
-	} else {
-		validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
-		if err != nil {
-			return common.Address{}, nil, nil, err
+	validatorManagerString := strings.TrimSpace(validatorManagerBytecode)
+	if hasValidatorMessagesAddressPlaceholder(validatorManagerString) {
+		if validatorMessagesAtGenesis {
+			validatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(validatorManagerString)
+		} else {
+			validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
+			if err != nil {
+				return common.Address{}, nil, nil, err
+			}
+			validatorManagerString = fillValidatorMessagesAddressPlaceholder(validatorManagerString, validatorMessagesContractAddress.Hex())
 		}
-		validatorManagerString = fillValidatorMessagesAddressPlaceholder(validatorManagerString, validatorMessagesContractAddress.Hex())
 	}
 	validatorManagerBytes := []byte(validatorManagerString)
 	return contract.DeployContract(
@@ -123,6 +132,22 @@ func DeployValidatorManagerV2_0_0Contract(
 		validatorManagerBytes,
 		"(uint8)",
 		uint8(0),
+	)
+}
+
+//go:embed smart_contracts/validator_manager_bytecode_v2.0.0.txt
+var validatorManagerV2_0_0Bytecode []byte
+
+func DeployValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+	validatorMessagesAtGenesis bool,
+) (common.Address, *types.Transaction, *types.Receipt, error) {
+	return DeployValidatorManagerContract(
+		rpcURL,
+		privateKey,
+		validatorMessagesAtGenesis,
+		string(validatorManagerV2_0_0Bytecode),
 	)
 }
 
@@ -158,23 +183,11 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 	privateKey string,
 	validatorMessagesAtGenesis bool,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
-	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV1_0_0Bytecode))
-	if validatorMessagesAtGenesis {
-		posValidatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(posValidatorManagerString)
-	} else {
-		validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
-		if err != nil {
-			return common.Address{}, nil, nil, err
-		}
-		posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString, validatorMessagesContractAddress.Hex())
-	}
-	posValidatorManagerBytes := []byte(posValidatorManagerString)
-	return contract.DeployContract(
+	return DeployValidatorManagerContract(
 		rpcURL,
 		privateKey,
-		posValidatorManagerBytes,
-		"(uint8)",
-		uint8(0),
+		validatorMessagesAtGenesis,
+		string(posValidatorManagerV1_0_0Bytecode),
 	)
 }
 
@@ -208,27 +221,26 @@ var posValidatorManagerV2_0_0Bytecode []byte
 func DeployPoSValidatorManagerV2_0_0Contract(
 	rpcURL string,
 	privateKey string,
+	validatorMessagesAtGenesis bool,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
-	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV2_0_0Bytecode))
-	posValidatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(posValidatorManagerString)
-	posValidatorManagerBytes := []byte(posValidatorManagerString)
-	return contract.DeployContract(
+	return DeployValidatorManagerContract(
 		rpcURL,
 		privateKey,
-		posValidatorManagerBytes,
-		"(uint8)",
-		uint8(0),
+		validatorMessagesAtGenesis,
+		string(posValidatorManagerV2_0_0Bytecode),
 	)
 }
 
 func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	rpcURL string,
 	privateKey string,
+	validatorMessagesAtGenesis bool,
 	proxyOwnerPrivateKey string,
 ) (common.Address, error) {
 	posValidatorManagerAddress, _, _, err := DeployPoSValidatorManagerV2_0_0Contract(
 		rpcURL,
 		privateKey,
+		validatorMessagesAtGenesis,
 	)
 	if err != nil {
 		return common.Address{}, err

@@ -121,9 +121,9 @@ func GetProxyImplementation(
 }
 
 type TransparentUpgradeableProxyAdminChanged struct {
-        PreviousAdmin common.Address
-        NewAdmin      common.Address
-        Raw           types.Log
+	PreviousAdmin common.Address
+	NewAdmin      common.Address
+	Raw           types.Log
 }
 
 func ParseAdminChanged(log types.Log) (*TransparentUpgradeableProxyAdminChanged, error) {

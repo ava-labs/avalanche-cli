@@ -359,6 +359,7 @@ func InitializeValidatorManager(
 				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					rpcURL,
 					genesisPrivateKey,
+					true,
 					proxyOwnerPrivateKey,
 				)
 				if err != nil {
