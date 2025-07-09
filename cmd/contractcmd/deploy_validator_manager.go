@@ -142,24 +142,10 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 			return err
 		}
 	}
+	return nil
 	// TODO: ask for confirmation for the full set of operations
 	var proxyAdminAddress common.Address
-	if flags.proxyAdmin == "" {
-		proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
-		if err != nil {
-			return err
-		}
-		proxyAdminAddress, _, _, err = validatormanager.DeployProxyAdmin(
-			flags.rpcEndpoint,
-			privateKey,
-			proxyOwnerAddress,
-		)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Proxy Admin Address: %s", proxyAdminAddress.Hex())
-	} else {
+	if flags.proxyAdmin != "" {
 		proxyAdminAddress = common.HexToAddress(flags.proxyAdmin)
 	}
 	validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
@@ -205,7 +191,7 @@ func CallDeployValidatorManager(flags DeployValidatorManagerFlags) error {
 		transparentProxyAddress,
 		proxyOwnerPrivateKey,
 		validatorManagerAddress,
-		"test",
+		"setup deployed VMC at proxy",
 	)
 	if err != nil {
 		return err
