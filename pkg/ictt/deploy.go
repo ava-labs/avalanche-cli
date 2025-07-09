@@ -11,6 +11,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -63,11 +65,11 @@ func DeployERC20Remote(
 	tokenRemoteName string,
 	tokenRemoteSymbol string,
 	tokenRemoteDecimals uint8,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenRemote.sol/ERC20TokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	tokenRemoteSettings := TokenRemoteSettings{
 		ICMRegistryAddress:    icmRegistryAddress,
@@ -100,11 +102,11 @@ func DeployNativeRemote(
 	nativeAssetSymbol string,
 	initialReserveImbalance *big.Int,
 	burnedFeesReportingRewardPercentage *big.Int,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenRemote.sol/NativeTokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	tokenRemoteSettings := TokenRemoteSettings{
 		ICMRegistryAddress:    icmRegistryAddress,
@@ -133,11 +135,11 @@ func DeployERC20Home(
 	icmManagerAddress common.Address,
 	erc20TokenAddress common.Address,
 	erc20TokenDecimals uint8,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHome.sol/ERC20TokenHome.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	return contract.DeployContract(
 		rpcURL,
@@ -158,11 +160,11 @@ func DeployNativeHome(
 	icmRegistryAddress common.Address,
 	icmManagerAddress common.Address,
 	wrappedNativeTokenAddress common.Address,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenHome.sol/NativeTokenHome.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	return contract.DeployContract(
 		rpcURL,
@@ -180,11 +182,11 @@ func DeployWrappedNativeToken(
 	rpcURL string,
 	privateKey string,
 	tokenSymbol string,
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(utils.ExpandHome(srcDir), "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	return contract.DeployContract(
 		rpcURL,

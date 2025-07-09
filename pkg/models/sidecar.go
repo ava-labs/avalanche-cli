@@ -9,16 +9,18 @@ import (
 )
 
 type NetworkData struct {
-	SubnetID                   ids.ID
-	BlockchainID               ids.ID
-	RPCVersion                 int
-	TeleporterMessengerAddress string
-	TeleporterRegistryAddress  string
-	RPCEndpoints               []string
-	WSEndpoints                []string
-	BootstrapValidators        []SubnetValidator
-	ClusterName                string
-	ValidatorManagerAddress    string
+	SubnetID                     ids.ID
+	BlockchainID                 ids.ID
+	RPCVersion                   int
+	TeleporterMessengerAddress   string
+	TeleporterRegistryAddress    string
+	RPCEndpoints                 []string
+	WSEndpoints                  []string
+	BootstrapValidators          []SubnetValidator
+	ClusterName                  string
+	ValidatorManagerAddress      string
+	ValidatorManagerBlockchainID ids.ID
+	ValidatorManagerRPCEndpoint  string
 }
 
 type Sidecar struct {
