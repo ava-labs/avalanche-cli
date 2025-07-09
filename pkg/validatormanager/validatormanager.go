@@ -52,10 +52,10 @@ func DeployValidatorMessagesV2_0_0Contract(
 func hasValidatorMessagesAddressPlaceholder(
 	contract string,
 ) bool {
-	return strings.Index(
+	return strings.Contains(
 		contract,
 		"__$fd0c147b4031eef6079b0498cbafa865f0$__",
-	) != -1
+	)
 }
 
 func fillValidatorMessagesAddressPlaceholder(

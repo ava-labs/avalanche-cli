@@ -4,6 +4,7 @@ package contractcmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -12,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -27,6 +29,9 @@ type DeployValidatorManagerFlags struct {
 	proxyAdmin           string
 	proxy                string
 	deployProxy          bool
+	poa                  bool
+	pos                  bool
+	validatorManagerPath string
 }
 
 var deployValidatorManagerFlags DeployValidatorManagerFlags
@@ -51,6 +56,9 @@ func newDeployValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.proxyAdmin, "proxy-admin", "", "use the given proxy admin")
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.proxy, "proxy", "", "use the given proxy")
 	cmd.Flags().BoolVar(&deployValidatorManagerFlags.deployProxy, "deploy-proxy", false, "deploy a new proxy and admin for the validator manager")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.poa, "poa", false, "deploy a v2.0.0 Proof of Authority Validator Manager")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.pos, "pos", false, "deploy a v2.0.0 Proof of Stake Validator Manager")
+	cmd.Flags().StringVar(&deployValidatorManagerFlags.validatorManagerPath, "validator-manager-path", "", "deploy the validator manager contained in the given path (hex encoded)")
 	return cmd
 }
 
@@ -59,6 +67,28 @@ func deployValidatorManager(cmd *cobra.Command, _ []string) error {
 }
 
 func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManagerFlags) error {
+	if !flags.poa && !flags.pos && flags.validatorManagerPath == "" {
+		customOption := "Custom"
+		options := []string{validatormanagertypes.ProofOfAuthority, validatormanagertypes.ProofOfStake, customOption}
+		option, err := app.Prompt.CaptureList(
+			"Which validator manager do you want to deploy?",
+			options,
+		)
+		if err != nil {
+			return err
+		}
+		switch option {
+		case validatormanagertypes.ProofOfAuthority:
+			flags.poa = true
+		case validatormanagertypes.ProofOfStake:
+			flags.pos = true
+		case customOption:
+			flags.validatorManagerPath, err = app.Prompt.CaptureExistingFilepath("Provide filepath that contains validator manager bytecode encoded as hexa:")
+			if err != nil {
+				return err
+			}
+		}
+	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -176,13 +206,40 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	}
 
 	ux.Logger.PrintToUser("Deploying validator manager contract")
-	validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
-		flags.rpcEndpoint,
-		privateKey,
-		false,
-	)
-	if err != nil {
-		return err
+	var validatorManagerAddress common.Address
+	switch {
+	case flags.poa:
+		validatorManagerAddress, _, _, err = validatormanager.DeployValidatorManagerV2_0_0Contract(
+			flags.rpcEndpoint,
+			privateKey,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	case flags.pos:
+		validatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
+			flags.rpcEndpoint,
+			privateKey,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	case flags.validatorManagerPath != "":
+		bytecode, err := os.ReadFile(flags.validatorManagerPath)
+		if err != nil {
+			return err
+		}
+		validatorManagerAddress, _, _, err = validatormanager.DeployValidatorManagerContract(
+			flags.rpcEndpoint,
+			privateKey,
+			false,
+			string(bytecode),
+		)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("Validator Manager Address: %s", validatorManagerAddress.Hex())
 	ux.Logger.PrintToUser("")
