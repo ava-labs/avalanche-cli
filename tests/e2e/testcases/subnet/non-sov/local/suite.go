@@ -31,8 +31,10 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
-		err := utils.DeleteConfigs(subnetName)
+		_, err := commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.DeleteConfigs(subnetName)
 		if err != nil {
 			fmt.Println("Clean network error:", err)
 		}
@@ -168,7 +170,7 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 
 var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		if err := utils.DeleteConfigs(subnetName); err != nil {
 			fmt.Println("Clean network error:", err)
 			gomega.Expect(err).Should(gomega.BeNil())
