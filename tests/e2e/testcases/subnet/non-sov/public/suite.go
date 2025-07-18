@@ -96,14 +96,18 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		_, avagoVersion := commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 
 		// local network
-		commands.StartNetworkWithVersion(avagoVersion)
+		_, err = commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": avagoVersion,
+		})
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.AfterEach(func() {
 		commands.DeleteSubnetConfig(subnetName)
 		err := utils.DeleteKey(ewoqKey)
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
+		_, err = commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("deploy subnet to fuji", func() {
