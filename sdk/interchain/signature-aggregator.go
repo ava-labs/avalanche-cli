@@ -111,10 +111,7 @@ func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, mess
 			continue
 		}
 
-		// Parse the response to get the signed message hex
-		var response struct {
-			SignedMessage string `json:"signed-message"`
-		}
+		var response signatureAggregator.AggregateSignatureResponse
 		if err := json.Unmarshal(body, &response); err != nil {
 			lastErr = fmt.Errorf("failed to parse response: %w", err)
 			logger.Error("Error parsing response",
