@@ -36,8 +36,8 @@ func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, mess
 		Message:          message,
 		SigningSubnetID:  signingSubnetID,
 		QuorumPercentage: quorumPercentage,
+		Justification:    justification,
 	}
-	request.Justification = justification
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
