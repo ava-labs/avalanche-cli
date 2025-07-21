@@ -290,7 +290,7 @@ func GetRegisterL1ValidatorMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage))
+	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
 	if err != nil {
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
 	}
@@ -352,7 +352,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	}
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, justification, subnetID.String(), int(aggregatorQuorumPercentage))
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, justification, subnetID.String(), aggregatorQuorumPercentage)
 }
 
 // last step of flow for adding a new validator
