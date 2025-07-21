@@ -327,7 +327,15 @@ func removeValidatorSOV(
 
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
-		return err
+		// if local machine does not have a running signature aggregator instance for the network, we will create it first
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+		if err != nil {
+			return err
+		}
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			return err
+		}
 	}
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
