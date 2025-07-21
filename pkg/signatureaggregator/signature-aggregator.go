@@ -19,6 +19,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/api/info"
+	basecfg "github.com/ava-labs/icm-services/config"
+	signatureAggregatorConfig "github.com/ava-labs/icm-services/signature-aggregator/config"
+
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -242,7 +245,7 @@ func waitForAggregatorReady(url string, timeout time.Duration) error {
 }
 
 // readExistingConfig reads the existing signature aggregator configuration from a file.
-func readExistingConfig(configPath string) (*SignatureAggregatorConfig, error) {
+func readExistingConfig(configPath string) (*signatureAggregatorConfig.Config, error) {
 	// Check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil, nil
@@ -255,7 +258,7 @@ func readExistingConfig(configPath string) (*SignatureAggregatorConfig, error) {
 	}
 
 	// Parse the config
-	var config SignatureAggregatorConfig
+	var config signatureAggregatorConfig.Config
 	if err := json.Unmarshal(configBytes, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
@@ -263,15 +266,15 @@ func readExistingConfig(configPath string) (*SignatureAggregatorConfig, error) {
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort int) *SignatureAggregatorConfig {
-	config := &SignatureAggregatorConfig{
+func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
+	config := &signatureAggregatorConfig.Config{
 		LogLevel:             "debug",
-		PChainAPI:            APIConfig{BaseURL: networkEndpoint},
-		InfoAPI:              APIConfig{BaseURL: networkEndpoint},
+		PChainAPI:            &basecfg.APIConfig{BaseURL: networkEndpoint},
+		InfoAPI:              &basecfg.APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
 		AllowPrivateIPs:      true,
 		TrackedSubnetIDs:     []string{subnetID},
-		ManuallyTrackedPeers: make([]PeerConfig, 0),
+		ManuallyTrackedPeers: make([]*basecfg.PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
 	}
@@ -281,7 +284,7 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 		if !peer.Info.PublicIP.IsValid() {
 			continue
 		}
-		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, PeerConfig{
+		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, &basecfg.PeerConfig{
 			ID: peer.Info.ID.String(),
 			IP: peer.Info.PublicIP.String(),
 		})
@@ -291,7 +294,7 @@ func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, pe
 }
 
 // WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
-func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPath string) error {
+func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, configPath string) error {
 	// Read existing config if it exists
 	existingConfig, err := readExistingConfig(configPath)
 	if err != nil {
@@ -315,14 +318,14 @@ func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 		config.TrackedSubnetIDs = mergedSubnetIDs
 
 		// Merge manually tracked peers
-		existingPeers := make(map[string]PeerConfig)
+		existingPeers := make(map[string]*basecfg.PeerConfig)
 		for _, peer := range existingConfig.ManuallyTrackedPeers {
 			existingPeers[peer.ID] = peer
 		}
 		for _, peer := range config.ManuallyTrackedPeers {
 			existingPeers[peer.ID] = peer
 		}
-		mergedPeers := make([]PeerConfig, 0, len(existingPeers))
+		mergedPeers := make([]*basecfg.PeerConfig, 0, len(existingPeers))
 		for _, peer := range existingPeers {
 			mergedPeers = append(mergedPeers, peer)
 		}
@@ -350,30 +353,6 @@ func WriteSignatureAggregatorConfig(config *SignatureAggregatorConfig, configPat
 	}
 
 	return nil
-}
-
-// SignatureAggregatorConfig represents the configuration for the signature aggregator.
-type SignatureAggregatorConfig struct {
-	LogLevel             string       `json:"log-level"`
-	PChainAPI            APIConfig    `json:"p-chain-api"`
-	InfoAPI              APIConfig    `json:"info-api"`
-	SignatureCacheSize   int          `json:"signature-cache-size"`
-	AllowPrivateIPs      bool         `json:"allow-private-ips"`
-	TrackedSubnetIDs     []string     `json:"tracked-subnet-ids"`
-	ManuallyTrackedPeers []PeerConfig `json:"manually-tracked-peers"`
-	APIPort              int          `json:"api-port"`
-	MetricsPort          int          `json:"metrics-port"`
-}
-
-// APIConfig represents the configuration for an API endpoint.
-type APIConfig struct {
-	BaseURL string `json:"base-url"`
-}
-
-// PeerConfig represents the configuration for a peer.
-type PeerConfig struct {
-	ID string `json:"id"`
-	IP string `json:"ip"`
 }
 
 func isPortAvailable(port int) bool {
@@ -438,7 +417,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 		}
 	}
 
-	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, apiPort, metricsPort)
+	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, uint16(apiPort), uint16(metricsPort))
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
@@ -571,7 +550,7 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 		return fmt.Errorf("no existing config found at %s", configPath)
 	}
 	// Convert existing peers to a map for easy lookup
-	existingPeers := make(map[string]PeerConfig)
+	existingPeers := make(map[string]*basecfg.PeerConfig)
 	for _, peer := range existingConfig.ManuallyTrackedPeers {
 		existingPeers[peer.ID] = peer
 	}
@@ -585,7 +564,7 @@ func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.N
 		peerID := peer.Info.ID.String()
 		if _, exists := existingPeers[peerID]; !exists {
 			hasNewPeers = true
-			existingConfig.ManuallyTrackedPeers = append(existingConfig.ManuallyTrackedPeers, PeerConfig{
+			existingConfig.ManuallyTrackedPeers = append(existingConfig.ManuallyTrackedPeers, &basecfg.PeerConfig{
 				ID: peerID,
 				IP: peer.Info.PublicIP.String(),
 			})
