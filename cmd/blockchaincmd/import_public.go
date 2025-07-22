@@ -224,7 +224,7 @@ func importBlockchain(
 		if rpcURL != "" {
 			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
-				return models.Sidecar{}, nil, fmt.Errorf("could not infer validator manager type")
+				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type")
 			}
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
