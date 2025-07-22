@@ -13,38 +13,31 @@ import (
 
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	signatureAggregator "github.com/ava-labs/icm-services/signature-aggregator/api"
 	"go.uber.org/zap"
 )
 
 const (
-	DefaultQuorumPercentage = 67
-	MaxRetries              = 3
-	InitialBackoff          = 1 * time.Second
+	SignatureAggregatorRequestTimeout = 30 * time.Second
+	DefaultQuorumPercentage           = 67
+	MaxRetries                        = 3
+	InitialBackoff                    = 1 * time.Second
 )
-
-// AggregateSignaturesRequest represents the request structure for aggregating signatures
-type AggregateSignaturesRequest struct {
-	Message                string `json:"message"`
-	Justification          string `json:"justification"`
-	SigningSubnetID        string `json:"signing-subnet-id"`
-	QuorumPercentage       int    `json:"quorum-percentage"`
-	QuorumPercentageBuffer int    `json:"quorum-percentage-buffer,omitempty"`
-}
 
 // SignMessage sends a request to the signature aggregator to sign a message.
 // It returns the signed warp message or an error if the operation fails.
-func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, message, justification, signingSubnetID string, quorumPercentage int) (*warp.Message, error) {
+func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, message, justification, signingSubnetID string, quorumPercentage uint64) (*warp.Message, error) {
 	if quorumPercentage == 0 {
 		quorumPercentage = DefaultQuorumPercentage
 	} else if quorumPercentage > 100 {
 		return nil, fmt.Errorf("quorum percentage cannot be greater than 100")
 	}
-	request := AggregateSignaturesRequest{
+	request := signatureAggregator.AggregateSignatureRequest{
 		Message:          message,
 		SigningSubnetID:  signingSubnetID,
 		QuorumPercentage: quorumPercentage,
+		Justification:    justification,
 	}
-	request.Justification = justification
 
 	requestBody, err := json.Marshal(request)
 	if err != nil {
@@ -56,7 +49,7 @@ func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, mess
 	)
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: SignatureAggregatorRequestTimeout,
 	}
 
 	var lastErr error
@@ -118,10 +111,7 @@ func SignMessage(logger logging.Logger, signatureAggregatorEndpoint string, mess
 			continue
 		}
 
-		// Parse the response to get the signed message hex
-		var response struct {
-			SignedMessage string `json:"signed-message"`
-		}
+		var response signatureAggregator.AggregateSignatureResponse
 		if err := json.Unmarshal(body, &response); err != nil {
 			lastErr = fmt.Errorf("failed to parse response: %w", err)
 			logger.Error("Error parsing response",
