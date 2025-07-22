@@ -362,7 +362,7 @@ func GetPChainL1ValidatorWeightMessage(
 		return nil, err
 	}
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), int(aggregatorQuorumPercentage))
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
 }
 
 func GetL1ValidatorWeightMessageFromTx(

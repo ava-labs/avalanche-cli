@@ -1,21 +1,21 @@
 {
-  "subnet-evm": "v0.7.4",
-  "rpc": 40,
+  "subnet-evm": "v0.7.5",
+  "rpc": 41,
   "avalanchego": {
     "Local Network": {
-      "latest-version": "v1.13.1",
+      "latest-version": "v1.13.2",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.13.1",
+      "latest-version": "v1.13.2",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.13.1",
+      "latest-version": "v1.13.2",
       "minimum-version": "v1.13.0-fuji"
     },
     "Mainnet": {
-      "latest-version": "v1.13.1",
+      "latest-version": "v1.13.2",
       "minimum-version": "v1.13.0"
     }
   }
