@@ -145,7 +145,7 @@ func GetUptimeProofMessage(
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
-	blockchainID ids.ID,
+	managerBlockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
 ) (*warp.Message, error) {
@@ -159,7 +159,7 @@ func GetUptimeProofMessage(
 	}
 	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		blockchainID,
+		managerBlockchainID,
 		addressedCall.Bytes(),
 	)
 	if err != nil {
@@ -194,7 +194,8 @@ func InitValidatorRemoval(
 	isPoS bool,
 	uptimeSec uint64,
 	force bool,
-	validatorManagerAddressStr string,
+	managerAddressStr string,
+	managerBlockchainID ids.ID,
 	useACP99 bool,
 	initiateTxHash string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
@@ -206,15 +207,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	blockchainID, err := contract.GetBlockchainID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	validationID, err := validator.GetValidationID(
 		rpcURL,
@@ -259,7 +252,7 @@ func InitValidatorRemoval(
 				0,
 				aggregatorExtraPeerEndpoints,
 				subnetID,
-				blockchainID,
+				managerBlockchainID,
 				validationID,
 				uptimeSec,
 			)
@@ -318,7 +311,7 @@ func InitValidatorRemoval(
 		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
-		blockchainID,
+		managerBlockchainID,
 		managerAddress,
 		validationID,
 		nonce,
@@ -378,10 +371,10 @@ func FinishValidatorRemoval(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerAddressStr string,
 	useACP99 bool,
 ) (*types.Transaction, error) {
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,

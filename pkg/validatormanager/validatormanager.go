@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -359,21 +358,17 @@ func SetupPoA(
 	ctx context.Context,
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
-	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
 	v2_0_0 bool,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		ctx,
 		log,
-		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorLogger,
-		validatorManagerAddressStr,
 		v2_0_0,
 	)
 }
@@ -387,27 +382,19 @@ func SetupPoS(
 	ctx context.Context,
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
-	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanagerSDK.PoSParams,
-	managerAddress string,
-	specializedManagerAddress string,
-	managerOwnerPrivateKey string,
 	v2_0_0 bool,
 ) error {
 	return subnet.InitializeProofOfStake(
 		ctx,
 		log,
-		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorLogger,
 		posParams,
-		managerAddress,
-		specializedManagerAddress,
-		managerOwnerPrivateKey,
 		v2_0_0,
 	)
 }

@@ -79,6 +79,7 @@ var (
 	cchainIcmKeyName       string
 	relayerAllowPrivateIPs bool
 
+	validatorManagerRPC             string
 	validatorManagerAddressStr      string
 	validatorManagerBlockchainIDStr string
 
@@ -141,6 +142,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "command stops after CreateSubnetTx and returns SubnetID")
 	cmd.Flags().BoolVar(&deployFlags.ConvertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 
+	cmd.Flags().StringVar(&validatorManagerRPC, "validator-manager-rpc", "", "RPC to use to access to the validator manager. use it if the validator manager is external to the new L1")
 	cmd.Flags().StringVar(&validatorManagerBlockchainID, "validator-manager-blockchain-id", "", "validator manager blockchain ID. use it if the validator manager is external to the new L1")
 	cmd.Flags().StringVar(&validatorManagerAddressStr, "validator-manager-address", "", "validator manager address. use it if the validator manager is external to the new L1")
 

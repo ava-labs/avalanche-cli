@@ -207,6 +207,7 @@ func GetBlockchainEndpoints(
 		}
 	}
 	if rpcEndpoint == "" {
+		// infer from blockchainID is this is C-Chain
 		blockchainID, err := GetBlockchainID(app, network, chainSpec)
 		if err != nil {
 			return "", "", err

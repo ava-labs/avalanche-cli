@@ -68,7 +68,8 @@ func InitValidatorWeightChange(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerAddressStr string,
+	managerBlockchainID ids.ID,
 	weight uint64,
 	initiateTxHash string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
@@ -80,15 +81,7 @@ func InitValidatorWeightChange(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	blockchainID, err := contract.GetBlockchainID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	validationID, err := validator.GetValidationID(
 		rpcURL,
@@ -169,7 +162,7 @@ func InitValidatorWeightChange(
 		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
-		blockchainID,
+		managerBlockchainID,
 		managerAddress,
 		validationID,
 		nonce,
@@ -213,11 +206,11 @@ func FinishValidatorWeightChange(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 	weight uint64,
 ) (*types.Transaction, error) {
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -286,7 +279,7 @@ func GetL1ValidatorWeightMessage(
 	unsignedMessage *warp.UnsignedMessage,
 	// needed to generate message
 	subnetID ids.ID,
-	blockchainID ids.ID,
+	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	validationID ids.ID,
 	nonce uint64,
@@ -310,7 +303,7 @@ func GetL1ValidatorWeightMessage(
 		}
 		unsignedMessage, err = warp.NewUnsignedMessage(
 			network.ID,
-			blockchainID,
+			managerBlockchainID,
 			addressedCall.Bytes(),
 		)
 		if err != nil {
