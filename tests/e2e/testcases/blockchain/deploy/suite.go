@@ -6,11 +6,12 @@ package deploy
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"os"
 	"os/exec"
 	"regexp"
 	"runtime"
+
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -265,7 +266,6 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
 		_, err = listSigAggCmd.CombinedOutput()
-		//fmt.Printf("outputbytes %s \n", string(outputBytes))
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		app := utils.GetApp()

@@ -5,11 +5,12 @@ package convert
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"os"
 	"os/exec"
 	"runtime"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -194,7 +195,6 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 	ginkgo.It("HAPPY PATH: local convert with signature aggregator endpoint set", func() {
 		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
 		_, err := listSigAggCmd.CombinedOutput()
-		//fmt.Printf("outputbytes %s \n", string(outputBytes))
 		gomega.Expect(err).Should(gomega.BeNil())
 		app := utils.GetApp()
 		runFilePath := app.GetLocalSignatureAggregatorRunPath(models.Local)
