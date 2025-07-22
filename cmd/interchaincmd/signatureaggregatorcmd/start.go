@@ -4,6 +4,8 @@ package signatureaggregatorcmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
@@ -11,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"os"
 
 	"github.com/spf13/cobra"
 )
