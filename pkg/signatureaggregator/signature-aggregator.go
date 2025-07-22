@@ -385,8 +385,8 @@ func generateAPIMetricsPorts() (int, int, error) {
 	defer cancel()
 
 	// Start with default ports and increment by 2 each time
-	apiPort := 8080
-	metricsPort := 8081
+	apiPort := 9090
+	metricsPort := 9091
 
 	// Keep trying until we find available ports or timeout
 	for {
