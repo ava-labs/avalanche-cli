@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/api/info"
 	basecfg "github.com/ava-labs/icm-services/config"
 	signatureAggregatorConfig "github.com/ava-labs/icm-services/signature-aggregator/config"
 
@@ -266,7 +265,7 @@ func readExistingConfig(configPath string) (*signatureAggregatorConfig.Config, e
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort int) *signatureAggregatorConfig.Config {
+func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
 	config := &signatureAggregatorConfig.Config{
 		LogLevel:             "debug",
 		PChainAPI:            &basecfg.APIConfig{BaseURL: networkEndpoint},
@@ -406,7 +405,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, network model
 		}
 	}
 
-	config := CreateSignatureAggregatorConfig(network.Endpoint, apiPort, metricsPort)
+	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort))
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
