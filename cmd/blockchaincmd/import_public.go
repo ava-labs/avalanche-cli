@@ -227,11 +227,17 @@ func importBlockchain(
 				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type")
 			}
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
+				// a v2.0.0 validator manager can be identified as PoA for two cases:
+				// - it is PoA
+				// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
+				//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
+				//   owner of this main manager, interacts with the users
 				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 				if err != nil {
 					return models.Sidecar{}, nil, err
 				}
-				// check if the owner is a specialized validator manager
+				// check if the owner is a specialized PoS validator manager
+				// if this is the case, GetValidatorManagerType will return the corresponding type
 				validatorManagement := validatorManagerSDK.GetValidatorManagerType(rpcURL, owner)
 				if validatorManagement != validatormanagertypes.UndefinedValidatorManagement {
 					printFunc("  Specialized Validator Manager Address: %s", owner)
