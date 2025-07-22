@@ -456,7 +456,7 @@ func (d *PublicDeployer) ConvertL1(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	chainID ids.ID,
+	validatorManagerBlockchainID ids.ID,
 	validatorManagerAddress goethereumcommon.Address,
 	validators []*txs.ConvertSubnetToL1Validator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
@@ -474,7 +474,7 @@ func (d *PublicDeployer) ConvertL1(
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnetToL1Tx")
 
-	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress.Bytes(), validators, wallet)
+	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, validatorManagerBlockchainID, validatorManagerAddress.Bytes(), validators, wallet)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -694,16 +694,16 @@ func (d *PublicDeployer) createBlockchainTx(
 func (d *PublicDeployer) createConvertL1Tx(
 	subnetAuthKeys []ids.ShortID,
 	subnetID ids.ID,
-	chainID ids.ID,
-	address []byte,
+	validatorManagerBlockchainID ids.ID,
+	validatorManagerAddress []byte,
 	validators []*txs.ConvertSubnetToL1Validator,
 	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	unsignedTx, err := wallet.P().Builder().NewConvertSubnetToL1Tx(
 		subnetID,
-		chainID,
-		address,
+		validatorManagerBlockchainID,
+		validatorManagerAddress,
 		validators,
 		options...,
 	)

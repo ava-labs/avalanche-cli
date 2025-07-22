@@ -170,7 +170,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 	validationID, err := validator.GetValidationID(changeWeightFlags.RPC, common.HexToAddress(validatorManagerAddress), nodeID)
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func changeWeightACP99(
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), changeWeightFlags.RPC)
 

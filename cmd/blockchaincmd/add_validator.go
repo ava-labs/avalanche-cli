@@ -412,7 +412,7 @@ func CallAddValidator(
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 
 	if validatorManagerOwner == "" {
 		validatorManagerOwner = sc.ValidatorManagerOwner

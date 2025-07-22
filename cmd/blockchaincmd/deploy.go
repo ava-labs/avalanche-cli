@@ -79,7 +79,9 @@ var (
 	cchainIcmKeyName       string
 	relayerAllowPrivateIPs bool
 
-	validatorManagerAddress        string
+	validatorManagerAddressStr      string
+	validatorManagerBlockchainIDStr string
+
 	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -138,6 +140,9 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "command stops after CreateSubnetTx and returns SubnetID")
 	cmd.Flags().BoolVar(&deployFlags.ConvertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+
+	cmd.Flags().StringVar(&validatorManagerBlockchainID, "validator-manager-blockchain-id", "", "validator manager blockchain ID. use it if the validator manager is external to the new L1")
+	cmd.Flags().StringVar(&validatorManagerAddressStr, "validator-manager-address", "", "validator manager address. use it if the validator manager is external to the new L1")
 
 	localNetworkGroup := flags.RegisterFlagGroup(cmd, "Local Network Flags", "show-local-network-flags", true, func(set *pflag.FlagSet) {
 		set.Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
@@ -831,7 +836,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerStr := validatormanagerSDK.ValidatorProxyContractAddress
+		if validatorManagerAddressStr == "" {
+			validatorManagerAdressStr = validatormanagerSDK.ValidatorProxyContractAddress
+		}
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
@@ -842,7 +849,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar,
 			controlKeys,
 			subnetAuthKeys,
-			validatorManagerStr,
+			validatorManagerAddressStr,
 			false,
 		)
 		if err != nil {

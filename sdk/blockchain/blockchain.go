@@ -346,7 +346,8 @@ func (c *Subnet) InitializeProofOfAuthority(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	validatorManagerBlockchainID ids.ID,
+	validatorManagerAddress string,
 	useACP99 bool,
 ) error {
 	if c.SubnetID == ids.Empty {
@@ -377,10 +378,9 @@ func (c *Subnet) InitializeProofOfAuthority(
 		}
 		client.Close()
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		c.RPC,
-		managerAddress,
+		common.HexToAddress(validatorManagerAddress),
 		privateKey,
 		c.SubnetID,
 		*c.OwnerAddress,
@@ -401,7 +401,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
-		managerAddress,
+		common.HexToAddress(validatorManagerAddress),
 		c.BootstrapValidators,
 	)
 	if err != nil {
@@ -410,7 +410,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
-		managerAddress,
+		common.HexToAddress(validatorManagerAddress),
 		privateKey,
 		c.SubnetID,
 		c.BlockchainID,
@@ -432,6 +432,7 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
+	managerBlockchainID ids.ID,
 	managerAddress string,
 	specializedManagerAddress string,
 	managerOwnerPrivateKey string,

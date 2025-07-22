@@ -173,7 +173,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if validatorKind == validatorsdk.NonValidator {
 		// it may be unregistered from P-Chain, but registered on validator manager
 		// due to a previous partial removal operation
-		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+		validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 		validationID, err := validatorsdk.GetValidationID(
 			removeValidatorFlags.RPC,
 			common.HexToAddress(validatorManagerAddress),
@@ -309,7 +309,7 @@ func removeValidatorSOV(
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
