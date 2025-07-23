@@ -4,8 +4,9 @@ package blockchaincmd
 
 import (
 	"fmt"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"strings"
+
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"

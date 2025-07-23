@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"os"
 	"strings"
 	"time"
+
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
