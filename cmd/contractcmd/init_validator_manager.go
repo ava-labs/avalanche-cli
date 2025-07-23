@@ -19,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -187,22 +186,26 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		OwnerAddress:        &ownerAddress,
 		RPC:                 initValidatorManagerFlags.RPC,
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+	if err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
-
 		if err := validatormanager.SetupPoA(
-			aggregatorCtx,
 			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			managerAddress,
 			sc.UseACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return err
 		}
@@ -268,12 +271,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("could not find validator manager owner private key")
 		}
 		if err := validatormanager.SetupPoS(
-			aggregatorCtx,
 			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
@@ -289,6 +290,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			validatormanagerSDK.SpecializationProxyContractAddress,
 			managerOwnerPrivateKey,
 			sc.UseACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return err
 		}
