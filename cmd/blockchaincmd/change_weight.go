@@ -242,7 +242,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			nodeID,
 			newWeight,
 			changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
-			initiateTxHash
+			initiateTxHash,
 		)
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
