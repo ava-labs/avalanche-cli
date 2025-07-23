@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"os"
 	"strings"
 	"time"
@@ -636,6 +637,8 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		// if local machine does not have a running signature aggregator instance for the network, we will create it first
@@ -650,6 +653,7 @@ func addAsValidator(
 	}
 
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		localValidateFlags.RPC,
@@ -694,7 +698,10 @@ func addAsValidator(
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		localValidateFlags.RPC,

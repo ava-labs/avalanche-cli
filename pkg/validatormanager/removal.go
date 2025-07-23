@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"encoding/hex"
 	"errors"
@@ -170,6 +171,7 @@ func GetUptimeProofMessage(
 }
 
 func InitValidatorRemoval(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -353,6 +355,7 @@ func CompleteValidatorRemoval(
 }
 
 func FinishValidatorRemoval(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -376,6 +379,7 @@ func FinishValidatorRemoval(
 		return nil, err
 	}
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
+		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,

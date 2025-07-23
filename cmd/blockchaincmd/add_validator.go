@@ -5,6 +5,7 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"strings"
 	"time"
 
@@ -560,7 +561,10 @@ func CallAddValidator(
 			}
 		}
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -611,7 +615,10 @@ func CallAddValidator(
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
