@@ -191,7 +191,9 @@ func importBlockchain(
 	if err != nil {
 		return models.Sidecar{}, nil, err
 	}
-	printFunc("  Sovereign: %v", !subnetInfo.IsPermissioned)
+	if subnetInfo.IsPermissioned {
+		printFunc("  Blockchain is Not Sovereign")
+	}
 
 	sc := models.Sidecar{
 		Name: blockchainName,
