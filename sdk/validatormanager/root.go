@@ -6,7 +6,6 @@ package validatormanager
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -299,22 +298,18 @@ func InitializeValidatorsSet(
 
 // GetValidatorManagerType returns validatormanagertypes.ProofOfAuthority if validator manager is verified to be Proof of Authority
 // If validator manager is verified to be Proof of Stake, returns validatormanagertypes.ProofOfStake
-// In other cases, returns validatormanagertypes.UndefinedValidatorManagement and the associated error
+// In other cases, returns validatormanagertypes.UndefinedValidatorManagement
 func GetValidatorManagerType(
 	rpcURL string,
 	managerAddress common.Address,
-) (validatormanagertypes.ValidatorManagementType, error) {
-	// Verify that ACP99 validator manager contract is present in the rpc url by calling registeredValidators func in ValidatorManager.sol
-	if _, err := validator.GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
-		return validatormanagertypes.UndefinedValidatorManagement, err
-	}
+) validatormanagertypes.ValidatorManagementType {
 	// verify it is PoS
-	if _, err := PoSWeightToValue(rpcURL, managerAddress, 0); err != nil {
-		// if it is PoA it will return Error: execution reverted
-		if strings.Contains(err.Error(), "execution reverted") {
-			return validatormanagertypes.ProofOfAuthority, nil
-		}
-		return validatormanagertypes.UndefinedValidatorManagement, err
+	if _, err := PoSWeightToValue(rpcURL, managerAddress, 0); err == nil {
+		return validatormanagertypes.ProofOfStake
 	}
-	return validatormanagertypes.ProofOfStake, nil
+	// verify it is PoA
+	if _, err := validator.GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err == nil {
+		return validatormanagertypes.ProofOfAuthority
+	}
+	return validatormanagertypes.UndefinedValidatorManagement
 }
