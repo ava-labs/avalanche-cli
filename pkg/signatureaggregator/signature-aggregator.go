@@ -277,7 +277,6 @@ func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPor
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
 	}
-
 	return config
 }
 

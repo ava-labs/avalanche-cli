@@ -239,6 +239,7 @@ func GetRegisterL1ValidatorMessage(
 				}
 			} else {
 				registerSubnetValidatorUnsignedMessage, err = SearchForRegisterL1ValidatorMessage(
+					ctx,
 					rpcURL,
 					validationID,
 				)
@@ -345,7 +346,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	}
 	var justificationBytes []byte
 	if !registered {
-		justificationBytes, err = GetRegistrationJustification(rpcURL, validationID, subnetID)
+		justificationBytes, err = GetRegistrationJustification(ctx, rpcURL, validationID, subnetID)
 		if err != nil {
 			return nil, err
 		}
@@ -605,6 +606,7 @@ func FinishValidatorRegistration(
 }
 
 func SearchForRegisterL1ValidatorMessage(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 ) (*warp.UnsignedMessage, error) {
@@ -618,14 +620,21 @@ func SearchForRegisterL1ValidatorMessage(
 	}
 	maxBlock := int64(height)
 	minBlock := int64(0)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
-		block, err := client.BlockByNumber(big.NewInt(blockNumber))
-		if err != nil {
-			return nil, err
+	blockStep := int64(5000)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
 		}
-		blockHash := block.Hash()
+		fromBlock := big.NewInt(blockNumber - blockStep)
+		if fromBlock.Sign() < 0 {
+			fromBlock = big.NewInt(0)
+		}
+		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
-			BlockHash: &blockHash,
+			FromBlock: fromBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {
@@ -649,6 +658,7 @@ func SearchForRegisterL1ValidatorMessage(
 }
 
 func GetRegistrationJustification(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 	subnetID ids.ID,
@@ -669,6 +679,7 @@ func GetRegistrationJustification(
 		}
 	}
 	msg, err := SearchForRegisterL1ValidatorMessage(
+		ctx,
 		rpcURL,
 		validationID,
 	)
