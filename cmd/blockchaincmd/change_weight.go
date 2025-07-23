@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -383,7 +384,10 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
+		aggregatorCtx,
 		ux.Logger.PrintToUser,
 		app,
 		network,
@@ -439,7 +443,10 @@ func changeWeightACP99(
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
+		aggregatorCtx,
 		app,
 		network,
 		changeWeightFlags.RPC,

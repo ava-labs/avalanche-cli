@@ -5,6 +5,7 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"os"
 	"strings"
 
@@ -336,8 +337,11 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -364,7 +368,10 @@ func removeValidatorSOV(
 		if !force {
 			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
 		}
+		aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+		defer aggregatorCancel()
 		signedMessage, validationID, _, err = validatormanager.InitValidatorRemoval(
+			aggregatorCtx,
 			app,
 			network,
 			rpcURL,
@@ -411,8 +418,10 @@ func removeValidatorSOV(
 			return err
 		}
 	}
-
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

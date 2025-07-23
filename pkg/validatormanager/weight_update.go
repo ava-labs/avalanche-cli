@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"encoding/hex"
 	"fmt"
@@ -55,6 +56,7 @@ func InitializeValidatorWeightChange(
 }
 
 func InitValidatorWeightChange(
+	ctx context.Context,
 	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
@@ -198,6 +200,7 @@ func CompleteValidatorWeightChange(
 }
 
 func FinishValidatorWeightChange(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
