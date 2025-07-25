@@ -5,7 +5,6 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"os"
 	"strings"
 
