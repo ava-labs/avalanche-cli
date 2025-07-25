@@ -247,26 +247,22 @@ func importBlockchain(
 		e.ValidatorManagerRPCEndpoint = validatorManagerRPCEndpoint
 		sc.Networks[network.Name()] = e
 		if validatorManagerRPCEndpoint != "" {
-			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress))
-			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
-				return models.Sidecar{}, nil, fmt.Errorf("could not infer validator manager type")
+			validatorManagement, ownerAddress, specializedValidatorManagerAddress, err := GetBaseValidatorManagerInfo(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(validatorManagerAddress),
+			)
+			if err != nil {
+				return models.Sidecar{}, nil, err
 			}
+			sc.ValidatorManagement = validatorManagement
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
-				owner, err := contract.GetContractOwner(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress))
-				if err != nil {
-					return models.Sidecar{}, nil, err
-				}
-				// check if the owner is a specialized validator manager
-				validatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, owner)
-				if validatorManagement != validatormanagertypes.UndefinedValidatorManagement {
-					printFunc("  Specialized Validator Manager Address: %s", owner)
-					e := sc.Networks[network.Name()]
-					e.ValidatorManagerAddress = owner.String()
-					sc.Networks[network.Name()] = e
-					sc.ValidatorManagement = validatorManagement
-				} else {
-					sc.ValidatorManagerOwner = owner.String()
-				}
+				sc.ValidatorManagerOwner = ownerAddress.String()
+			}
+			if specializedValidatorManagerAddress != (common.Address{}) {
+				printFunc("  Specialized Validator Manager Address: %s", specializedValidatorManagerAddress)
+				e := sc.Networks[network.Name()]
+				e.ValidatorManagerAddress = specializedValidatorManagerAddress.String()
+				sc.Networks[network.Name()] = e
 			}
 			printFunc("  Validation Kind: %s", sc.ValidatorManagement)
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
@@ -276,4 +272,29 @@ func importBlockchain(
 	}
 
 	return sc, genBytes, err
+}
+
+// returns validator manager type, owner if it is PoA, specialized address if it has specialization, error
+func GetBaseValidatorManagerInfo(
+	validatorManagerRPCEndpoint string,
+	validatorManagerAddress common.Address,
+) (validatormanagertypes.ValidatorManagementType, common.Address, common.Address, error) {
+	validatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, validatorManagerAddress)
+	if validatorManagement == validatormanagertypes.UndefinedValidatorManagement {
+		return validatorManagement, common.Address{}, common.Address{}, fmt.Errorf("could not infer validator manager type")
+	}
+	if validatorManagement == validatormanagertypes.ProofOfAuthority {
+		owner, err := contract.GetContractOwner(validatorManagerRPCEndpoint, validatorManagerAddress)
+		if err != nil {
+			return validatorManagement, common.Address{}, common.Address{}, err
+		}
+		// check if the owner is a specialized validator manager
+		specializedValidatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, owner)
+		if specializedValidatorManagement != validatormanagertypes.UndefinedValidatorManagement {
+			return specializedValidatorManagement, common.Address{}, owner, nil
+		} else {
+			return validatorManagement, owner, common.Address{}, nil
+		}
+	}
+	return validatorManagement, common.Address{}, common.Address{}, nil
 }

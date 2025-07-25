@@ -667,7 +667,8 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		common.HexToAddress(rewardsRecipientAddr),
-		validatorManagerAddressStr,
+		validatorManagerAddress,
+		ids.Empty,
 		useACP99,
 		"",
 	)

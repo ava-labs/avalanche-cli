@@ -604,6 +604,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	icmRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
 	clusterName string,
+	validatorManagerRPCEndpoint string,
 	validatorManagerBlockchainID ids.ID,
 	validatorManagerAddress string,
 ) error {
@@ -620,7 +621,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		ClusterName:                clusterName,
 	}
 	if sc.Sovereign {
-		sc.UpdateValidatorManagerAddress(network.Name(), validatorManagerBlockchainID, validatorManagerAddress)
+		sc.UpdateValidatorManagerAddress(network.Name(), validatorManagerRPCEndpoint, validatorManagerBlockchainID, validatorManagerAddress)
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)
