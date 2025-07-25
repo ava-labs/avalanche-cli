@@ -139,11 +139,13 @@ func InitializeValidatorManager(
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
 	pos bool,
+	privateKey string,
 	validatorManagerRPCEndpoint string,
 	validatorManagerBlockchainID ids.ID,
 	validatorManagerAddressStr string,
 	validatorManagerOwnerAddressStr string,
 	specializedValidatorManagerAddressStr string,
+	proxyOwnerAddressStr string,
 	useACP99 bool,
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
@@ -199,7 +201,7 @@ func InitializeValidatorManager(
 			network,
 			blockchainName,
 			validatorManagerRPCEndpoint,
-			validatorManagerOwnerAddressStr,
+			proxyOwnerAddressStr,
 			pos,
 			useACP99,
 		); err != nil {
@@ -235,7 +237,8 @@ func InitializeValidatorManager(
 
 	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
 
-	found, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
+	// needed for ACP99 PoS (that flow will fail if missing)
+	_, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
 		validatorManagerOwnerAddress,
@@ -244,8 +247,32 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	if !found {
-		return tracked, fmt.Errorf("could not find validator manager owner private key")
+
+	if privateKey == "" {
+		// try to use prefunded key from genesis of validator manager blockchain
+		_, privateKey, err = contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainID: validatorManagerBlockchainID.String(),
+			},
+		)
+		if err != nil {
+			return tracked, err
+		}
+		if privateKey == "" {
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				"",
+			)
+			if err != nil {
+				return tracked, err
+			}
+		}
 	}
 
 	subnetSDK := blockchainSDK.Subnet{
@@ -281,7 +308,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
 			app.Log,
-			validatorManagerOwnerPrivateKey,
+			privateKey,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
@@ -303,7 +330,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			app.Log,
-			validatorManagerOwnerPrivateKey,
+			privateKey,
 			aggregatorLogger,
 			useACP99,
 			signatureAggregatorEndpoint,
@@ -670,11 +697,13 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			network,
 			avaGoBootstrapValidators,
 			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
+			"",
 			validatorManagerRPCEndpoint,
 			validatorManagerBlockchainID,
 			validatorManagerAddressStr,
-			specializedValidatorManagerAddressStr,
 			sidecar.ValidatorManagerOwner,
+			specializedValidatorManagerAddressStr,
+			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
 			convertFlags.LocalMachineFlags.UseLocalMachine,
 			convertFlags.SigAggFlags,

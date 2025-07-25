@@ -19,8 +19,7 @@ import (
 
 const (
 	subnetEVMMainnetChainID  = 11
-	ewoqEVMAddress           = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
-	poaValidatorManagerOwner = ewoqEVMAddress
+	poaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
 	bootstrapFilepathFlag    = "--bootstrap-filepath"
 	avalancheGoPath          = "--avalanchego-path"
 	localNodeClusterName     = "testLocalNode"

@@ -183,7 +183,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	validatorManagerOwnerAddressStr := sc.ValidatorManagerOwner
 	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
 
-	found, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
+	// needed for ACP99 PoS (that flow will fail if missing)
+	_, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
 		validatorManagerOwnerAddress,
@@ -191,9 +192,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
-	}
-	if !found {
-		return fmt.Errorf("could not find validator manager owner private key")
 	}
 
 	bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
@@ -259,7 +257,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				network,
 				blockchainName,
 				validatorManagerRPCEndpoint,
-				validatorManagerOwnerAddressStr,
+				sc.ProxyContractOwner,
 				sc.PoS(),
 				sc.UseACP99,
 			); err != nil {
