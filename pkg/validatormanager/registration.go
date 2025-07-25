@@ -5,6 +5,7 @@ package validatormanager
 import (
 	"context"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -20,7 +21,6 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -202,7 +202,6 @@ func GetRegisterL1ValidatorMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
@@ -215,6 +214,7 @@ func GetRegisterL1ValidatorMessage(
 	alreadyInitialized bool,
 	initiateTxHash string,
 	registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, error) {
 	var (
 		validationID ids.ID
@@ -241,6 +241,7 @@ func GetRegisterL1ValidatorMessage(
 				}
 			} else {
 				registerSubnetValidatorUnsignedMessage, err = SearchForRegisterL1ValidatorMessage(
+					ctx,
 					rpcURL,
 					validationID,
 				)
@@ -290,18 +291,12 @@ func GetRegisterL1ValidatorMessage(
 		}
 		validationID = reg.ValidationID()
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
+
+	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
+	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
 	if err != nil {
-		return nil, ids.Empty, err
+		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
 	}
-	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	return signedMessage, validationID, err
 }
 
@@ -328,10 +323,10 @@ func GetPChainL1ValidatorRegistrationMessage(
 	rpcURL string,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
@@ -352,25 +347,16 @@ func GetPChainL1ValidatorRegistrationMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
 	var justificationBytes []byte
 	if !registered {
-		justificationBytes, err = GetRegistrationJustification(rpcURL, validationID, subnetID)
+		justificationBytes, err = GetRegistrationJustification(ctx, rpcURL, validationID, subnetID)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, justificationBytes)
+	justification := hex.EncodeToString(justificationBytes)
+	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, justification, subnetID.String(), aggregatorQuorumPercentage)
 }
 
 // last step of flow for adding a new validator
@@ -412,7 +398,6 @@ func InitValidatorRegistration(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	isPos bool,
 	delegationFee uint16,
@@ -422,6 +407,7 @@ func InitValidatorRegistration(
 	managerBlockchainID ids.ID,
 	useACP99 bool,
 	initiateTxHash string,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -532,7 +518,6 @@ func InitValidatorRegistration(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		managerBlockchainID,
 		managerAddress,
@@ -545,6 +530,7 @@ func InitValidatorRegistration(
 		alreadyInitialized,
 		initiateTxHash,
 		unsignedMessage,
+		signatureAggregatorEndpoint,
 	)
 
 	return signedMessage, validationID, nil, err
@@ -560,9 +546,9 @@ func FinishValidatorRegistration(
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
-	managerAddressStr string,
+	validatorManagerAddressStr string,
+	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -572,17 +558,17 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-	managerAddress := common.HexToAddress(managerAddressStr)
+	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,
 		true,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return nil, err
@@ -600,7 +586,7 @@ func FinishValidatorRegistration(
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
-		managerAddress,
+		validatorManagerAddress,
 		generateRawTxOnly,
 		ownerAddress,
 		privateKey,
@@ -620,6 +606,7 @@ func FinishValidatorRegistration(
 }
 
 func SearchForRegisterL1ValidatorMessage(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 ) (*warp.UnsignedMessage, error) {
@@ -633,14 +620,21 @@ func SearchForRegisterL1ValidatorMessage(
 	}
 	maxBlock := int64(height)
 	minBlock := int64(0)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
-		block, err := client.BlockByNumber(big.NewInt(blockNumber))
-		if err != nil {
-			return nil, err
+	blockStep := int64(5000)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
 		}
-		blockHash := block.Hash()
+		fromBlock := big.NewInt(blockNumber - blockStep)
+		if fromBlock.Sign() < 0 {
+			fromBlock = big.NewInt(0)
+		}
+		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
-			BlockHash: &blockHash,
+			FromBlock: fromBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {
@@ -664,6 +658,7 @@ func SearchForRegisterL1ValidatorMessage(
 }
 
 func GetRegistrationJustification(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 	subnetID ids.ID,
@@ -684,6 +679,7 @@ func GetRegistrationJustification(
 		}
 	}
 	msg, err := SearchForRegisterL1ValidatorMessage(
+		ctx,
 		rpcURL,
 		validationID,
 	)

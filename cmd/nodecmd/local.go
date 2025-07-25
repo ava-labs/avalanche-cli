@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -27,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -644,8 +645,16 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
+
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
@@ -661,7 +670,6 @@ func addAsValidator(
 		remainingBalanceOwners,
 		disableOwners,
 		0,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		true,
 		delegationFee,
@@ -671,6 +679,7 @@ func addAsValidator(
 		ids.Empty,
 		useACP99,
 		"",
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
@@ -705,9 +714,9 @@ func addAsValidator(
 		"",
 		payerPrivateKey,
 		validationID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
+		signatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}

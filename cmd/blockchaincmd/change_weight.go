@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -22,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
@@ -30,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
@@ -163,57 +165,66 @@ func setWeight(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	validatorInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
-	if err != nil {
-		return err
+	if validationID == ids.Empty {
+		return fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
 
-	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
-	if err != nil {
-		return err
-	}
+	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
-	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
-	allowedWeightFunction := func(v uint64) error {
-		delta := uint64(0)
-		if v > validatorInfo.Weight {
-			delta = v - validatorInfo.Weight
-		} else {
-			delta = validatorInfo.Weight - v
-		}
-		if delta > uint64(allowedChange) {
-			return fmt.Errorf("weight change %d exceeds max allowed weight change of %d", delta, uint64(allowedChange))
-		}
-		return nil
-	}
+	var validatorInfo platformvm.L1Validator
 
-	if !sc.UseACP99 {
-		if float64(validatorInfo.Weight) > allowedChange {
-			return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
-		}
-		allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
-		allowedWeightFunction = func(v uint64) error {
-			if v > uint64(allowedChange) {
-				return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
-			}
-			return nil
-		}
-	}
-
-	if newWeight == 0 {
-		ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
-		newWeight, err = app.Prompt.CaptureWeight(
-			"What weight would you like to assign to the validator?",
-			allowedWeightFunction,
-		)
+	if initiateTxHash == "" {
+		validatorInfo, err = validator.GetValidatorInfo(network.SDKNetwork(), validationID)
 		if err != nil {
 			return err
 		}
-	}
 
-	if err := allowedWeightFunction(newWeight); err != nil {
-		return err
+		totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
+		if err != nil {
+			return err
+		}
+
+		allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
+		allowedWeightFunction := func(v uint64) error {
+			delta := uint64(0)
+			if v > validatorInfo.Weight {
+				delta = v - validatorInfo.Weight
+			} else {
+				delta = validatorInfo.Weight - v
+			}
+			if delta > uint64(allowedChange) {
+				return fmt.Errorf("weight change %d exceeds max allowed weight change of %d", delta, uint64(allowedChange))
+			}
+			return nil
+		}
+
+		if !sc.UseACP99 {
+			if float64(validatorInfo.Weight) > allowedChange {
+				return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
+			}
+			allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+			allowedWeightFunction = func(v uint64) error {
+				if v > uint64(allowedChange) {
+					return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
+				}
+				return nil
+			}
+		}
+
+		if newWeight == 0 {
+			ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
+			newWeight, err = app.Prompt.CaptureWeight(
+				"What weight would you like to assign to the validator?",
+				allowedWeightFunction,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := allowedWeightFunction(newWeight); err != nil {
+			return err
+		}
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
@@ -226,6 +237,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			blockchainName,
 			nodeID,
 			newWeight,
+			initiateTxHash,
 		)
 	} else {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
@@ -306,6 +318,7 @@ func changeWeightACP99(
 	blockchainName string,
 	nodeID ids.NodeID,
 	weight uint64,
+	initiateTxHash string,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -367,10 +380,15 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
-
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		aggregatorCtx,
 		ux.Logger.PrintToUser,
@@ -382,12 +400,12 @@ func changeWeightACP99(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		validatorManagerBlockchainID,
 		weight,
 		initiateTxHash,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
@@ -400,21 +418,25 @@ func changeWeightACP99(
 		return err
 	}
 
-	ux.Logger.PrintToUser("ValidationID: %s", validationID)
-
-	validatorInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
-	if err != nil {
-		return err
+	skipPChain := false
+	if newWeight != 0 {
+		// even if PChain already sent, validator should be available
+		validatorInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
+		if err != nil {
+			return err
+		}
+		if validatorInfo.Weight == newWeight {
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The new Weight was already set on the P-Chain. Proceeding to the next step"))
+			skipPChain = true
+		}
 	}
-	if validatorInfo.Weight == newWeight {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The new Weight was already set on the P-Chain. Proceeding to the next step"))
-	} else {
+	if !skipPChain {
 		txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 		if err != nil {
-			if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
+			if newWeight != 0 || !strings.Contains(err.Error(), "could not load L1 validator: not found") {
 				return err
 			}
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step"))
 		} else {
 			ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 			if err := blockchain.UpdatePChainHeight(
@@ -437,11 +459,11 @@ func changeWeightACP99(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		signedMessage,
 		newWeight,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err

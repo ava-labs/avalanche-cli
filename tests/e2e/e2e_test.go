@@ -43,7 +43,6 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/public"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade/non-sov"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade/sov"
-	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/validatormanager"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"

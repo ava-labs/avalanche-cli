@@ -5,6 +5,7 @@ package validatormanager
 import (
 	"context"
 	_ "embed"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -66,12 +66,12 @@ func InitValidatorWeightChange(
 	ownerAddressStr string,
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	managerAddressStr string,
 	managerBlockchainID ids.ID,
 	weight uint64,
 	initiateTxHash string,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -109,7 +109,7 @@ func InitValidatorWeightChange(
 	}
 
 	if unsignedMessage == nil {
-		unsignedMessage, err = SearchForL1ValidatorWeightMessage(rpcURL, validationID, weight)
+		unsignedMessage, err = SearchForL1ValidatorWeightMessage(ctx, rpcURL, validationID, weight)
 		if err != nil {
 			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
 		}
@@ -148,18 +148,15 @@ func InitValidatorWeightChange(
 
 	var nonce uint64
 	if unsignedMessage == nil {
-		nonce, err = GetValidatorNonce(rpcURL, validationID)
+		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
 	}
 
 	signedMsg, err := GetL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
-		0,
-		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
 		managerBlockchainID,
@@ -167,6 +164,7 @@ func InitValidatorWeightChange(
 		validationID,
 		nonce,
 		weight,
+		signatureAggregatorEndpoint,
 	)
 	return signedMsg, validationID, nil, err
 }
@@ -204,11 +202,11 @@ func FinishValidatorWeightChange(
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
 	managerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(managerAddressStr)
 	subnetID, err := contract.GetSubnetID(
@@ -221,22 +219,21 @@ func FinishValidatorWeightChange(
 	}
 	var nonce uint64
 	if l1ValidatorRegistrationSignedMessage == nil {
-		nonce, err = GetValidatorNonce(rpcURL, validationID)
+		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
 		if err != nil {
 			return nil, err
 		}
 	}
 	signedMessage, err := GetPChainL1ValidatorWeightMessage(
-		ctx,
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorExtraPeerEndpoints,
 		subnetID,
 		l1ValidatorRegistrationSignedMessage,
 		validationID,
 		nonce,
 		weight,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return nil, err
@@ -270,20 +267,17 @@ func FinishValidatorWeightChange(
 }
 
 func GetL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
-	// needed to generate message
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	validationID ids.ID,
 	nonce uint64,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	if unsignedMessage == nil {
 		addressedCallPayload, err := warpMessage.NewL1ValidatorWeight(
@@ -310,26 +304,14 @@ func GetL1ValidatorWeightMessage(
 			return nil, err
 		}
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return signatureAggregator.Sign(unsignedMessage, nil)
+	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), 0)
 }
 
 func GetPChainL1ValidatorWeightMessage(
-	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	// message is given
 	l1SignedMessage *warp.Message,
@@ -337,6 +319,7 @@ func GetPChainL1ValidatorWeightMessage(
 	validationID ids.ID,
 	nonce uint64,
 	weight uint64,
+	signatureAggregatorEndpoint string,
 ) (*warp.Message, error) {
 	if l1SignedMessage != nil {
 		addressedCall, err := warpPayload.ParseAddressedCall(l1SignedMessage.UnsignedMessage.Payload)
@@ -374,18 +357,8 @@ func GetPChainL1ValidatorWeightMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
-		ctx,
-		network.SDKNetwork(),
-		aggregatorLogger,
-		subnetID,
-		aggregatorQuorumPercentage,
-		aggregatorExtraPeerEndpoints,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return signatureAggregator.Sign(unsignedMessage, nil)
+	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
+	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
 }
 
 func GetL1ValidatorWeightMessageFromTx(
@@ -419,11 +392,12 @@ func GetL1ValidatorWeightMessageFromTx(
 }
 
 func SearchForL1ValidatorWeightMessage(
+	ctx context.Context,
 	rpcURL string,
 	validationID ids.ID,
 	weight uint64,
 ) (*warp.UnsignedMessage, error) {
-	const maxBlocksToSearch = 500
+	maxBlocksToSearch := int64(5000000)
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return nil, err
@@ -434,14 +408,21 @@ func SearchForL1ValidatorWeightMessage(
 	}
 	maxBlock := int64(height)
 	minBlock := max(maxBlock-maxBlocksToSearch, 0)
-	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
-		block, err := client.BlockByNumber(big.NewInt(blockNumber))
-		if err != nil {
-			return nil, err
+	blockStep := int64(5000)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber -= blockStep {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
 		}
-		blockHash := block.Hash()
+		fromBlock := big.NewInt(blockNumber - blockStep)
+		if fromBlock.Sign() < 0 {
+			fromBlock = big.NewInt(0)
+		}
+		toBlock := big.NewInt(blockNumber)
 		logs, err := client.FilterLogs(interfaces.FilterQuery{
-			BlockHash: &blockHash,
+			FromBlock: fromBlock,
+			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {

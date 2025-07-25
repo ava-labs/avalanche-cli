@@ -26,7 +26,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
@@ -263,15 +262,20 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	// TODO: replace latest below with sig agg version in flags for convert and deploy
+	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
+	if err != nil {
+		return tracked, err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return tracked, err
+	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
-			aggregatorCtx,
 			app.Log,
 			validatorManagerOwnerPrivateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
@@ -284,6 +288,7 @@ func InitializeValidatorManager(
 				UptimeBlockchainID:      blockchainID,
 			},
 			useACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
 		}
@@ -291,12 +296,11 @@ func InitializeValidatorManager(
 	} else {
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
-			aggregatorCtx,
 			app.Log,
 			validatorManagerOwnerPrivateKey,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			useACP99,
+			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
 		}

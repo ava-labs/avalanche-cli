@@ -191,7 +191,9 @@ func importBlockchain(
 	if err != nil {
 		return models.Sidecar{}, nil, err
 	}
-	printFunc("  Sovereign: %v", !subnetInfo.IsPermissioned)
+	if subnetInfo.IsPermissioned {
+		printFunc("  Blockchain is Not Sovereign")
+	}
 
 	sc := models.Sidecar{
 		Name: blockchainName,
@@ -284,11 +286,17 @@ func GetBaseValidatorManagerInfo(
 		return validatorManagement, common.Address{}, common.Address{}, fmt.Errorf("could not infer validator manager type")
 	}
 	if validatorManagement == validatormanagertypes.ProofOfAuthority {
+		// a v2.0.0 validator manager can be identified as PoA for two cases:
+		// - it is PoA
+		// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
+		//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
+		//   owner of this main manager, interacts with the users
 		owner, err := contract.GetContractOwner(validatorManagerRPCEndpoint, validatorManagerAddress)
 		if err != nil {
 			return validatorManagement, common.Address{}, common.Address{}, err
 		}
-		// check if the owner is a specialized validator manager
+		// check if the owner is a specialized PoS validator manager
+		// if this is the case, GetValidatorManagerType will return the corresponding type
 		specializedValidatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, owner)
 		if specializedValidatorManagement != validatormanagertypes.UndefinedValidatorManagement {
 			return specializedValidatorManagement, common.Address{}, owner, nil

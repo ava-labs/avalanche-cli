@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -24,7 +26,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -332,9 +333,15 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
 
+	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
+		return err
+	}
+	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+	if err != nil {
+		return err
+	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
 		aggregatorCtx,
@@ -346,7 +353,6 @@ func removeValidatorSOV(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		sc.PoS(),
 		uptimeSec,
@@ -355,6 +361,7 @@ func removeValidatorSOV(
 		validatorManagerBlockchainID,
 		sc.UseACP99,
 		initiateTxHash,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
@@ -377,7 +384,6 @@ func removeValidatorSOV(
 			validatorManagerOwner,
 			ownerPrivateKey,
 			nodeID,
-			extraAggregatorPeers,
 			aggregatorLogger,
 			sc.PoS(),
 			uptimeSec,
@@ -386,6 +392,7 @@ func removeValidatorSOV(
 			validatorManagerBlockchainID,
 			sc.UseACP99,
 			initiateTxHash,
+			signatureAggregatorEndpoint,
 		)
 		if err != nil {
 			return err
@@ -416,7 +423,6 @@ func removeValidatorSOV(
 			return err
 		}
 	}
-
 	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
@@ -429,10 +435,10 @@ func removeValidatorSOV(
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
-		extraAggregatorPeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		sc.UseACP99,
+		signatureAggregatorEndpoint,
 	)
 	if err != nil {
 		return err
