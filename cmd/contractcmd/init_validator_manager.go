@@ -132,15 +132,22 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
 
-	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
-
-	_, _, specializedValidatorManagerAddress, err := blockchaincmd.GetBaseValidatorManagerInfo(
-		validatorManagerRPCEndpoint,
-		validatorManagerAddress,
-	)
-	if err != nil {
-		return err
+	var specializedValidatorManagerAddressStr string
+	if sc.UseACP99 && sc.PoS() {
+		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			// assumed to be managed by CLI
+			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
+		} else {
+			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
+			if err != nil {
+				return err
+			}
+			specializedValidatorManagerAddressStr = specializedValidatorManagerAddress.String()
+		}
 	}
+
+	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
+	specializedValidatorManagerAddress := common.HexToAddress(specializedValidatorManagerAddressStr)
 
 	validatorManagerOwnerAddressStr := sc.ValidatorManagerOwner
 	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)

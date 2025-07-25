@@ -84,6 +84,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&validatorManagerRPCEndpoint, "validator-manager-rpc", "", "RPC to use to access to the validator manager")
 	cmd.Flags().StringVar(&validatorManagerBlockchainIDStr, "validator-manager-blockchain-id", "", "validator manager blockchain ID")
 	cmd.Flags().StringVar(&validatorManagerAddressStr, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().StringVar(&specializedValidatorManagerAddressStr, "specialized-validator-manager-address", "", "specialized validator manager address")
 	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, posGroup, sigAggGroup}))
 	return cmd
@@ -142,6 +143,7 @@ func InitializeValidatorManager(
 	validatorManagerBlockchainID ids.ID,
 	validatorManagerAddressStr string,
 	validatorManagerOwnerAddressStr string,
+	specializedValidatorManagerAddressStr string,
 	useACP99 bool,
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
@@ -179,6 +181,18 @@ func InitializeValidatorManager(
 
 	tracked := true
 
+	if validatorManagerRPCEndpoint == "" {
+		validatorManagerRPCEndpoint, err = GetValidatorManagerRPCEndpoint(
+			network,
+			blockchainName,
+			blockchainID,
+			validatorManagerBlockchainID,
+		)
+		if err != nil {
+			return tracked, err
+		}
+	}
+
 	if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
 		// we assume it is fully CLI managed
 		if err := CompleteValidatorManagerL1Deploy(
@@ -193,15 +207,13 @@ func InitializeValidatorManager(
 		}
 	}
 
-	if validatorManagerRPCEndpoint == "" {
-		validatorManagerRPCEndpoint, err = GetValidatorManagerRPCEndpoint(
-			network,
-			blockchainName,
-			blockchainID,
-			validatorManagerBlockchainID,
-		)
-		if err != nil {
-			return tracked, err
+	if specializedValidatorManagerAddressStr == "" {
+		if useACP99 && pos {
+			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
+			if err != nil {
+				return tracked, err
+			}
+			specializedValidatorManagerAddressStr = specializedValidatorManagerAddress.String()
 		}
 	}
 
@@ -219,14 +231,7 @@ func InitializeValidatorManager(
 	}
 
 	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
-
-	_, _, specializedValidatorManagerAddress, err := GetBaseValidatorManagerInfo(
-		validatorManagerRPCEndpoint,
-		validatorManagerAddress,
-	)
-	if err != nil {
-		return tracked, err
-	}
+	specializedValidatorManagerAddress := common.HexToAddress(specializedValidatorManagerAddressStr)
 
 	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
 
@@ -254,6 +259,7 @@ func InitializeValidatorManager(
 		ValidatorManagerOwnerPrivateKey:    validatorManagerOwnerPrivateKey,
 		BootstrapValidators:                avaGoBootstrapValidators,
 	}
+
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		signatureAggregatorFlags.AggregatorLogLevel,
 		signatureAggregatorFlags.AggregatorLogToStdout,
@@ -667,6 +673,7 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerRPCEndpoint,
 			validatorManagerBlockchainID,
 			validatorManagerAddressStr,
+			specializedValidatorManagerAddressStr,
 			sidecar.ValidatorManagerOwner,
 			sidecar.UseACP99,
 			convertFlags.LocalMachineFlags.UseLocalMachine,

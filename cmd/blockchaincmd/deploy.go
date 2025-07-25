@@ -79,9 +79,10 @@ var (
 	cchainIcmKeyName       string
 	relayerAllowPrivateIPs bool
 
-	validatorManagerRPCEndpoint     string
-	validatorManagerAddressStr      string
-	validatorManagerBlockchainIDStr string
+	validatorManagerRPCEndpoint           string
+	validatorManagerAddressStr            string
+	validatorManagerBlockchainIDStr       string
+	specializedValidatorManagerAddressStr string
 
 	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -866,6 +867,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
+		specializedValidatorManagerAddressStr := validatormanagerSDK.SpecializationProxyContractAddress
+
 		tracked, err = InitializeValidatorManager(
 			blockchainName,
 			subnetID,
@@ -877,6 +880,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerBlockchainID,
 			validatorManagerAddressStr,
 			sidecar.ValidatorManagerOwner,
+			specializedValidatorManagerAddressStr,
 			sidecar.UseACP99,
 			deployFlags.LocalMachineFlags.UseLocalMachine,
 			deployFlags.SigAggFlags,
