@@ -636,7 +636,7 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
-
+	
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
