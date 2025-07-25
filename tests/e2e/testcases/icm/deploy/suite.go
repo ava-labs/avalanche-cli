@@ -32,7 +32,7 @@ var evmClient evm.Client
 var _ = ginkgo.Describe("[ICM] deploy", func() {
 	ginkgo.Context("with valid input", func() {
 		ginkgo.BeforeEach(func() {
-			commands.StartNetwork()
+			_, _ = commands.StartNetwork()
 
 			var err error
 			evmClient, err = evm.GetClient(cChainRPCUrl)
@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			commands.CleanNetwork()
+			_, _ = commands.CleanNetwork()
 			err := utils.DeleteConfigs(subnetName)
 			gomega.Expect(err).Should(gomega.BeNil())
 		})
@@ -354,11 +354,11 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 	})
 	ginkgo.Context("with invalid input", func() {
 		ginkgo.BeforeEach(func() {
-			commands.StartNetwork()
+			_, _ = commands.StartNetwork()
 		})
 
 		ginkgo.AfterEach(func() {
-			commands.CleanNetwork()
+			_, _ = commands.CleanNetwork()
 		})
 		ginkgo.It("should fail with invalid mutually exclusive fields (network flags)", func() {
 			testFlags := utils.TestFlags{

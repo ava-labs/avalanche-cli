@@ -51,7 +51,7 @@ var (
 // need to have this outside the normal suite because of the BeforeEach
 var _ = ginkgo.Describe("[Upgrade expect network failure non SOV]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -91,7 +91,7 @@ var _ = ginkgo.Describe("[Upgrade expect network failure non SOV]", ginkgo.Order
 // and then check the file is there and has the correct content.
 var _ = ginkgo.Describe("[Upgrade public network non SOV]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -158,7 +158,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
@@ -173,7 +173,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		_ = commands.StartNetwork()
+		_, _ = commands.StartNetwork()
 
 		out, err := commands.ApplyUpgradeLocal(subnetName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
@@ -290,7 +290,8 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		commands.UpgradeVMLocal(subnetName, subnetEVMVersion2)
 
 		// restart network
-		commands.StartNetwork()
+		_, err = commands.StartNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check running version
 		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
@@ -310,7 +311,10 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		// create and deploy
 		commands.CreateCustomVMConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath1)
 		// need to set avago version manually since VMs are custom
-		commands.StartNetworkWithVersion(avagoRPC1Version)
+		_, err = commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": avagoRPC1Version,
+		})
+		gomega.Expect(err).Should(gomega.BeNil())
 		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -334,7 +338,10 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		commands.UpgradeCustomVMLocal(subnetName, customVMPath2)
 
 		// restart network
-		commands.StartNetworkWithVersion(avagoRPC2Version)
+		_, err = commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": avagoRPC2Version,
+		})
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check running version
 		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
@@ -382,7 +389,9 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 	})
 
 	ginkgo.It("can upgrade subnet-evm on public deployment non SOV", func() {
-		_ = commands.StartNetworkWithVersion(binaryToVersion[utils.SoloAvagoKey])
+		_, _ = commands.StartNetworkWithParams(map[string]interface{}{
+			"avalanchego-version": binaryToVersion[utils.SoloAvagoKey],
+		})
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1], false)
 
 		// Simulate fuji deployment
