@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
@@ -39,6 +40,7 @@ type POSManagerSpecFlags struct {
 var (
 	initPOSManagerFlags       POSManagerSpecFlags
 	network                   networkoptions.NetworkFlags
+	privateKeyFlags           contract.PrivateKeyFlags
 	initValidatorManagerFlags ContractInitValidatorManagerFlags
 )
 
@@ -57,6 +59,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 		PreRunE: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
+	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	flags.AddRPCFlagToCmd(cmd, app, &initValidatorManagerFlags.RPC)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &initValidatorManagerFlags.SigAggFlags)
 
@@ -131,6 +134,34 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
+
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+	privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+	if err != nil {
+		return err
+	}
+	if privateKey == "" {
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
+	}
 
 	var specializedValidatorManagerAddressStr string
 	if sc.UseACP99 && sc.PoS() {
@@ -213,7 +244,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if err := validatormanager.SetupPoA(
 			app.Log,
 			subnetSDK,
-			validatorManagerOwnerPrivateKey,
+			privateKey,
 			aggregatorLogger,
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
@@ -243,7 +274,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if err := validatormanager.SetupPoS(
 			app.Log,
 			subnetSDK,
-			validatorManagerOwnerPrivateKey,
+			privateKey,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
