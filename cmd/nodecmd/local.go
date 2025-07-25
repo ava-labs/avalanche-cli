@@ -600,7 +600,7 @@ func addAsValidator(
 	kc *keychain.Keychain,
 	balance uint64,
 	payerPrivateKey string,
-	validatorManagerAddressStr string,
+	validatorManagerAddress string,
 	useACP99 bool,
 ) error {
 	// get node data

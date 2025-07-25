@@ -181,6 +181,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 
 	subnetSDK := blockchainSDK.Subnet{
+		Network:                            network.SDKNetwork(),
 		SubnetID:                           subnetID,
 		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
 		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,

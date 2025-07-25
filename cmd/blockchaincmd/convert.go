@@ -245,6 +245,7 @@ func InitializeValidatorManager(
 	}
 
 	subnetSDK := blockchainSDK.Subnet{
+		Network:                            network.SDKNetwork(),
 		SubnetID:                           subnetID,
 		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
 		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,

@@ -34,17 +34,15 @@ import (
 )
 
 var (
-	errMissingNetwork             = fmt.Errorf("missing Network")
-	errMissingSubnetID            = fmt.Errorf("missing Subnet ID")
-	errMissingBlockchainID        = fmt.Errorf("missing Blockchain ID")
-	errMissingRPC                 = fmt.Errorf("missing RPC URL")
-	errMissingBootstrapValidators = fmt.Errorf("missing bootstrap validators")
-	errMissingValidatorManagerBlockchainID        = fmt.Errorf("missing Validator Manager Blockchain ID")
-	errMissingValidatorManagerRPC                 = fmt.Errorf("missing Validator Manager RPC URL")
-	errMissingValidatorManagerAddress        = fmt.Errorf("missing Validator Manager Address")
-	errMissingSpecializedValidatorManagerAddress        = fmt.Errorf("missing Specialized Validator Manager Address")
-	errMissingValidatorManagerOwnerAddress        = fmt.Errorf("missing Validator Manager Owner Address")
-	errMissingValidatorManagerOwnerPrivateKey        = fmt.Errorf("missing Validator Manager Owner Private Key")
+	errMissingNetwork                            = fmt.Errorf("missing Network")
+	errMissingSubnetID                           = fmt.Errorf("missing Subnet ID")
+	errMissingBootstrapValidators                = fmt.Errorf("missing bootstrap validators")
+	errMissingValidatorManagerBlockchainID       = fmt.Errorf("missing Validator Manager Blockchain ID")
+	errMissingValidatorManagerRPC                = fmt.Errorf("missing Validator Manager RPC URL")
+	errMissingValidatorManagerAddress            = fmt.Errorf("missing Validator Manager Address")
+	errMissingSpecializedValidatorManagerAddress = fmt.Errorf("missing Specialized Validator Manager Address")
+	errMissingValidatorManagerOwnerAddress       = fmt.Errorf("missing Validator Manager Owner Address")
+	errMissingValidatorManagerOwnerPrivateKey    = fmt.Errorf("missing Validator Manager Owner Private Key")
 )
 
 type SubnetParams struct {
