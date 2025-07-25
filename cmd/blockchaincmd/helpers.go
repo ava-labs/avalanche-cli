@@ -270,6 +270,9 @@ func StartLocalMachine(
 			}
 			nodeSettings[i] = nodeSetting
 		}
+		if bootstrapValidatorFlags.NumBootstrapValidators > math.MaxUint32 {
+			return false, fmt.Errorf("too many bootstrap validators")
+		}
 		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 		if err = node.StartLocalNode(
 			app,
