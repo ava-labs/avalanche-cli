@@ -601,7 +601,7 @@ func addAsValidator(
 	kc *keychain.Keychain,
 	balance uint64,
 	payerPrivateKey string,
-	validatorManagerAddressStr string,
+	validatorManagerAddress string,
 	useACP99 bool,
 ) error {
 	// get node data
@@ -675,7 +675,8 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		common.HexToAddress(rewardsRecipientAddr),
-		validatorManagerAddressStr,
+		validatorManagerAddress,
+		ids.Empty,
 		useACP99,
 		"",
 		signatureAggregatorEndpoint,

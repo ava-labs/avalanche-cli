@@ -44,7 +44,6 @@ var (
 )
 
 type BlockchainChangeWeightFlags struct {
-	RPC         string
 	SigAggFlags flags.SignatureAggregatorFlags
 }
 
@@ -60,7 +59,6 @@ The L1 has to be a Proof of Authority L1.`,
 		PreRunE: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd, app, &changeWeightFlags.RPC)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &changeWeightFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
@@ -144,29 +142,26 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	chainSpec := contract.ChainSpec{
-		BlockchainName: blockchainName,
+	isValidator, err := validator.IsValidator(network.SDKNetwork(), subnetID, nodeID)
+	if err != nil {
+		// just warn the user, don't fail
+		ux.Logger.PrintToUser("failed to check if node is a validator: %s", err)
+	} else if !isValidator {
+		// this is actually an error
+		return fmt.Errorf("node %s is not a validator for blockchain %s", nodeID, subnetID)
 	}
 
-	if changeWeightFlags.RPC == "" {
-		changeWeightFlags.RPC, _, err = contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-	}
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 
-	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+	if validatorManagerRPCEndpoint == "" {
+		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+	}
+	if validatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	validationID, err := validator.GetValidationID(changeWeightFlags.RPC, common.HexToAddress(validatorManagerAddress), nodeID)
+	validationID, err := validator.GetValidationID(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress), nodeID)
 	if err != nil {
 		return err
 	}
@@ -284,7 +279,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		0, // automatic uptime
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
-		changeWeightFlags.RPC,
 	)
 	if err != nil {
 		return err
@@ -315,7 +309,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		changeWeightFlags.RPC,
 	)
 }
 
@@ -358,12 +351,21 @@ func changeWeightACP99(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's weight change (Blockchain gas token)"), validatorManagerOwner)
 
-	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+
+	if validatorManagerRPCEndpoint == "" {
+		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+	}
+	if validatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to find Validator Manager blockchain ID")
+	}
+	if validatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), changeWeightFlags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
@@ -392,7 +394,7 @@ func changeWeightACP99(
 		ux.Logger.PrintToUser,
 		app,
 		network,
-		changeWeightFlags.RPC,
+		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
@@ -400,6 +402,7 @@ func changeWeightACP99(
 		nodeID,
 		aggregatorLogger,
 		validatorManagerAddress,
+		validatorManagerBlockchainID,
 		weight,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
@@ -450,7 +453,7 @@ func changeWeightACP99(
 		aggregatorCtx,
 		app,
 		network,
-		changeWeightFlags.RPC,
+		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,

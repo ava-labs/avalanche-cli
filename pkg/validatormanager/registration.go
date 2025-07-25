@@ -203,7 +203,7 @@ func GetRegisterL1ValidatorMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
-	blockchainID ids.ID,
+	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	nodeID ids.NodeID,
 	blsPublicKey [48]byte,
@@ -272,7 +272,7 @@ func GetRegisterL1ValidatorMessage(
 			}
 			registerSubnetValidatorUnsignedMessage, err = warp.NewUnsignedMessage(
 				network.ID,
-				blockchainID,
+				managerBlockchainID,
 				registerSubnetValidatorAddressedCall.Bytes(),
 			)
 			if err != nil {
@@ -403,7 +403,8 @@ func InitValidatorRegistration(
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	rewardRecipient common.Address,
-	validatorManagerAddressStr string,
+	managerAddressStr string,
+	managerBlockchainID ids.ID,
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
@@ -416,15 +417,7 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	blockchainID, err := contract.GetBlockchainID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	alreadyInitialized := initiateTxHash != ""
@@ -481,7 +474,7 @@ func InitValidatorRegistration(
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 		} else {
-			managerAddress = common.HexToAddress(validatorManagerAddressStr)
+			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
 				rpcURL,
 				managerAddress,
@@ -526,7 +519,7 @@ func InitValidatorRegistration(
 		aggregatorLogger,
 		0,
 		subnetID,
-		blockchainID,
+		managerBlockchainID,
 		managerAddress,
 		nodeID,
 		[48]byte(blsPublicKey),
@@ -565,7 +558,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
@@ -593,7 +586,7 @@ func FinishValidatorRegistration(
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
-		managerAddress,
+		validatorManagerAddress,
 		generateRawTxOnly,
 		ownerAddress,
 		privateKey,

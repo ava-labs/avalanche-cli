@@ -79,7 +79,11 @@ var (
 	cchainIcmKeyName       string
 	relayerAllowPrivateIPs bool
 
-	validatorManagerAddress        string
+	validatorManagerRPCEndpoint           string
+	validatorManagerAddressStr            string
+	validatorManagerBlockchainIDStr       string
+	specializedValidatorManagerAddressStr string
+
 	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -831,7 +835,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerStr := validatormanagerSDK.ValidatorProxyContractAddress
+		validatorManagerBlockchainID := blockchainID
+		validatorManagerRPCEndpoint := ""
+		validatorManagerAddressStr := validatormanagerSDK.ValidatorProxyContractAddress
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
@@ -842,7 +848,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar,
 			controlKeys,
 			subnetAuthKeys,
-			validatorManagerStr,
+			validatorManagerBlockchainID,
+			validatorManagerAddressStr,
 			false,
 		)
 		if err != nil {
@@ -860,15 +867,21 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
+		specializedValidatorManagerAddressStr := validatormanagerSDK.SpecializationProxyContractAddress
+
 		tracked, err = InitializeValidatorManager(
 			blockchainName,
-			sidecar.ValidatorManagerOwner,
 			subnetID,
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
 			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
-			validatorManagerStr,
+			"",
+			validatorManagerRPCEndpoint,
+			validatorManagerBlockchainID,
+			validatorManagerAddressStr,
+			sidecar.ValidatorManagerOwner,
+			specializedValidatorManagerAddressStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
 			deployFlags.LocalMachineFlags.UseLocalMachine,
@@ -900,6 +913,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			"",
 			nil,
 			clusterNameFlagValue,
+			"",
+			ids.Empty,
 			"",
 		); err != nil {
 			return err

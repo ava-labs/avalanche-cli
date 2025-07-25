@@ -145,7 +145,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if blockchainName != "" {
-			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "", "")
+			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "", "", ids.Empty, "")
 		}
 		ux.Logger.PrintToUser("This CLI instance will not locally preserve blockchain metadata.")
 		ux.Logger.PrintToUser("Please keep a manual record of the subnet ID and blockchain ID information.")

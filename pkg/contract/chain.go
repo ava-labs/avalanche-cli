@@ -206,6 +206,20 @@ func GetBlockchainEndpoints(
 			wsEndpoint = sc.Networks[networkName].WSEndpoints[0]
 		}
 	}
+	if rpcEndpoint == "" {
+		// infer from blockchainID is this is C-Chain
+		blockchainID, err := GetBlockchainID(app, network, chainSpec)
+		if err != nil {
+			return "", "", err
+		}
+		cChainID, err := utils.GetChainID(network.Endpoint, "C")
+		if err != nil {
+			return "", "", err
+		}
+		if cChainID == blockchainID {
+			chainSpec.CChain = true
+		}
+	}
 	if rpcEndpoint == "" && chainSpec.CChain {
 		rpcEndpoint = network.CChainEndpoint()
 		wsEndpoint = network.CChainWSEndpoint()
