@@ -39,6 +39,8 @@ func newStartCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &startFlags.Network, true, startNetworkOptions)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &startFlags.SigAggFlags)
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
 
