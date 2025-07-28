@@ -19,6 +19,7 @@ import (
 var startNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Fuji,
+	networkoptions.Mainnet,
 }
 
 type StartFlags struct {
@@ -116,6 +117,15 @@ func createLocalSignatureAggregator(network models.Network) error {
 }
 
 func isThereExistingSignatureAggregator(network models.Network) (bool, error) {
+	// first we check if the local config file for signature aggregator exists
+	// if it doesn't exist, then there is no running signature aggregator instance
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	_, err := os.ReadFile(runFilePath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	// next, we check if the ports mentioned in local config file for signature aggregator are used
+	// if they are both not available, that means that there is a running signature aggregator instance
 	runFile, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return false, fmt.Errorf("failed to get process details: %w", err)
