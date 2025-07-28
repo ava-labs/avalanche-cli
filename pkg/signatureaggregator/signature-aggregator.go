@@ -342,7 +342,7 @@ func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, co
 	return nil
 }
 
-func isPortAvailable(port int) bool {
+func IsPortAvailable(port int) bool {
 	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 	if err != nil {
@@ -372,7 +372,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 		case <-ctx.Done():
 			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
 		default:
-			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
+			if IsPortAvailable(apiPort) && IsPortAvailable(metricsPort) {
 				return apiPort, metricsPort, nil
 			}
 			apiPort += 2

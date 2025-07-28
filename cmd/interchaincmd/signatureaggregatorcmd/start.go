@@ -4,8 +4,6 @@ package signatureaggregatorcmd
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
@@ -13,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -64,6 +63,17 @@ func start(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("unable to start local signature aggregator for local network as local network is not running. Run avalanche network start to start local networl")
 		}
 	}
+	signatureaggregatorExists, err := isThereExistingSignatureAggregator(network)
+	if err != nil {
+		return err
+	}
+
+	if signatureaggregatorExists {
+		ux.Logger.PrintToUser("There is already a running signature aggregator instance locally for %s", network.Name())
+		ux.Logger.PrintToUser("To create a new signature aggregator instance, stop it first by calling `avalanche interchain signatureAggregator stop` command and run `avalanche interchain signatureAggregator start` again")
+		return nil
+	}
+
 	if err = createLocalSignatureAggregator(network); err != nil {
 		return err
 	}
@@ -103,4 +113,15 @@ func createLocalSignatureAggregator(network models.Network) error {
 		return err
 	}
 	return nil
+}
+
+func isThereExistingSignatureAggregator(network models.Network) (bool, error) {
+	runFile, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		return false, fmt.Errorf("failed to get process details: %w", err)
+	}
+	if !signatureaggregator.IsPortAvailable(runFile.APIPort) && !signatureaggregator.IsPortAvailable(runFile.MetricsPort) {
+		return true, nil
+	}
+	return false, nil
 }
