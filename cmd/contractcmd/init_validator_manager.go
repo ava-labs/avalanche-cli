@@ -183,14 +183,19 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	var signatureAggregatorEndpoint string
 	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
-		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
-		if err != nil {
-			return err
-		}
 		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 		if err != nil {
-			return err
+			// if local machine does not have a running signature aggregator instance for the network, we will create it first
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+			if err != nil {
+				return err
+			}
+			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+			if err != nil {
+				return err
+			}
 		}
+
 	} else {
 		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
