@@ -4,18 +4,15 @@
 package signatureaggregator
 
 import (
+	"os"
+	"os/exec"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"os"
-	"os/exec"
-)
-
-const (
-	subnetName = "testSubnet"
 )
 
 var _ = ginkgo.Describe("[Signature Aggregator]", ginkgo.Ordered, func() {
