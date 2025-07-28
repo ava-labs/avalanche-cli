@@ -16,6 +16,9 @@ import (
 )
 
 var _ = ginkgo.Describe("[Signature Aggregator]", ginkgo.Ordered, func() {
+	ginkgo.BeforeEach(func() {
+		commands.StartNetwork()
+	})
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 	})
@@ -45,5 +48,11 @@ var _ = ginkgo.Describe("[Signature Aggregator]", ginkgo.Ordered, func() {
 			_, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, models.NewLocalNetwork())
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
+	})
+	ginkgo.It("Error Path: start signature aggregator with invalid version", func() {
+		startSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local", "--signature-aggregator-version", "v0.4.3")
+		output, err := startSigAggCmd.CombinedOutput()
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(output).Should(gomega.ContainSubstring("Error: failed to start signature aggregator: failure downloading"))
 	})
 })
