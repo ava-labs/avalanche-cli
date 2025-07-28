@@ -183,7 +183,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	var signatureAggregatorEndpoint string
 	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
-		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, initValidatorManagerFlags.SigAggFlags.SignatureAggregatorVersion)
 		if err != nil {
 			return err
 		}
