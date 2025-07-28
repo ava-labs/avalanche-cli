@@ -25,7 +25,6 @@ var startNetworkOptions = []networkoptions.NetworkOption{
 type StartFlags struct {
 	Network     networkoptions.NetworkFlags
 	SigAggFlags flags.SignatureAggregatorFlags
-	l1          string
 }
 
 var startFlags StartFlags
@@ -35,12 +34,11 @@ func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "starts signature aggregator",
-		Long:  `Starts locally run signature aggregator for the specified network with the L1's aggregator peers'`,
+		Long:  `Starts locally run signature aggregator for the specified network'`,
 		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &startFlags.Network, true, startNetworkOptions)
-	cmd.Flags().StringVar(&startFlags.l1, "l1", "", "name of L1")
 	return cmd
 }
 

@@ -17,6 +17,7 @@ import (
 var listNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Fuji,
+	networkoptions.Mainnet,
 }
 
 type ListFlags struct {
