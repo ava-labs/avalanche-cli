@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	basecfg "github.com/ava-labs/icm-services/config"
