@@ -16,12 +16,14 @@ const (
 	aggregatorLogLevelFlag    = "aggregator-log-level"
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 	aggregatorEndpointFlag    = "signature-aggregator-endpoint"
+	aggregatorVersionFlag     = "signature-aggregator-version"
 )
 
 type SignatureAggregatorFlags struct {
 	AggregatorLogLevel          string
 	AggregatorLogToStdout       bool
 	SignatureAggregatorEndpoint string
+	SignatureAggregatorVersion  string
 }
 
 func validateSignatureAggregatorFlags(sigAggFlags SignatureAggregatorFlags) error {
@@ -63,5 +65,6 @@ func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, sigAggFlags *Signature
 		}
 		set.BoolVar(&sigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 		set.StringVar(&sigAggFlags.SignatureAggregatorEndpoint, aggregatorEndpointFlag, "", "signature-aggregator-endpoint (uses locally run signature aggregator if empty)")
+		set.StringVar(&sigAggFlags.SignatureAggregatorVersion, aggregatorVersionFlag, constants.DefaultSignatureAggregatorVersion, "signature-aggregator version (defaults to latest version)")
 	})
 }
