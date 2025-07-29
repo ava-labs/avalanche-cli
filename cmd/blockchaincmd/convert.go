@@ -388,6 +388,7 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
+
 	var signatureAggregatorEndpoint string
 	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
 		// TODO: replace latest below with sig agg version in flags for convert and deploy
@@ -403,7 +404,6 @@ func InitializeValidatorManager(
 				return tracked, err
 			}
 		}
-
 	} else {
 		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}

@@ -195,7 +195,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-
 	} else {
 		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
