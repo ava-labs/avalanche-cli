@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -374,11 +373,6 @@ func InitializeValidatorManager(
 		}
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return tracked, err
-	}
-
 	subnetSDK := blockchainSDK.Subnet{
 		SubnetID:            subnetID,
 		BlockchainID:        blockchainID,
@@ -394,14 +388,24 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	// TODO: replace latest below with sig agg version in flags for convert and deploy
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
-	if err != nil {
-		return tracked, err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return tracked, err
+
+	var signatureAggregatorEndpoint string
+	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
+		// TODO: replace latest below with sig agg version in flags for convert and deploy
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			// if local machine does not have a running signature aggregator instance for the network, we will create it first
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+			if err != nil {
+				return tracked, err
+			}
+			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+			if err != nil {
+				return tracked, err
+			}
+		}
+	} else {
+		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
