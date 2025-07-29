@@ -53,6 +53,8 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 		return parsedDependency.AvalancheGo[network.Name()].LatestVersion, nil
 	case constants.SubnetEVMRepoName:
 		return parsedDependency.SubnetEVM, nil
+	case constants.SignatureAggregatorRepoName:
+		return parsedDependency.SignatureAggregator, nil
 	default:
 		return "", fmt.Errorf("unsupported dependency: %s", dependencyName)
 	}
