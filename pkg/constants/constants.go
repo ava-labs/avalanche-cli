@@ -216,7 +216,7 @@ const (
 	ICMRelayerInstallDir               = "icm-relayer"
 	ICMContractsInstallDir             = "icm-contracts"
 	ICMRelayerBin                      = "icm-relayer"
-	SignatureAggregatorBin             = "signature-aggregator"
+	SignatureAggregatorRepoName        = "signature-aggregator"
 	LocalRelayerDir                    = "local-relayer"
 	ICMRelayerConfigFilename           = "icm-relayer-config.json"
 	ICMRelayerStorageDir               = "icm-relayer-storage"

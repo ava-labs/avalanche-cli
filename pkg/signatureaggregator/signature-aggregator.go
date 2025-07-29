@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"net"
 	"net/http"
 	"os"
@@ -74,7 +75,7 @@ func InstallSignatureAggregator(app *application.Avalanche, version *string) (st
 	}
 	if *version == constants.LatestReleaseVersionTag {
 		var err error
-		*version, err = GetLatestSignatureAggregatorReleaseVersion()
+		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, models.UndefinedNetwork, nil)
 		if err != nil {
 			return "", err
 		}
