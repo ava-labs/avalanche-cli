@@ -214,6 +214,16 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
+	ginkgo.It("HAPPY PATH: local convert with signature aggregator endpoint previously started", func() {
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
+		_, err := listSigAggCmd.CombinedOutput()
+		gomega.Expect(err).Should(gomega.BeNil())
+		testFlags := utils.TestFlags{}
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "convert", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("Subnet is successfully converted to sovereign L1"))
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("HAPPY PATH: local convert with change owner address", func() {
 		testFlags := utils.TestFlags{
 			"change-owner-address": "P-custom1y5ku603lh583xs9v50p8kk0awcqzgeq0mezkqr",

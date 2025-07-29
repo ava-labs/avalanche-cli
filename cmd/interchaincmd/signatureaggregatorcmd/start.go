@@ -20,6 +20,7 @@ import (
 var startNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Fuji,
+	networkoptions.Mainnet,
 }
 
 type StartFlags struct {
@@ -66,6 +67,17 @@ func start(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("unable to start local signature aggregator for local network as local network is not running. Run avalanche network start to start local networl")
 		}
 	}
+	signatureaggregatorExists, err := isThereExistingSignatureAggregator(network)
+	if err != nil {
+		return err
+	}
+
+	if signatureaggregatorExists {
+		ux.Logger.PrintToUser("There is already a running signature aggregator instance locally for %s", network.Name())
+		ux.Logger.PrintToUser("To create a new signature aggregator instance, stop it first by calling `avalanche interchain signatureAggregator stop` command and run `avalanche interchain signatureAggregator start` again")
+		return nil
+	}
+
 	if err = createLocalSignatureAggregator(network); err != nil {
 		return err
 	}
@@ -105,4 +117,24 @@ func createLocalSignatureAggregator(network models.Network) error {
 		return err
 	}
 	return nil
+}
+
+func isThereExistingSignatureAggregator(network models.Network) (bool, error) {
+	// first we check if the local config file for signature aggregator exists
+	// if it doesn't exist, then there is no running signature aggregator instance
+	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
+	_, err := os.ReadFile(runFilePath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	// next, we check if the ports mentioned in local config file for signature aggregator are used
+	// if they are both not available, that means that there is a running signature aggregator instance
+	runFile, err := signatureaggregator.GetCurrentSignatureAggregatorProcessDetails(app, network)
+	if err != nil {
+		return false, fmt.Errorf("failed to get process details: %w", err)
+	}
+	if !signatureaggregator.IsPortAvailable(runFile.APIPort) && !signatureaggregator.IsPortAvailable(runFile.MetricsPort) {
+		return true, nil
+	}
+	return false, nil
 }

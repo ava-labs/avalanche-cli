@@ -286,6 +286,19 @@ var _ = ginkgo.Describe("[Blockchain Deploy]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
+	ginkgo.It("HAPPY PATH: local deploy with signature aggregator previously started", func() {
+		_, err := utils.TestCommand(cmd.NetworkCmd, "start", nil, nil, nil)
+		gomega.Expect(err).Should(gomega.BeNil())
+		listSigAggCmd := exec.Command("./bin/avalanche", "interchain", "signatureAggregator", "start", "--local")
+		_, err = listSigAggCmd.CombinedOutput()
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		testFlags := utils.TestFlags{}
+		output, err := utils.TestCommand(cmd.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
+		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("HAPPY PATH: local deploy set num bootstrap validators", func() {
 		testFlags := utils.TestFlags{
 			"num-bootstrap-validators": 2,

@@ -50,6 +50,16 @@ func stop(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	signatureaggregatorExists, err := isThereExistingSignatureAggregator(network)
+	if err != nil {
+		return err
+	}
+
+	if !signatureaggregatorExists {
+		ux.Logger.PrintToUser("There is currently no running signature aggregator instance locally for %s", network.Name())
+		return nil
+	}
 	// Clean up signature aggregator
 	if err := signatureaggregator.SignatureAggregatorCleanup(app, network); err != nil {
 		return err
