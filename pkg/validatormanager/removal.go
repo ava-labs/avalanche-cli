@@ -8,8 +8,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
 	"math/big"
+
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
 
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 

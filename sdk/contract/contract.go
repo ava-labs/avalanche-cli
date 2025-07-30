@@ -7,10 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"

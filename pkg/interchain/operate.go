@@ -4,8 +4,9 @@ package interchain
 
 import (
 	_ "embed"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ava-labs/avalanchego/ids"

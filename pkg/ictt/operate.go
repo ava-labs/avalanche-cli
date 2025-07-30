@@ -5,9 +5,10 @@ package ictt
 import (
 	_ "embed"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/contract"
