@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/contract"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -235,7 +235,7 @@ func importBlockchain(
 				// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
 				//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
 				//   owner of this main manager, interacts with the users
-				owner, err := contractSDK.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 				if err != nil {
 					return models.Sidecar{}, nil, err
 				}

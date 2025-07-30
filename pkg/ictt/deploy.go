@@ -4,11 +4,12 @@ package ictt
 
 import (
 	_ "embed"
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/sdk/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -38,7 +39,7 @@ func RegisterRemote(
 	feeInfo := ICMFeeInfo{
 		Amount: big.NewInt(0),
 	}
-	_, _, err := contractSDK.TxToMethod(
+	_, _, err := contract.TxToMethod(
 		logger,
 		rpcURL,
 		false,
@@ -79,7 +80,7 @@ func DeployERC20Remote(
 		TokenHomeAddress:      tokenHomeAddress,
 		TokenHomeDecimals:     tokenHomeDecimals,
 	}
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
@@ -116,7 +117,7 @@ func DeployNativeRemote(
 		TokenHomeAddress:      tokenHomeAddress,
 		TokenHomeDecimals:     tokenHomeDecimals,
 	}
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
@@ -142,7 +143,7 @@ func DeployERC20Home(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
@@ -167,7 +168,7 @@ func DeployNativeHome(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
@@ -189,7 +190,7 @@ func DeployWrappedNativeToken(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
