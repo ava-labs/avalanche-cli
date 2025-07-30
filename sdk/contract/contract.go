@@ -362,7 +362,7 @@ func TxToMethod(
 		)
 		if traceCallErr != nil {
 			logger.Error(fmt.Sprintf("Could not get debug trace for %s error on %s: %s", description, rpcURL, traceCallErr))
-			logger.Error(fmt.Sprintf("Verify --debug flag value when calling 'blockchain create'"))
+			logger.Error("Verify --debug flag value when calling 'blockchain create'")
 			return tx, nil, err
 		}
 		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
