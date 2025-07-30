@@ -561,6 +561,7 @@ func CallAddValidator(
 	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
+		ux.Logger.Log,
 		app,
 		network,
 		rpcURL,
@@ -615,6 +616,7 @@ func CallAddValidator(
 	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
+		ux.Logger.Log,
 		app,
 		network,
 		rpcURL,

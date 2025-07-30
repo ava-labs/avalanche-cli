@@ -7,7 +7,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -81,7 +82,7 @@ func DeployValidatorManagerV2_0_0Contract(
 	validatorManagerString := strings.TrimSpace(string(validatorManagerV2_0_0Bytecode))
 	validatorManagerString = fillValidatorMessagesAddressPlaceholder(validatorManagerString)
 	validatorManagerBytes := []byte(validatorManagerString)
-	return contract.DeployContract(
+	return contractSDK.DeployContract(
 		rpcURL,
 		privateKey,
 		validatorManagerBytes,
@@ -91,6 +92,7 @@ func DeployValidatorManagerV2_0_0Contract(
 }
 
 func DeployAndRegisterValidatorManagerV2_0_0Contract(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	proxyOwnerPrivateKey string,
@@ -103,6 +105,7 @@ func DeployAndRegisterValidatorManagerV2_0_0Contract(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupValidatorProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		validatorManagerAddress,
@@ -122,7 +125,7 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV1_0_0Bytecode))
 	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
 	posValidatorManagerBytes := []byte(posValidatorManagerString)
-	return contract.DeployContract(
+	return contractSDK.DeployContract(
 		rpcURL,
 		privateKey,
 		posValidatorManagerBytes,
@@ -132,6 +135,7 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 }
 
 func DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	proxyOwnerPrivateKey string,
@@ -144,6 +148,7 @@ func DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupValidatorProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
@@ -163,7 +168,7 @@ func DeployPoSValidatorManagerV2_0_0Contract(
 	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerV2_0_0Bytecode))
 	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
 	posValidatorManagerBytes := []byte(posValidatorManagerString)
-	return contract.DeployContract(
+	return contractSDK.DeployContract(
 		rpcURL,
 		privateKey,
 		posValidatorManagerBytes,
@@ -173,6 +178,7 @@ func DeployPoSValidatorManagerV2_0_0Contract(
 }
 
 func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	proxyOwnerPrivateKey string,
@@ -185,6 +191,7 @@ func DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupSpecializationProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
