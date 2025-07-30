@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/big"
 
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -32,6 +34,7 @@ import (
 )
 
 func InitializeValidatorWeightChange(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -40,7 +43,8 @@ func InitializeValidatorWeightChange(
 	validationID ids.ID,
 	weight uint64,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		managerOwnerAddress,
@@ -57,6 +61,7 @@ func InitializeValidatorWeightChange(
 
 func InitValidatorWeightChange(
 	ctx context.Context,
+	logger logging.Logger,
 	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
@@ -126,6 +131,7 @@ func InitValidatorWeightChange(
 	if unsignedMessage == nil {
 		var tx *types.Transaction
 		tx, receipt, err = InitializeValidatorWeightChange(
+			logger,
 			rpcURL,
 			managerAddress,
 			generateRawTxOnly,
@@ -177,6 +183,7 @@ func InitValidatorWeightChange(
 }
 
 func CompleteValidatorWeightChange(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -184,7 +191,8 @@ func CompleteValidatorWeightChange(
 	privateKey string, // not need to be owner atm
 	pchainL1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethodWithWarpMessage(
+	return contractSDK.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		ownerAddress,
@@ -201,6 +209,7 @@ func CompleteValidatorWeightChange(
 
 func FinishValidatorWeightChange(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -257,6 +266,7 @@ func FinishValidatorWeightChange(
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorWeightChange(
+		logger,
 		rpcURL,
 		managerAddress,
 		generateRawTxOnly,

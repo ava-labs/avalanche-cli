@@ -229,6 +229,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			}
 			if sc.UseACP99 {
 				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+					ux.Logger.Log,
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -237,6 +238,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 					return err
 				}
 				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					ux.Logger.Log,
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -246,6 +248,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				}
 			} else {
 				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					ux.Logger.Log,
 					initValidatorManagerFlags.RPC,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,

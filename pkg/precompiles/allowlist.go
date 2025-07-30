@@ -4,19 +4,22 @@ package precompiles
 
 import (
 	_ "embed"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func SetAdmin(
+	logger logging.Logger,
 	rpcURL string,
 	precompile common.Address,
 	privateKey string,
 	toSet common.Address,
 ) error {
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -32,12 +35,14 @@ func SetAdmin(
 }
 
 func SetManager(
+	logger logging.Logger,
 	rpcURL string,
 	precompile common.Address,
 	privateKey string,
 	toSet common.Address,
 ) error {
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -53,12 +58,14 @@ func SetManager(
 }
 
 func SetEnabled(
+	logger logging.Logger,
 	rpcURL string,
 	precompile common.Address,
 	privateKey string,
 	toSet common.Address,
 ) error {
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -74,12 +81,14 @@ func SetEnabled(
 }
 
 func SetNone(
+	logger logging.Logger,
 	rpcURL string,
 	precompile common.Address,
 	privateKey string,
 	toSet common.Address,
 ) error {
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

@@ -579,6 +579,7 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
 	receipt, receipt2, err := ictt.Send(
+		ux.Logger.Log,
 		senderURL,
 		goethereumcommon.HexToAddress(originTransferrerAddress),
 		privateKey,

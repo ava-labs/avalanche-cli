@@ -7,11 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"math/big"
 	"reflect"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -299,6 +299,7 @@ func idempotentSigner(
 // at the smart contract [contractAddress] with the given [params].
 // also send [payment] tokens to it
 func TxToMethod(
+	logger logging.Logger,
 	rpcURL string,
 	generateRawTxOnly bool,
 	from common.Address,
@@ -359,16 +360,16 @@ func TxToMethod(
 			params...,
 		)
 		if traceCallErr != nil {
-			ux.Logger.PrintToUser("Could not get debug trace for %s error on %s: %s", description, rpcURL, traceCallErr)
-			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
+			logger.Error(fmt.Sprintf("Could not get debug trace for %s error on %s: %s", description, rpcURL, traceCallErr))
+			logger.Error(fmt.Sprintf("Verify --debug flag value when calling 'blockchain create'"))
 			return tx, nil, err
 		}
 		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {
-			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-			ux.Logger.PrintToUser("error trace for %s error:", description)
-			ux.Logger.PrintToUser("%#v", trace)
+			logger.Error(fmt.Sprintf("failed to match error selector on trace: %s", err))
+			logger.Error(fmt.Sprintf("error trace for %s error:", description))
+			logger.Error(fmt.Sprintf("%#v", trace))
 		}
 		return tx, nil, err
 	}
@@ -380,6 +381,7 @@ func TxToMethod(
 		return tx, nil, err
 	} else if !success {
 		return handleFailedReceiptStatus(
+			logger,
 			rpcURL,
 			description,
 			errorSignatureToError,
@@ -396,6 +398,7 @@ func TxToMethod(
 // going to be verified previously to pass it to the method
 // also send [payment] tokens to it
 func TxToMethodWithWarpMessage(
+	logger logging.Logger,
 	rpcURL string,
 	generateRawTxOnly bool,
 	from common.Address,
@@ -457,6 +460,7 @@ func TxToMethodWithWarpMessage(
 		return tx, receipt, err
 	} else if !success {
 		return handleFailedReceiptStatus(
+			logger,
 			rpcURL,
 			description,
 			errorSignatureToError,
@@ -468,18 +472,20 @@ func TxToMethodWithWarpMessage(
 }
 
 func printFailedReceiptStatusMessage(
+	logger logging.Logger,
 	rpcURL string,
 	description string,
 	tx *types.Transaction,
 ) {
-	ux.Logger.PrintToUser("Failed receipt status for %s error on %s, tx hash %s",
+	logger.Error(fmt.Sprintf("Failed receipt status for %s error on %s, tx hash %s",
 		description,
 		rpcURL,
-		tx.Hash(),
+		tx.Hash()),
 	)
 }
 
 func handleFailedReceiptStatus(
+	logger logging.Logger,
 	rpcURL string,
 	description string,
 	errorSignatureToError map[string]error,
@@ -491,18 +497,18 @@ func handleFailedReceiptStatus(
 		tx.Hash().String(),
 	)
 	if err != nil {
-		printFailedReceiptStatusMessage(rpcURL, description, tx)
-		ux.Logger.PrintToUser("Could not get debug trace: %s", err)
-		ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
+		printFailedReceiptStatusMessage(logger, rpcURL, description, tx)
+		logger.Error(fmt.Sprintf("Could not get debug trace: %s", err))
+		logger.Error("Verify --debug flag value when calling 'blockchain create'")
 		return tx, receipt, err
 	}
 	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 		return tx, receipt, errorFromSignature
 	} else {
-		printFailedReceiptStatusMessage(rpcURL, description, tx)
-		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-		ux.Logger.PrintToUser("error trace:")
-		ux.Logger.PrintToUser("%#v", trace)
+		printFailedReceiptStatusMessage(logger, rpcURL, description, tx)
+		logger.Error(fmt.Sprintf("failed to match error selector on trace: %s", err))
+		logger.Error("error trace:")
+		logger.Error(fmt.Sprintf("%#v", trace))
 	}
 	return tx, receipt, ErrFailedReceiptStatus
 }

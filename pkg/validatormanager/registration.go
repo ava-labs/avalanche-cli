@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -36,6 +37,7 @@ import (
 )
 
 func InitializeValidatorRegistrationPoSNative(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	managerOwnerPrivateKey string,
@@ -77,7 +79,8 @@ func InitializeValidatorRegistrationPoSNative(
 	}
 
 	if useACP99 {
-		return contract.TxToMethod(
+		return contractSDK.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -97,7 +100,8 @@ func InitializeValidatorRegistrationPoSNative(
 		)
 	}
 
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -121,6 +125,7 @@ func InitializeValidatorRegistrationPoSNative(
 
 // step 1 of flow for adding a new validator
 func InitializeValidatorRegistrationPoA(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -151,7 +156,8 @@ func InitializeValidatorRegistrationPoA(
 		}),
 	}
 	if useACP99 {
-		return contract.TxToMethod(
+		return contractSDK.TxToMethod(
+			logger,
 			rpcURL,
 			generateRawTxOnly,
 			managerOwnerAddress,
@@ -175,7 +181,8 @@ func InitializeValidatorRegistrationPoA(
 		RemainingBalanceOwner PChainOwner
 		DisableOwner          PChainOwner
 	}
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		managerOwnerAddress,
@@ -305,7 +312,7 @@ func PoSWeightToValue(
 	managerAddress common.Address,
 	weight uint64,
 ) (*big.Int, error) {
-	out, err := contract.CallToMethod(
+	out, err := contractSDK.CallToMethod(
 		rpcURL,
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
@@ -314,7 +321,7 @@ func PoSWeightToValue(
 	if err != nil {
 		return nil, err
 	}
-	return contract.GetSmartContractCallResult[*big.Int]("weightToValue", out)
+	return contractSDK.GetSmartContractCallResult[*big.Int]("weightToValue", out)
 }
 
 func GetPChainL1ValidatorRegistrationMessage(
@@ -361,6 +368,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 
 // last step of flow for adding a new validator
 func CompleteValidatorRegistration(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -368,7 +376,8 @@ func CompleteValidatorRegistration(
 	privateKey string, // not need to be owner atm
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethodWithWarpMessage(
+	return contractSDK.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		ownerAddress,
@@ -385,6 +394,7 @@ func CompleteValidatorRegistration(
 
 func InitValidatorRegistration(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -456,6 +466,7 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
 			ux.Logger.PrintLineSeparator()
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
+				logger,
 				rpcURL,
 				managerAddress,
 				ownerPrivateKey,
@@ -483,6 +494,7 @@ func InitValidatorRegistration(
 		} else {
 			managerAddress = common.HexToAddress(validatorManagerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
+				logger,
 				rpcURL,
 				managerAddress,
 				generateRawTxOnly,
@@ -545,6 +557,7 @@ func InitValidatorRegistration(
 
 func FinishValidatorRegistration(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -592,6 +605,7 @@ func FinishValidatorRegistration(
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
+		logger,
 		rpcURL,
 		managerAddress,
 		generateRawTxOnly,
