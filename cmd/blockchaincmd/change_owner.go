@@ -135,7 +135,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.TransferSubnetOwnership(
 		currentControlKeys,
 		subnetAuthKeys,

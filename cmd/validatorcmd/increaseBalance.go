@@ -102,7 +102,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 	}
 	balance = uint64(balanceAVAX * float64(units.Avax))
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	if _, err := deployer.IncreaseValidatorPChainBalance(validationID, balance); err != nil {
 		return err
 	}

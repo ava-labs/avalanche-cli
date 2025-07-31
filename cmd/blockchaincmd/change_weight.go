@@ -232,7 +232,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 
 	if sc.UseACP99 {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
