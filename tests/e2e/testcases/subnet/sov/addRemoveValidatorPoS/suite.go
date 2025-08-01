@@ -67,7 +67,8 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV L1 Manager PoS]", func() 
 				localClusterUris[4],
 			},
 			ewoqPChainAddress,
-			true, // convertOnly
+			true,  // convertOnly
+			false, // externalManager
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
