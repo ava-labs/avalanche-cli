@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV L1 Manager PoA]", func() 
 		output, err := commands.InitValidatorManager(
 			utils.BlockchainName,
 			utils.TestLocalNodeName,
-			localClusterUris[0],
+			"",
 			blockchainID,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
