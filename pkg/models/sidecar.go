@@ -6,6 +6,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type NetworkData struct {
@@ -105,7 +107,7 @@ func (sc Sidecar) UpdateValidatorManagerAddress(
 	if managerAddr != "" {
 		temp.ValidatorManagerAddress = managerAddr
 	}
-	if specializedManagerAddr != "" {
+	if specializedManagerAddr != "" && common.HexToAddress(specializedManagerAddr) != (common.Address{}) {
 		temp.SpecializedValidatorManagerAddress = specializedManagerAddr
 	}
 	sc.Networks[network] = temp

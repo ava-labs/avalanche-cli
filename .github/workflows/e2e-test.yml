@@ -32,6 +32,7 @@ jobs:
             "\\[Etna AddRemove Validator SOV L1 Manager PoA\\]",
             "\\[Etna AddRemove Validator SOV External Manager PoA\\]",
             "\\[Etna AddRemove Validator SOV L1 Manager PoS\\]",
+            "\\[Etna AddRemove Validator SOV External Manager PoS\\]",
             "\\[Etna Add Validator SOV L1 Manager Local\\]",
             "\\[Subnet\\]",
             "\\[Upgrade expect network failure",
