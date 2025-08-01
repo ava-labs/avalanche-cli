@@ -153,7 +153,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
-	specializedValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
 	if specializedValidatorManagerAddress != "" {
 		validatorManagerAddress = specializedValidatorManagerAddress
 	}

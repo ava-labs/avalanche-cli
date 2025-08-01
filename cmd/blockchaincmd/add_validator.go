@@ -405,7 +405,7 @@ func CallAddValidator(
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
 	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
-	specializedValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
 	if specializedValidatorManagerAddress != "" {
 		validatorManagerAddress = specializedValidatorManagerAddress
 	}
