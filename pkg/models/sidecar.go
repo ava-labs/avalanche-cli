@@ -87,7 +87,7 @@ func (sc Sidecar) PoS() bool {
 	return sc.ValidatorManagement == validatormanagertypes.ProofOfStake
 }
 
-func (sc Sidecar) UpdateValidatorManagerAddress(
+func (sc *Sidecar) UpdateValidatorManagerAddress(
 	network string,
 	managerRPCEndpoint string,
 	managerBlockchainID ids.ID,
