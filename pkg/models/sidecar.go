@@ -92,10 +92,21 @@ func (sc Sidecar) UpdateValidatorManagerAddress(
 	managerAddr string,
 	specializedManagerAddr string,
 ) {
+	if sc.Networks == nil {
+		sc.Networks = make(map[string]NetworkData)
+	}
 	temp := sc.Networks[network]
-	temp.ValidatorManagerRPCEndpoint = managerRPCEndpoint
-	temp.ValidatorManagerBlockchainID = managerBlockchainID
-	temp.ValidatorManagerAddress = managerAddr
-	temp.SpecializedValidatorManagerAddress = specializedManagerAddr
+	if managerRPCEndpoint != "" {
+		temp.ValidatorManagerRPCEndpoint = managerRPCEndpoint
+	}
+	if managerBlockchainID != ids.Empty {
+		temp.ValidatorManagerBlockchainID = managerBlockchainID
+	}
+	if managerAddr != "" {
+		temp.ValidatorManagerAddress = managerAddr
+	}
+	if specializedManagerAddr != "" {
+		temp.SpecializedValidatorManagerAddress = specializedManagerAddr
+	}
 	sc.Networks[network] = temp
 }
