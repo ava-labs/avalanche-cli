@@ -625,15 +625,15 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
 	}
-	sc.Networks[network.Name()] = models.NetworkData{
-		SubnetID:                   subnetID,
-		BlockchainID:               blockchainID,
-		RPCVersion:                 sc.RPCVersion,
-		TeleporterMessengerAddress: icmMessengerAddress,
-		TeleporterRegistryAddress:  icmRegistryAddress,
-		BootstrapValidators:        bootstrapValidators,
-		ClusterName:                clusterName,
-	}
+	temp := sc.Networks[network.Name()]
+	temp.SubnetID = subnetID
+	temp.BlockchainID = blockchainID
+	temp.RPCVersion = sc.RPCVersion
+	temp.TeleporterMessengerAddress = icmMessengerAddress
+	temp.TeleporterRegistryAddress = icmRegistryAddress
+	temp.BootstrapValidators = bootstrapValidators
+	temp.ClusterName = clusterName
+	sc.Networks[network.Name()] = temp
 	if sc.Sovereign {
 		sc.UpdateValidatorManagerAddress(
 			network.Name(),
