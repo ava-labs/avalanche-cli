@@ -66,6 +66,7 @@ func TmpNetCreate(
 	log logging.Logger,
 	networkDir string,
 	avalancheGoBinPath string,
+	cChainConfig []byte,
 	pluginDir string,
 	networkID uint32,
 	bootstrapIPs []string,
@@ -96,6 +97,17 @@ func TmpNetCreate(
 	}
 	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
 		return nil, err
+	}
+	if cChainConfig != nil {
+		if err := TmpNetSetBlockchainConfig(
+			network,
+			network.Nodes,
+			"C",
+			cChainConfig,
+			nil,
+		); err != nil {
+			return nil, err
+		}
 	}
 	if err := network.Write(); err != nil {
 		return nil, err
@@ -484,7 +496,7 @@ func TmpNetInstallVM(
 func TmpNetSetBlockchainConfig(
 	network *tmpnet.Network,
 	nodes []*tmpnet.Node,
-	blockchainID ids.ID,
+	blockchainID string,
 	blockchainConfig []byte,
 	blockchainUpgrades []byte,
 ) error {
@@ -509,7 +521,7 @@ func TmpNetSetBlockchainConfig(
 func TmpNetSetNodeBlockchainConfig(
 	network *tmpnet.Network,
 	nodeID ids.NodeID,
-	blockchainID ids.ID,
+	blockchainID string,
 	blockchainConfig []byte,
 	blockchainUpgrades []byte,
 ) error {
@@ -524,12 +536,12 @@ func TmpNetSetNodeBlockchainConfig(
 		}
 		configPath = filepath.Join(
 			blockchainsConfigDir,
-			blockchainID.String(),
+			blockchainID,
 			"config.json",
 		)
 		upgradesPath = filepath.Join(
 			blockchainsConfigDir,
-			blockchainID.String(),
+			blockchainID,
 			"upgrade.json",
 		)
 		configDir := filepath.Dir(configPath)
@@ -771,7 +783,7 @@ func TmpNetUpdateBlockchainConfig(
 		if err := TmpNetSetBlockchainConfig(
 			network,
 			network.Nodes,
-			blockchainID,
+			blockchainID.String(),
 			blockchainConfig,
 			blockchainUpgrades,
 		); err != nil {
@@ -786,7 +798,7 @@ func TmpNetUpdateBlockchainConfig(
 		if err := TmpNetSetNodeBlockchainConfig(
 			network,
 			nodeID,
-			blockchainID,
+			blockchainID.String(),
 			blockchainConfig,
 			nil,
 		); err != nil {

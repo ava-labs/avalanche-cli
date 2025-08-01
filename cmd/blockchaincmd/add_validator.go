@@ -213,6 +213,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		blockchainName = sc.Name
 	}
 
 	if err := preAddChecks(args); err != nil {
@@ -344,7 +345,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		addValidatorFlags.RPC,
 	); err != nil {
 		return err
 	}
@@ -377,7 +377,6 @@ func CallAddValidator(
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
 	sc models.Sidecar,
-	rpcURL string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -402,7 +401,24 @@ func CallAddValidator(
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
+
+	if validatorManagerRPCEndpoint == "" {
+		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+	}
+	if validatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to find Validator Manager blockchain ID")
+	}
+	if validatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
 
 	if validatorManagerOwner == "" {
 		validatorManagerOwner = sc.ValidatorManagerOwner
@@ -460,20 +476,7 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
 
-	if rpcURL == "" {
-		rpcURL, _, err = contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
 
 	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
@@ -563,7 +566,7 @@ func CallAddValidator(
 		aggregatorCtx,
 		app,
 		network,
-		rpcURL,
+		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
@@ -579,6 +582,7 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		common.HexToAddress(rewardsRecipientAddr),
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,
@@ -617,13 +621,14 @@ func CallAddValidator(
 		aggregatorCtx,
 		app,
 		network,
-		rpcURL,
+		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
 	)

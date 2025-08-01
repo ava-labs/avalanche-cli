@@ -149,7 +149,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	address, err := contract.DeployERC20(
+	address, _, _, err := contract.DeployERC20(
 		deployERC20Flags.rpcEndpoint,
 		privateKey,
 		deployERC20Flags.symbol,
