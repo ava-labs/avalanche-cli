@@ -1,5 +1,6 @@
 {
   "log-level": "debug",
+  "database-type": "leveldb",
   "eth-apis": [
     "eth",
     "eth-filter",

@@ -68,3 +68,51 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV L1 Manager Local]", func() {
 		commands.DeleteSubnetConfig(utils.BlockchainName)
 	})
 })
+
+var _ = ginkgo.Describe("[Etna Add Validator SOV External Manager Local]", func() {
+	ginkgo.It("Create Etna Subnet Config", func() {
+		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
+			utils.BlockchainName,
+			ewoqEVMAddress,
+			commands.PoS,
+		)
+	})
+	ginkgo.It("Can deploy blockchain to localhost and upsize it", func() {
+		output := commands.StartNetworkWithVersion(avagoVersion)
+		fmt.Println(output)
+		output, err := commands.DeployEtnaBlockchain(
+			utils.BlockchainName,
+			"",
+			nil,
+			ewoqPChainAddress,
+			false, // convertOnly
+			true,  // externalManager
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+		output, err = commands.AddEtnaSubnetValidatorToCluster(
+			"",
+			utils.BlockchainName,
+			"",
+			ewoqPChainAddress,
+			1,
+			true,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy local node", func() {
+		output, err := commands.DestroyLocalNode(utils.TestLocalNodeName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy Etna Local Network", func() {
+		commands.CleanNetwork()
+	})
+
+	ginkgo.It("Can remove Etna Subnet Config", func() {
+		commands.DeleteSubnetConfig(utils.BlockchainName)
+	})
+})
