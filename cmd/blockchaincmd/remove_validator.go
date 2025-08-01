@@ -271,6 +271,11 @@ func removeValidatorSOV(
 		validatorManagerOwner = sc.ValidatorManagerOwner
 	}
 
+	l1RPCEndpoint, _, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, false)
+	if err != nil {
+		return err
+	}
+
 	var ownerPrivateKey string
 	if !externalValidatorManagerOwner {
 		var ownerPrivateKeyFound bool
@@ -352,6 +357,8 @@ func removeValidatorSOV(
 		app,
 		network,
 		validatorManagerRPCEndpoint,
+		chainSpec,
+		l1RPCEndpoint,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
@@ -382,6 +389,8 @@ func removeValidatorSOV(
 			app,
 			network,
 			validatorManagerRPCEndpoint,
+			chainSpec,
+			l1RPCEndpoint,
 			externalValidatorManagerOwner,
 			validatorManagerOwner,
 			ownerPrivateKey,

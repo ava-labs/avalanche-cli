@@ -143,8 +143,8 @@ func GetUptimeProofMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	managerSubnetID ids.ID,
-	managerBlockchainID ids.ID,
+	l1SubnetID ids.ID,
+	l1BlockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
 	signatureAggregatorEndpoint string,
@@ -159,7 +159,7 @@ func GetUptimeProofMessage(
 	}
 	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		managerBlockchainID,
+		l1BlockchainID,
 		addressedCall.Bytes(),
 	)
 	if err != nil {
@@ -172,7 +172,7 @@ func GetUptimeProofMessage(
 		signatureAggregatorEndpoint,
 		messageHexStr,
 		"",
-		managerSubnetID.String(),
+		l1SubnetID.String(),
 		aggregatorQuorumPercentage,
 	)
 }
@@ -182,6 +182,8 @@ func InitValidatorRemoval(
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
+	chainSpec contract.ChainSpec,
+	l1RPCURL string,
 	generateRawTxOnly bool,
 	ownerAddressStr string,
 	ownerPrivateKey string,
@@ -196,6 +198,24 @@ func InitValidatorRemoval(
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
+	l1SubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, ids.Empty, nil, err
+	}
+
+	l1BlockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, ids.Empty, nil, err
+	}
+
 	managerSubnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -240,7 +260,7 @@ func InitValidatorRemoval(
 		signedUptimeProof := &warp.Message{}
 		if isPoS {
 			if uptimeSec == 0 {
-				uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
+				uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(l1RPCURL, nodeID)
 				if err != nil {
 					return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
 				}
@@ -250,8 +270,8 @@ func InitValidatorRemoval(
 				network,
 				aggregatorLogger,
 				0,
-				managerSubnetID,
-				managerBlockchainID,
+				l1SubnetID,
+				l1BlockchainID,
 				validationID,
 				uptimeSec,
 				signatureAggregatorEndpoint,
