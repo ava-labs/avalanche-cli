@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -57,7 +58,23 @@ func PoSValidatorManagerInitialize(
 		); err != nil {
 			return tx, receipt, err
 		}
-		err := contract.TransferOwnership(
+		managerOwnerAddress, err := evm.PrivateKeyToAddress(managerOwnerPrivateKey)
+		if err != nil {
+			return nil, nil, err
+		}
+		client, err := evm.GetClient(rpcURL)
+		if err != nil {
+			return nil, nil, err
+		}
+		_, err = client.FundAddress(
+			privateKey,
+			managerOwnerAddress.Hex(),
+			big.NewInt(100_000_000_000_000_000), // 0.1 TOKEN
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+		err = contract.TransferOwnership(
 			rpcURL,
 			managerAddress,
 			managerOwnerPrivateKey,

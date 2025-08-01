@@ -110,12 +110,18 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
 	validatorManagerAddressStr := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddressStr := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
 
 	if validatorManagerBlockchainID == ids.Empty {
 		return fmt.Errorf("unable to find Validator Manager blockchain ID")
 	}
 	if validatorManagerAddressStr == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
+	}
+
+	validatorManagerSubnetID, err := blockchaincmd.GetValidatorManagerSubnetID(network, validatorManagerBlockchainID)
+	if err != nil {
+		return err
 	}
 
 	if initValidatorManagerFlags.RPC != "" {
@@ -163,8 +169,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	var specializedValidatorManagerAddressStr string
-	if sc.UseACP99 && sc.PoS() {
+	if specializedValidatorManagerAddressStr == "" && sc.UseACP99 && sc.PoS() {
 		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
 			// assumed to be managed by CLI
 			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
@@ -219,6 +224,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		Network:                            network.SDKNetwork(),
 		SubnetID:                           subnetID,
 		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
+		ValidatorManagerSubnetID:           validatorManagerSubnetID,
 		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,
 		ValidatorManagerAddress:            &validatorManagerAddress,
 		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
@@ -298,10 +304,13 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if specializedValidatorManagerAddress != (common.Address{}) {
-		validatorManagerAddress = specializedValidatorManagerAddress
-	}
-	sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerRPCEndpoint, validatorManagerBlockchainID, validatorManagerAddress.String())
+	sidecar.UpdateValidatorManagerAddress(
+		network.Name(),
+		validatorManagerRPCEndpoint,
+		validatorManagerBlockchainID,
+		validatorManagerAddress.String(),
+		specializedValidatorManagerAddress.String(),
+	)
 	if err := app.UpdateSidecar(&sidecar); err != nil {
 		return err
 	}

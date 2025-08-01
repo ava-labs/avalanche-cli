@@ -39,6 +39,7 @@ func TestGetTmpNetAvailableLogs(t *testing.T) {
 		app.Log,
 		networkDir,
 		"",
+		nil,
 		"",
 		networkID,
 		nil,

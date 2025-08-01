@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -279,6 +280,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		app,
 		clusterName,
 		avalanchegoBinaryPath,
+		vm.EvmDebugConfig,
 		numNodes,
 		nodeConfig,
 		connectionSettings,
@@ -675,8 +677,8 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		common.HexToAddress(rewardsRecipientAddr),
-		validatorManagerAddress,
 		ids.Empty,
+		validatorManagerAddress,
 		useACP99,
 		"",
 		signatureAggregatorEndpoint,
@@ -715,6 +717,7 @@ func addAsValidator(
 		payerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		ids.Empty,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
 	); err != nil {

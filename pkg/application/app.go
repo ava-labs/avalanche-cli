@@ -620,6 +620,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	validatorManagerRPCEndpoint string,
 	validatorManagerBlockchainID ids.ID,
 	validatorManagerAddress string,
+	specializedValidatorManagerAddress string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -634,7 +635,13 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		ClusterName:                clusterName,
 	}
 	if sc.Sovereign {
-		sc.UpdateValidatorManagerAddress(network.Name(), validatorManagerRPCEndpoint, validatorManagerBlockchainID, validatorManagerAddress)
+		sc.UpdateValidatorManagerAddress(
+			network.Name(),
+			validatorManagerRPCEndpoint,
+			validatorManagerBlockchainID,
+			validatorManagerAddress,
+			specializedValidatorManagerAddress,
+		)
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)

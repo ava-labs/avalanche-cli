@@ -405,6 +405,10 @@ func CallAddValidator(
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
 	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
 
 	if validatorManagerRPCEndpoint == "" {
 		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
@@ -578,8 +582,8 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		common.HexToAddress(rewardsRecipientAddr),
-		validatorManagerAddress,
 		validatorManagerBlockchainID,
+		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
@@ -624,6 +628,7 @@ func CallAddValidator(
 		ownerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
 	)

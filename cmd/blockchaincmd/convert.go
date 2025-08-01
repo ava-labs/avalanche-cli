@@ -90,6 +90,19 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	return cmd
 }
 
+func GetValidatorManagerSubnetID(
+	network models.Network,
+	validatorManagerBlockchainID ids.ID,
+) (ids.ID, error) {
+	return contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+}
+
 func GetValidatorManagerRPCEndpoint(
 	network models.Network,
 	blockchainName string,
@@ -275,10 +288,16 @@ func InitializeValidatorManager(
 		}
 	}
 
+	validatorManagerSubnetID, err := GetValidatorManagerSubnetID(network, validatorManagerBlockchainID)
+	if err != nil {
+		return tracked, err
+	}
+
 	subnetSDK := blockchainSDK.Subnet{
 		Network:                            network.SDKNetwork(),
 		SubnetID:                           subnetID,
 		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
+		ValidatorManagerSubnetID:           validatorManagerSubnetID,
 		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,
 		ValidatorManagerAddress:            &validatorManagerAddress,
 		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
@@ -344,10 +363,13 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	if specializedValidatorManagerAddress != (common.Address{}) {
-		validatorManagerAddress = specializedValidatorManagerAddress
-	}
-	sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerRPCEndpoint, validatorManagerBlockchainID, validatorManagerAddress.String())
+	sidecar.UpdateValidatorManagerAddress(
+		network.Name(),
+		validatorManagerRPCEndpoint,
+		validatorManagerBlockchainID,
+		validatorManagerAddress.String(),
+		specializedValidatorManagerAddress.String(),
+	)
 	if err := app.UpdateSidecar(&sidecar); err != nil {
 		return tracked, err
 	}
@@ -460,6 +482,7 @@ func convertSubnetToL1(
 		"",
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
+		"",
 	)
 }
 
@@ -586,7 +609,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
 			return err
 		}
-		sidecar.UpdateValidatorManagerAddress(network.Name(), "", validatorManagerBlockchainID, validatorManagerAddressStr)
 	}
 
 	sidecar.Sovereign = true

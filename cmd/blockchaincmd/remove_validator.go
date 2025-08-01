@@ -303,6 +303,10 @@ func removeValidatorSOV(
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
 	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
 
 	if validatorManagerRPCEndpoint == "" {
 		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
@@ -348,7 +352,6 @@ func removeValidatorSOV(
 		app,
 		network,
 		validatorManagerRPCEndpoint,
-		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
@@ -357,8 +360,8 @@ func removeValidatorSOV(
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
-		validatorManagerAddress,
 		validatorManagerBlockchainID,
+		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
@@ -379,7 +382,6 @@ func removeValidatorSOV(
 			app,
 			network,
 			validatorManagerRPCEndpoint,
-			chainSpec,
 			externalValidatorManagerOwner,
 			validatorManagerOwner,
 			ownerPrivateKey,
@@ -388,8 +390,8 @@ func removeValidatorSOV(
 			sc.PoS(),
 			uptimeSec,
 			true, // force
-			validatorManagerAddress,
 			validatorManagerBlockchainID,
+			validatorManagerAddress,
 			sc.UseACP99,
 			initiateTxHash,
 			signatureAggregatorEndpoint,
@@ -436,6 +438,7 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		sc.UseACP99,
 		signatureAggregatorEndpoint,

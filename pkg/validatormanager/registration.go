@@ -203,6 +203,7 @@ func GetRegisterL1ValidatorMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
+	managerSubnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	nodeID ids.NodeID,
@@ -293,7 +294,14 @@ func GetRegisterL1ValidatorMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
+	signedMessage, err := interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		"",
+		managerSubnetID.String(),
+		aggregatorQuorumPercentage,
+	)
 	if err != nil {
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
 	}
@@ -324,6 +332,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
+	managerSubnetID,
 	validationID ids.ID,
 	registered bool,
 	signatureAggregatorEndpoint string,
@@ -356,7 +365,14 @@ func GetPChainL1ValidatorRegistrationMessage(
 	}
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, justification, subnetID.String(), aggregatorQuorumPercentage)
+	return interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		justification,
+		managerSubnetID.String(),
+		aggregatorQuorumPercentage,
+	)
 }
 
 // last step of flow for adding a new validator
@@ -403,8 +419,8 @@ func InitValidatorRegistration(
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	rewardRecipient common.Address,
-	managerAddressStr string,
 	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
@@ -417,6 +433,18 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return nil, ids.Empty, nil, err
+	}
+
 	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
@@ -519,6 +547,7 @@ func InitValidatorRegistration(
 		aggregatorLogger,
 		0,
 		subnetID,
+		managerSubnetID,
 		managerBlockchainID,
 		managerAddress,
 		nodeID,
@@ -547,7 +576,8 @@ func FinishValidatorRegistration(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
@@ -558,7 +588,20 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	managerAddress := common.HexToAddress(managerAddressStr)
+
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
@@ -566,6 +609,7 @@ func FinishValidatorRegistration(
 		aggregatorLogger,
 		0,
 		subnetID,
+		managerSubnetID,
 		validationID,
 		true,
 		signatureAggregatorEndpoint,
@@ -586,7 +630,7 @@ func FinishValidatorRegistration(
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
-		validatorManagerAddress,
+		managerAddress,
 		generateRawTxOnly,
 		ownerAddress,
 		privateKey,

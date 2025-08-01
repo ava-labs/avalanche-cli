@@ -9,18 +9,19 @@ import (
 )
 
 type NetworkData struct {
-	SubnetID                     ids.ID
-	BlockchainID                 ids.ID
-	RPCVersion                   int
-	TeleporterMessengerAddress   string
-	TeleporterRegistryAddress    string
-	RPCEndpoints                 []string
-	WSEndpoints                  []string
-	BootstrapValidators          []SubnetValidator
-	ClusterName                  string
-	ValidatorManagerAddress      string
-	ValidatorManagerBlockchainID ids.ID
-	ValidatorManagerRPCEndpoint  string
+	SubnetID                           ids.ID
+	BlockchainID                       ids.ID
+	RPCVersion                         int
+	TeleporterMessengerAddress         string
+	TeleporterRegistryAddress          string
+	RPCEndpoints                       []string
+	WSEndpoints                        []string
+	BootstrapValidators                []SubnetValidator
+	ClusterName                        string
+	ValidatorManagerAddress            string
+	ValidatorManagerBlockchainID       ids.ID
+	ValidatorManagerRPCEndpoint        string
+	SpecializedValidatorManagerAddress string
 }
 
 type Sidecar struct {
@@ -84,10 +85,17 @@ func (sc Sidecar) PoS() bool {
 	return sc.ValidatorManagement == validatormanagertypes.ProofOfStake
 }
 
-func (sc Sidecar) UpdateValidatorManagerAddress(network string, managerRPCEndpoint string, managerBlockchainID ids.ID, managerAddr string) {
+func (sc Sidecar) UpdateValidatorManagerAddress(
+	network string,
+	managerRPCEndpoint string,
+	managerBlockchainID ids.ID,
+	managerAddr string,
+	specializedManagerAddr string,
+) {
 	temp := sc.Networks[network]
 	temp.ValidatorManagerRPCEndpoint = managerRPCEndpoint
 	temp.ValidatorManagerBlockchainID = managerBlockchainID
 	temp.ValidatorManagerAddress = managerAddr
+	temp.SpecializedValidatorManagerAddress = specializedManagerAddr
 	sc.Networks[network] = temp
 }

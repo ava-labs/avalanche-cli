@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -47,12 +48,16 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-const skipRelayerFlagName = "skip-relayer"
+const (
+	skipRelayerFlagName = "skip-relayer"
+	vmcAtL1FlagName     = "vmc-L1"
+)
 
 var (
 	sameControlKey         bool
@@ -78,6 +83,11 @@ var (
 	icmKeyName             string
 	cchainIcmKeyName       string
 	relayerAllowPrivateIPs bool
+
+	vmcAtL1            bool
+	vmcChainFlags      contract.ChainSpec
+	vmcPrivateKeyFlags contract.PrivateKeyFlags
+	vmcPrivateKey      string
 
 	validatorManagerRPCEndpoint           string
 	validatorManagerAddressStr            string
@@ -186,6 +196,15 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	posGroup := flags.AddProofOfStakeToCmd(cmd, &deployFlags.ProofOfStakeFlags)
 
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, localNetworkGroup, nonSovGroup, icmGroup, posGroup, sigAggGroup}))
+
+	// enabling blockchain names, C-Chain and blockchain IDs
+	vmcChainFlags.SetEnabled(true, true, false, false, true)
+	vmcChainFlags.SetFlagNames("vmc-blockchain", "vmc-c-chain", "", "", "vmc-blokchain-id")
+	vmcChainFlags.AddToCmd(cmd, "deploy the Validator Manager contract into %s")
+	cmd.Flags().BoolVar(&vmcAtL1, vmcAtL1FlagName, false, "deploy the Validator Manager into the L1")
+	vmcPrivateKeyFlags.SetFlagNames("vmc-private-key", "vmc-key", "vmc-genesis-key")
+	vmcPrivateKeyFlags.AddToCmd(cmd, "as Validator Manager contract deployer")
+
 	return cmd
 }
 
@@ -529,6 +548,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--bootstrap-filepath flag is only applicable to sovereign blockchains")
 	}
 
+	if err := vmcChainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -835,9 +858,143 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		validatorManagerBlockchainID := blockchainID
+		externalVmcDeploy := !vmcAtL1 || vmcChainFlags.Defined()
+
+		if flag := cmd.Flags().Lookup(vmcAtL1FlagName); flag != nil && !flag.Changed && !vmcChainFlags.Defined() {
+			if network.Kind == models.Local {
+				externalVmcDeploy = false
+			} else {
+				externalVmcDeploy, err = app.Prompt.CaptureYesNo("Do you want to deploy the Validator Manager into an external blockchain?")
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if externalVmcDeploy {
+			if !vmcChainFlags.Defined() {
+				prompt := "Where do you want to Deploy the Validator Manager?"
+				if cancel, err := contract.PromptChain(
+					app,
+					network,
+					prompt,
+					"",
+					&vmcChainFlags,
+				); cancel || err != nil {
+					return err
+				}
+			}
+		}
+
 		validatorManagerRPCEndpoint := ""
+		validatorManagerBlockchainID := blockchainID
 		validatorManagerAddressStr := validatormanagerSDK.ValidatorProxyContractAddress
+
+		var specializedValidatorManagerAddressStr string
+		if sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
+		}
+
+		if externalVmcDeploy {
+			validatorManagerRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, vmcChainFlags, true, false)
+			if err != nil {
+				return err
+			}
+			validatorManagerBlockchainID, err = contract.GetBlockchainID(app, network, vmcChainFlags)
+			if err != nil {
+				return err
+			}
+			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainID: validatorManagerBlockchainID.String(),
+				},
+			)
+			if err != nil {
+				return err
+			}
+			vmcPrivateKey, err = vmcPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+			if vmcPrivateKey == "" {
+				vmcPrivateKey, err = prompts.PromptPrivateKey(
+					app.Prompt,
+					"pay for Validator Manager Contract deploy fees? (Uses Blockchain gas token)",
+					app.GetKeyDir(),
+					app.GetKey,
+					genesisAddress,
+					genesisPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+			}
+
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Deploying Validator Manager into %s", validatorManagerRPCEndpoint)
+			validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
+				validatorManagerRPCEndpoint,
+				vmcPrivateKey,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
+				validatorManagerRPCEndpoint,
+				vmcPrivateKey,
+				validatorManagerAddress,
+				common.HexToAddress(sidecar.ProxyContractOwner),
+			)
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("  Validator Manager Address: %s", validatorManagerAddress.Hex())
+			ux.Logger.PrintToUser("  Proxy Address: %s", proxy.Hex())
+			ux.Logger.PrintToUser("  Proxy Admin Address: %s", proxyAdmin.Hex())
+			validatorManagerAddressStr = proxy.Hex()
+			ux.Logger.PrintToUser("")
+
+			if sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+				ux.Logger.PrintToUser("Deploying Specialized Validator Manager into %s", validatorManagerRPCEndpoint)
+				specializedValidatorManagerAddress, _, _, err := validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
+					validatorManagerRPCEndpoint,
+					vmcPrivateKey,
+					false,
+				)
+				if err != nil {
+					return err
+				}
+				proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
+					validatorManagerRPCEndpoint,
+					vmcPrivateKey,
+					specializedValidatorManagerAddress,
+					common.HexToAddress(sidecar.ProxyContractOwner),
+				)
+				if err != nil {
+					return err
+				}
+				ux.Logger.PrintToUser("  Specialized Validator Manager Address: %s", specializedValidatorManagerAddress.Hex())
+				ux.Logger.PrintToUser("  Specialized Proxy Address: %s", proxy.Hex())
+				ux.Logger.PrintToUser("  Specialized Proxy Admin Address: %s", proxyAdmin.Hex())
+				ux.Logger.PrintToUser("")
+				specializedValidatorManagerAddressStr = proxy.Hex()
+			}
+		}
+
+		sidecar.UpdateValidatorManagerAddress(
+			network.Name(),
+			validatorManagerRPCEndpoint,
+			validatorManagerBlockchainID,
+			validatorManagerAddressStr,
+			specializedValidatorManagerAddressStr,
+		)
+		if err := app.UpdateSidecar(&sidecar); err != nil {
+			return err
+		}
+
 		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
@@ -867,8 +1024,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		specializedValidatorManagerAddressStr := validatormanagerSDK.SpecializationProxyContractAddress
-
 		tracked, err = InitializeValidatorManager(
 			blockchainName,
 			subnetID,
@@ -876,7 +1031,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			network,
 			avaGoBootstrapValidators,
 			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
-			"",
+			vmcPrivateKey,
 			validatorManagerRPCEndpoint,
 			validatorManagerBlockchainID,
 			validatorManagerAddressStr,
@@ -891,18 +1046,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
-			sidecar, err := app.LoadSidecar(chain)
-			if err != nil {
-				return err
-			}
-			networkInfo := sidecar.Networks[network.Name()]
-			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
-			sidecar.Networks[network.Name()] = networkInfo
-			if err := app.UpdateSidecar(&sidecar); err != nil {
-				return err
-			}
-		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
@@ -915,6 +1058,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			clusterNameFlagValue,
 			"",
 			ids.Empty,
+			"",
 			"",
 		); err != nil {
 			return err

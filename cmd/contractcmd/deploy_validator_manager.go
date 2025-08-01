@@ -267,7 +267,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	if err != nil {
 		return err
 	}
-	proxy, _, receipt, err := validatormanager.DeployTransparentProxy(
+	proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
 		flags.rpcEndpoint,
 		privateKey,
 		validatorManagerAddress,
@@ -276,11 +276,6 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	if err != nil {
 		return err
 	}
-	event, err := evm.GetEventFromLogs(receipt.Logs, validatormanager.ParseAdminChanged)
-	if err != nil {
-		return err
-	}
-	proxyAdmin := event.NewAdmin
 	ux.Logger.PrintToUser("Proxy Address: %s", proxy.Hex())
 	ux.Logger.PrintToUser("Proxy Admin Address: %s", proxyAdmin.Hex())
 	return nil

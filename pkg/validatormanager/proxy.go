@@ -4,6 +4,7 @@ package validatormanager
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -41,9 +42,9 @@ func DeployTransparentProxy(
 	privateKey string,
 	implementation common.Address,
 	admin common.Address,
-) (common.Address, *types.Transaction, *types.Receipt, error) {
+) (common.Address, common.Address, *types.Transaction, *types.Receipt, error) {
 	transparentProxyBytes := []byte(strings.TrimSpace(string(transparentProxyBytecode)))
-	return contract.DeployContract(
+	proxy, tx, receipt, err := contract.DeployContract(
 		rpcURL,
 		privateKey,
 		transparentProxyBytes,
@@ -52,6 +53,15 @@ func DeployTransparentProxy(
 		admin,
 		[]byte{},
 	)
+	if err != nil {
+		return proxy, common.Address{}, tx, receipt, err
+	}
+	event, err := evm.GetEventFromLogs(receipt.Logs, ParseAdminChanged)
+	if err != nil {
+		return proxy, common.Address{}, tx, receipt, fmt.Errorf("failed to get proxy admin event: %w", err)
+	}
+	proxyAdmin := event.NewAdmin
+	return proxy, proxyAdmin, tx, receipt, err
 }
 
 func SetupProxyImplementation(

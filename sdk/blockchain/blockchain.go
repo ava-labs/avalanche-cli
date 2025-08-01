@@ -129,6 +129,9 @@ type Subnet struct {
 	// DeployInfo contains all the necessary information for createSubnetTx
 	DeployInfo DeployParams
 
+	// SubnetID where the Validator Manager is deployed
+	ValidatorManagerSubnetID ids.ID
+
 	// BlockchainID where the Validator Manager is deployed
 	ValidatorManagerBlockchainID ids.ID
 
@@ -421,10 +424,17 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+	justificationHexStr := hex.EncodeToString(c.SubnetID[:])
 
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
+	signedMessage, err := interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		justificationHexStr,
+		c.ValidatorManagerSubnetID.String(),
+		0,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
@@ -529,10 +539,17 @@ func (c *Subnet) InitializeProofOfStake(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+	justificationHexStr := hex.EncodeToString(c.SubnetID[:])
 
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
+	signedMessage, err := interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		justificationHexStr,
+		c.ValidatorManagerSubnetID.String(),
+		0,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}

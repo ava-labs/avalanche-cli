@@ -153,6 +153,10 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
 
 	if validatorManagerRPCEndpoint == "" {
 		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
@@ -395,14 +399,13 @@ func changeWeightACP99(
 		app,
 		network,
 		validatorManagerRPCEndpoint,
-		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		aggregatorLogger,
-		validatorManagerAddress,
 		validatorManagerBlockchainID,
+		validatorManagerAddress,
 		weight,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
@@ -454,12 +457,12 @@ func changeWeightACP99(
 		app,
 		network,
 		validatorManagerRPCEndpoint,
-		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		signedMessage,
 		newWeight,

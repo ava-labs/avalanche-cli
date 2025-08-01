@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -279,6 +280,7 @@ func StartLocalMachine(
 			app,
 			clusterName,
 			localMachineFlags.AvagoBinaryPath,
+			vm.EvmDebugConfig,
 			uint32(bootstrapValidatorFlags.NumBootstrapValidators),
 			nodeConfig,
 			localnet.ConnectionSettings{},

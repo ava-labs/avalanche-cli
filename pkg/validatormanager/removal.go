@@ -143,7 +143,7 @@ func GetUptimeProofMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	subnetID ids.ID,
+	managerSubnetID ids.ID,
 	managerBlockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
@@ -167,7 +167,14 @@ func GetUptimeProofMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(uptimeProofUnsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
+	return interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		"",
+		managerSubnetID.String(),
+		aggregatorQuorumPercentage,
+	)
 }
 
 func InitValidatorRemoval(
@@ -175,7 +182,6 @@ func InitValidatorRemoval(
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
-	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
 	ownerAddressStr string,
 	ownerPrivateKey string,
@@ -184,22 +190,26 @@ func InitValidatorRemoval(
 	isPoS bool,
 	uptimeSec uint64,
 	force bool,
-	managerAddressStr string,
 	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
+	managerSubnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		chainSpec,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
 	)
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
+
 	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
+
 	validationID, err := validator.GetValidationID(
 		rpcURL,
 		managerAddress,
@@ -240,7 +250,7 @@ func InitValidatorRemoval(
 				network,
 				aggregatorLogger,
 				0,
-				subnetID,
+				managerSubnetID,
 				managerBlockchainID,
 				validationID,
 				uptimeSec,
@@ -297,7 +307,7 @@ func InitValidatorRemoval(
 		network,
 		aggregatorLogger,
 		unsignedMessage,
-		subnetID,
+		managerSubnetID,
 		managerBlockchainID,
 		managerAddress,
 		validationID,
@@ -358,6 +368,7 @@ func FinishValidatorRemoval(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
+	managerBlockchainID ids.ID,
 	managerAddressStr string,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
@@ -371,6 +382,18 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
@@ -378,6 +401,7 @@ func FinishValidatorRemoval(
 		aggregatorLogger,
 		0,
 		subnetID,
+		managerSubnetID,
 		validationID,
 		false,
 		signatureAggregatorEndpoint,

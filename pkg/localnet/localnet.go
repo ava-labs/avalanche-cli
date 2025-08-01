@@ -236,6 +236,7 @@ func CreateLocalNetwork(
 	numNodes uint32,
 	pluginDir string,
 	avalancheGoBinPath string,
+	cChainConfig []byte,
 ) error {
 	// get default network conf for NumNodes
 	networkID, unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := GetDefaultNetworkConf(numNodes)
@@ -260,6 +261,7 @@ func CreateLocalNetwork(
 		app.Log,
 		networkDir,
 		avalancheGoBinPath,
+		cChainConfig,
 		pluginDir,
 		networkID,
 		nil,
