@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -84,7 +84,7 @@ func stats(_ *cobra.Command, args []string) error {
 }
 
 func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Client, table *tablewriter.Table, subnetID ids.ID) ([][]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := sdkutils.GetTimedContext(10 * time.Second)
 	defer cancel()
 
 	currValidators, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
@@ -163,7 +163,9 @@ func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 	var i info.Client
 
 	// first try local node
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetAPILargeContext()
+	defer cancel()
+
 	c := platformvm.NewClient(constants.LocalAPIEndpoint)
 	_, err := c.GetHeight(ctx)
 	if err == nil {

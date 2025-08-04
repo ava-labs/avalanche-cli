@@ -34,7 +34,7 @@ var (
 
 type AwsCloud struct {
 	ec2Client *ec2.Client
-	ctx       context.Context
+	getCtx    func() context.Context
 }
 
 // NewAwsCloud creates an AWS cloud
@@ -43,7 +43,7 @@ func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 		cfg aws.Config
 		err error
 	)
-	ctx := context.Background()
+	ctx, _ := sdkutils.GetAPILargeContext()
 	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
 		// Load session from env variables
 		cfg, err = config.LoadDefaultConfig(
@@ -63,13 +63,16 @@ func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 	}
 	return &AwsCloud{
 		ec2Client: ec2.NewFromConfig(cfg),
-		ctx:       ctx,
+		getCtx: func() context.Context {
+			ctx, _ := sdkutils.GetAPILargeContext()
+			return ctx
+		},
 	}, nil
 }
 
 // CreateSecurityGroup creates a security group
 func (c *AwsCloud) CreateSecurityGroup(groupName, description string) (string, error) {
-	createSGOutput, err := c.ec2Client.CreateSecurityGroup(c.ctx, &ec2.CreateSecurityGroupInput{
+	createSGOutput, err := c.ec2Client.CreateSecurityGroup(c.getCtx(), &ec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(groupName),
 		Description: aws.String(description),
 	})
@@ -87,7 +90,7 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 		},
 	}
 
-	sg, err := c.ec2Client.DescribeSecurityGroups(c.ctx, sgInput)
+	sg, err := c.ec2Client.DescribeSecurityGroups(c.getCtx(), sgInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
 			return false, types.SecurityGroup{}, nil
@@ -104,7 +107,7 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 	}
 	switch direction {
 	case "ingress":
-		if _, err := c.ec2Client.AuthorizeSecurityGroupIngress(c.ctx, &ec2.AuthorizeSecurityGroupIngressInput{
+		if _, err := c.ec2Client.AuthorizeSecurityGroupIngress(c.getCtx(), &ec2.AuthorizeSecurityGroupIngressInput{
 			GroupId: aws.String(groupID),
 			IpPermissions: []types.IpPermission{
 				{
@@ -122,7 +125,7 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 			return err
 		}
 	case "egress":
-		if _, err := c.ec2Client.AuthorizeSecurityGroupEgress(c.ctx, &ec2.AuthorizeSecurityGroupEgressInput{
+		if _, err := c.ec2Client.AuthorizeSecurityGroupEgress(c.getCtx(), &ec2.AuthorizeSecurityGroupEgressInput{
 			GroupId: aws.String(groupID),
 			IpPermissions: []types.IpPermission{
 				{
@@ -152,7 +155,7 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 	}
 	switch direction {
 	case "ingress":
-		if _, err := c.ec2Client.RevokeSecurityGroupIngress(c.ctx, &ec2.RevokeSecurityGroupIngressInput{
+		if _, err := c.ec2Client.RevokeSecurityGroupIngress(c.getCtx(), &ec2.RevokeSecurityGroupIngressInput{
 			GroupId: aws.String(groupID),
 			IpPermissions: []types.IpPermission{
 				{
@@ -170,7 +173,7 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 			return err
 		}
 	case "egress":
-		if _, err := c.ec2Client.RevokeSecurityGroupEgress(c.ctx, &ec2.RevokeSecurityGroupEgressInput{
+		if _, err := c.ec2Client.RevokeSecurityGroupEgress(c.getCtx(), &ec2.RevokeSecurityGroupEgressInput{
 			GroupId: aws.String(groupID),
 			IpPermissions: []types.IpPermission{
 				{
@@ -213,7 +216,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 		ebsValue.Iops = aws.Int32(int32(iops))
 	}
 
-	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
+	runResult, err := c.ec2Client.RunInstances(c.getCtx(), &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
 		KeyName:          aws.String(keyName),
@@ -269,7 +272,7 @@ func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string, state types.InstanceSta
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		// Describe instances to check their states
-		result, err := c.ec2Client.DescribeInstances(c.ctx, instanceInput)
+		result, err := c.ec2Client.DescribeInstances(c.getCtx(), instanceInput)
 		if err != nil {
 			time.Sleep(delay)
 			continue
@@ -299,7 +302,7 @@ func (c *AwsCloud) GetInstancePublicIPs(nodeIDs []string) (map[string]string, er
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
 	}
-	instanceResults, err := c.ec2Client.DescribeInstances(c.ctx, instanceInput)
+	instanceResults, err := c.ec2Client.DescribeInstances(c.getCtx(), instanceInput)
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +331,7 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 			*aws.String(nodeID),
 		},
 	}
-	nodeStatus, err := c.ec2Client.DescribeInstances(c.ctx, instanceInput)
+	nodeStatus, err := c.ec2Client.DescribeInstances(c.getCtx(), instanceInput)
 	if err != nil {
 		return false, err
 	}
@@ -369,7 +372,7 @@ func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP 
 	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	if _, err := c.ec2Client.TerminateInstances(c.ctx, input); err != nil {
+	if _, err := c.ec2Client.TerminateInstances(c.getCtx(), input); err != nil {
 		return err
 	}
 	if releasePublicIP {
@@ -381,7 +384,7 @@ func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP 
 					{Name: aws.String("public-ip"), Values: []string{publicIP}},
 				},
 			}
-			addressOutput, err := c.ec2Client.DescribeAddresses(c.ctx, describeAddressInput)
+			addressOutput, err := c.ec2Client.DescribeAddresses(c.getCtx(), describeAddressInput)
 			if err != nil {
 				return err
 			}
@@ -391,7 +394,7 @@ func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP 
 			releaseAddressInput := &ec2.ReleaseAddressInput{
 				AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
 			}
-			if _, err = c.ec2Client.ReleaseAddress(c.ctx, releaseAddressInput); err != nil {
+			if _, err = c.ec2Client.ReleaseAddress(c.getCtx(), releaseAddressInput); err != nil {
 				return err
 			}
 		}
@@ -401,7 +404,7 @@ func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP 
 
 // CreateEIP creates an Elastic IP address.
 func (c *AwsCloud) CreateEIP(prefix string) (string, string, error) {
-	if addr, err := c.ec2Client.AllocateAddress(c.ctx, &ec2.AllocateAddressInput{
+	if addr, err := c.ec2Client.AllocateAddress(c.getCtx(), &ec2.AllocateAddressInput{
 		TagSpecifications: []types.TagSpecification{
 			{
 				ResourceType: types.ResourceTypeElasticIp,
@@ -429,7 +432,7 @@ func (c *AwsCloud) CreateEIP(prefix string) (string, string, error) {
 
 // AssociateEIP associates an Elastic IP address with an EC2 instance.
 func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
-	if _, err := c.ec2Client.AssociateAddress(c.ctx, &ec2.AssociateAddressInput{
+	if _, err := c.ec2Client.AssociateAddress(c.getCtx(), &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(instanceID),
 		AllocationId: aws.String(allocationID),
 	}); err != nil {
@@ -440,7 +443,7 @@ func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
 
 // CreateAndDownloadKeyPair creates a new key pair and downloads the private key material to the specified file path.
 func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath string) error {
-	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
+	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.getCtx(), &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
 	})
 	if err != nil {
@@ -456,7 +459,7 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 
 // DeleteKeyPair deletes an existing key pair in AWS console
 func (c *AwsCloud) DeleteKeyPair(keyName string) error {
-	_, err := c.ec2Client.DeleteKeyPair(c.ctx, &ec2.DeleteKeyPairInput{
+	_, err := c.ec2Client.DeleteKeyPair(c.getCtx(), &ec2.DeleteKeyPairInput{
 		KeyName: aws.String(keyName),
 	})
 	return err
@@ -475,7 +478,7 @@ func (c *AwsCloud) UploadSSHIdentityKeyPair(keyName string, identity string) err
 	if err != nil {
 		return err
 	}
-	_, err = c.ec2Client.ImportKeyPair(c.ctx, &ec2.ImportKeyPairInput{
+	_, err = c.ec2Client.ImportKeyPair(c.getCtx(), &ec2.ImportKeyPairInput{
 		KeyName:           aws.String(keyName),
 		PublicKeyMaterial: []byte(publicKeyMaterial),
 	})
@@ -545,7 +548,7 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 	keyPairInput := &ec2.DescribeKeyPairsInput{
 		KeyNames: []string{kpName},
 	}
-	_, err := c.ec2Client.DescribeKeyPairs(c.ctx, keyPairInput)
+	_, err := c.ec2Client.DescribeKeyPairs(c.getCtx(), keyPairInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidKeyPair.NotFound") {
 			return false, nil
@@ -569,7 +572,7 @@ func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, err
 		},
 		Owners: []string{"self", "221210582303"},
 	}
-	images, err := c.ec2Client.DescribeImages(c.ctx, imageInput)
+	images, err := c.ec2Client.DescribeImages(c.getCtx(), imageInput)
 	if err != nil {
 		return "", err
 	}
@@ -587,7 +590,7 @@ func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, err
 
 // ListRegions returns a list of all AWS regions.
 func (c *AwsCloud) ListRegions() ([]string, error) {
-	regions, err := c.ec2Client.DescribeRegions(c.ctx, &ec2.DescribeRegionsInput{})
+	regions, err := c.ec2Client.DescribeRegions(c.getCtx(), &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +609,7 @@ func isEIPQuotaExceededError(err error) bool {
 
 // GetInstanceTypeArch returns the architecture of the given instance type.
 func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
-	archOutput, err := c.ec2Client.DescribeInstanceTypes(c.ctx, &ec2.DescribeInstanceTypesInput{
+	archOutput, err := c.ec2Client.DescribeInstanceTypes(c.getCtx(), &ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []types.InstanceType{types.InstanceType(instanceType)},
 	})
 	if err != nil {
@@ -624,7 +627,7 @@ func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
 	paginator := ec2.NewDescribeInstanceTypesPaginator(c.ec2Client, &ec2.DescribeInstanceTypesInput{})
 
 	for paginator.HasMorePages() {
-		output, err := paginator.NextPage(c.ctx)
+		output, err := paginator.NextPage(c.getCtx())
 		if err != nil {
 			return false, err
 		}
@@ -638,7 +641,7 @@ func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
 
 // GetRootVolumeID returns a volume IDs attached to the given which is used as a root volume
 func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
-	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.getCtx(), &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
@@ -649,7 +652,7 @@ func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
 	}
 	rootDeviceName := describeInstanceOutput.Reservations[0].Instances[0].RootDeviceName
 
-	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.getCtx(), &ec2.DescribeVolumesInput{
 		Filters: []types.Filter{
 			{
 				Name:   aws.String("attachment.instance-id"),
@@ -672,7 +675,7 @@ func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
 
 // ResizeVolume resizes the given volume to the new size.
 func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
-	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.getCtx(), &ec2.DescribeVolumesInput{
 		VolumeIds: []string{volumeID},
 	})
 	if err != nil {
@@ -687,7 +690,7 @@ func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
 	if currentSize > newSizeInGB {
 		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeInGB, currentSize)
 	} else {
-		if _, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
+		if _, err := c.ec2Client.ModifyVolume(c.getCtx(), &ec2.ModifyVolumeInput{
 			Size:     &newSizeInGB,
 			VolumeId: volumeOutput.Volumes[0].VolumeId,
 		}); err != nil {
@@ -702,7 +705,7 @@ func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
 func (c *AwsCloud) WaitForVolumeModificationState(volumeID string, targetState string, timeout time.Duration) error {
 	startTime := time.Now()
 	for {
-		modificationOutput, err := c.ec2Client.DescribeVolumesModifications(c.ctx, &ec2.DescribeVolumesModificationsInput{
+		modificationOutput, err := c.ec2Client.DescribeVolumesModifications(c.getCtx(), &ec2.DescribeVolumesModificationsInput{
 			VolumeIds: []string{volumeID},
 		})
 		if err != nil {
@@ -726,7 +729,7 @@ func (c *AwsCloud) WaitForVolumeModificationState(volumeID string, targetState s
 // ChangeInstanceType resizes the given instance to the new instance type.
 func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
 	// check if old and new instance types are the same
-	resp, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+	resp, err := c.ec2Client.DescribeInstances(c.getCtx(), &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
@@ -741,7 +744,7 @@ func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
 	}
 
 	// stop the instance
-	if _, err := c.ec2Client.StopInstances(c.ctx, &ec2.StopInstancesInput{
+	if _, err := c.ec2Client.StopInstances(c.getCtx(), &ec2.StopInstancesInput{
 		InstanceIds: []string{instanceID},
 	}); err != nil {
 		return err
@@ -750,7 +753,7 @@ func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
 		return err
 	}
 	// update the instance type
-	if _, err := c.ec2Client.ModifyInstanceAttribute(c.ctx, &ec2.ModifyInstanceAttributeInput{
+	if _, err := c.ec2Client.ModifyInstanceAttribute(c.getCtx(), &ec2.ModifyInstanceAttributeInput{
 		InstanceId: aws.String(instanceID),
 		InstanceType: &types.AttributeValue{
 			Value: aws.String(instanceType),
@@ -759,7 +762,7 @@ func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
 		return err
 	}
 	// start the instance
-	if _, err := c.ec2Client.StartInstances(c.ctx, &ec2.StartInstancesInput{
+	if _, err := c.ec2Client.StartInstances(c.getCtx(), &ec2.StartInstancesInput{
 		InstanceIds: []string{instanceID},
 	}); err != nil {
 		return err

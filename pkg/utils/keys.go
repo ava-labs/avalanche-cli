@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
@@ -43,7 +44,7 @@ func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
 }
 
 func GetNetworkBalance(addressList []ids.ShortID, networkEndpoint string) (uint64, error) {
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	pClient := platformvm.NewClient(networkEndpoint)
 	bal, err := pClient.GetBalance(ctx, addressList)

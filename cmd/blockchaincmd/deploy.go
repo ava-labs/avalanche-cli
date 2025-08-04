@@ -435,7 +435,7 @@ func prepareBootstrapValidators(
 	case len(bootstrapValidatorFlags.BootstrapEndpoints) > 0:
 		for _, endpoint := range bootstrapValidatorFlags.BootstrapEndpoints {
 			infoClient := info.NewClient(endpoint)
-			ctx, cancel := utils.GetAPILargeContext()
+			ctx, cancel := sdkutils.GetAPILargeContext()
 			defer cancel()
 			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 			if err != nil {
@@ -1279,7 +1279,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	nodeIDsSet := set.Of(nodeIDs...)
 	for _, uri := range uris {
 		infoClient := info.NewClient(uri)
-		ctx, cancel := utils.GetAPILargeContext()
+		ctx, cancel := sdkutils.GetAPILargeContext()
 		defer cancel()
 		peers, err := infoClient.Peers(ctx, nil)
 		if err != nil {

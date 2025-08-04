@@ -3,7 +3,6 @@
 package signatureaggregator
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
@@ -203,7 +203,7 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 }
 
 func waitForAggregatorReady(url string, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := sdkutils.GetTimedContext(timeout)
 	defer cancel()
 
 	ticker := time.NewTicker(300 * time.Millisecond)
@@ -372,7 +372,7 @@ func isPortAvailable(port int) bool {
 
 func generateAPIMetricsPorts() (int, int, error) {
 	// Create a context with a 30 second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := sdkutils.GetTimedContext(30 * time.Second)
 	defer cancel()
 
 	// Start with default ports and increment by 2 each time

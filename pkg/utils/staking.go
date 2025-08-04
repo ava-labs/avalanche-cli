@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
@@ -82,7 +83,7 @@ func GetNodeParams(nodeDir string) (
 }
 
 func GetRemainingValidationTime(networkEndpoint string, nodeID ids.NodeID, subnetID ids.ID, startTime time.Time) (time.Duration, error) {
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	platformCli := platformvm.NewClient(networkEndpoint)
 	vs, err := platformCli.GetCurrentValidators(ctx, subnetID, nil)
@@ -100,7 +101,7 @@ func GetRemainingValidationTime(networkEndpoint string, nodeID ids.NodeID, subne
 
 // GetL1ValidatorUptimeSeconds returns the uptime of the L1 validator
 func GetL1ValidatorUptimeSeconds(rpcURL string, nodeID ids.NodeID) (uint64, error) {
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	networkEndpoint, blockchainID, err := SplitAvalanchegoRPCURI(rpcURL)
 	if err != nil {

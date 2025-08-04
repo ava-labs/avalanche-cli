@@ -13,7 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/net/context"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 
@@ -81,7 +81,8 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	if err != nil {
 		return nil, "", "", err
 	}
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+	defer cancel()
 	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
 		return nil, "", "", err
@@ -124,7 +125,9 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}
-	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+	ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+	defer cancel()
+	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, ctx)
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}
