@@ -206,7 +206,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	if validatorKind == validatorsdk.NonSovereignValidator {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
 		if err != nil {

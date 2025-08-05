@@ -729,7 +729,7 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 
 	avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 		bootstrapValidators,
