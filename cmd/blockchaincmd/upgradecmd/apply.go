@@ -19,8 +19,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
@@ -147,7 +147,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 	}
 
 	// first let's get the status
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
@@ -180,7 +180,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 	}
 
 	// into ANR network ops
-	ctx, cancel = utils.GetANRContext()
+	ctx, cancel = sdkutils.GetTimedContext(3 * time.Minute)
 	defer cancel()
 
 	// save a temporary snapshot

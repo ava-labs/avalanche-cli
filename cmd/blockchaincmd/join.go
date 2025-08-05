@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -325,8 +325,9 @@ func writeAvagoChainConfigFiles(
 
 func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
 	// first check if the node is already an accepted validator on the subnet
-	ctx := context.Background()
 	nodeIDs := []ids.NodeID{nodeID}
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nodeIDs)
 	if err != nil {
 		return false, err

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/onsi/gomega"
@@ -16,7 +16,7 @@ import (
 const chainConfigAPI = "eth_getChainConfig"
 
 func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeConfig) error {
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 
 	rpcClient, err := rpc.DialContext(ctx, rpcEndpoint)

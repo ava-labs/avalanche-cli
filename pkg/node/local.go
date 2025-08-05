@@ -15,8 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -269,7 +269,7 @@ func getInfo(uri string, blockchainID string) (
 	error, // error
 ) {
 	client := info.NewClient(uri)
-	ctx, cancel := utils.GetAPILargeContext()
+	ctx, cancel := sdkutils.GetAPILargeContext()
 	defer cancel()
 	nodeID, nodePOP, err := client.GetNodeID(ctx)
 	if err != nil {
@@ -287,7 +287,7 @@ func getBlockchainStatus(uri string, blockchainID string) (
 	error, // error
 ) {
 	client := platformvm.NewClient(uri)
-	ctx, cancel := utils.GetAPILargeContext()
+	ctx, cancel := sdkutils.GetAPILargeContext()
 	defer cancel()
 	status, err := client.GetBlockchainStatus(ctx, blockchainID)
 	if err != nil {

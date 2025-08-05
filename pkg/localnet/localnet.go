@@ -8,9 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -142,7 +142,7 @@ func LocalNetworkStop(app *application.Avalanche) error {
 
 // Returns a context large enough to support all local network operations
 func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
-	return sdkutils.GetTimedContext(2 * time.Minute)
+	return sdkutils.GetTimedContext(constants.LocalBootstrapTimeout)
 }
 
 // Indicates if the local network tracks a subnet at all

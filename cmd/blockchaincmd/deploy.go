@@ -457,7 +457,7 @@ func prepareBootstrapValidators(
 	case len(bootstrapValidatorFlags.BootstrapEndpoints) > 0:
 		for _, endpoint := range bootstrapValidatorFlags.BootstrapEndpoints {
 			infoClient := info.NewClient(endpoint)
-			ctx, cancel := utils.GetAPILargeContext()
+			ctx, cancel := sdkutils.GetAPILargeContext()
 			defer cancel()
 			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 			if err != nil {

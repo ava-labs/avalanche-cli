@@ -11,8 +11,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
@@ -154,7 +154,7 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	resp, err := cli.Status(ctx)
 	if err != nil {
@@ -169,7 +169,8 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 }
 
 func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	api := constants.LocalAPIEndpoint
 	wallet, err := primary.MakeWallet(
 		ctx,
@@ -191,7 +192,7 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
@@ -209,7 +210,7 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 func GetCurrentSupply(subnetID ids.ID) error {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	return err

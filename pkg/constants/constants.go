@@ -55,13 +55,15 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	CloudOperationTimeout = 2 * time.Minute
+	CloudConnectionTimeout = 60 * time.Minute
+	CloudOperationTimeout  = 2 * time.Minute
+	WalletCreationTimeout  = 3 * time.Minute
 
-	ANRRequestTimeout      = 3 * time.Minute
 	APIRequestTimeout      = 10 * time.Second
 	APIRequestLargeTimeout = 30 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
+	LocalBootstrapTimeout   = 2 * time.Minute
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
 

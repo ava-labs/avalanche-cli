@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -39,7 +40,7 @@ func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := sdkutils.GetTimedContext(3 * time.Minute)
 	defer cancel()
 	var (
 		clusterToReload           string

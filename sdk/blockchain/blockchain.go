@@ -18,7 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
-	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanche-cli/sdk/wallet"
@@ -327,7 +327,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 		return ids.Empty, err
 	}
 	for i := 0; i < repeats; i++ {
-		ctx, cancel := utilsSDK.GetAPILargeContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		options := []commonAvago.Option{commonAvago.WithContext(ctx)}
 		if !waitForTxAcceptance {
