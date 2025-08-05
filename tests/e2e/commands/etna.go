@@ -141,6 +141,7 @@ func DeployEtnaBlockchain(
 	bootstrapEndpoints []string,
 	ewoqPChainAddress string,
 	convertOnly bool,
+	externalManager bool,
 ) (string, error) {
 	convertOnlyFlag := ""
 	if convertOnly {
@@ -175,6 +176,9 @@ func DeployEtnaBlockchain(
 	}
 	if bootstrapEndpointsFlag != "" {
 		args = append(args, bootstrapEndpointsFlag)
+	}
+	if externalManager {
+		args = append(args, "--vmc-c-chain", "--vmc-genesis-key")
 	}
 	cmd := exec.Command(CLIBinary, args...)
 	fmt.Println(cmd)
@@ -225,13 +229,18 @@ func InitValidatorManager(
 		subnetName,
 		"--cluster",
 		clusterName,
-		"--endpoint",
-		endpoint,
-		"--rpc",
-		fmt.Sprintf("%s/ext/bc/%s/rpc", endpoint, blockchainID),
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if endpoint != "" {
+		cmd.Args = append(
+			cmd.Args,
+			"--endpoint",
+			endpoint,
+			"--rpc",
+			fmt.Sprintf("%s/ext/bc/%s/rpc", endpoint, blockchainID),
+		)
+	}
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

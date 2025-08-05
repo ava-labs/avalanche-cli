@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/spf13/cobra"
@@ -187,6 +188,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			flags.NumNodes,
 			app.GetPluginsDir(),
 			avalancheGoBinPath,
+			vm.EvmDebugConfig,
 		); err != nil {
 			return err
 		}
@@ -226,6 +228,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			app,
 			clusterName,
 			avalancheGoBinPath,
+			vm.EvmDebugConfig,
 			0,
 			nil,
 			localnet.ConnectionSettings{},

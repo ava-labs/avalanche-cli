@@ -526,7 +526,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		homeAddress, err = ictt.DeployERC20Home(
+		homeAddress, _, _, err = ictt.DeployERC20Home(
 			icttSrcDir,
 			homeRPCEndpoint,
 			homeKey,
@@ -550,7 +550,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
+		wrappedNativeTokenAddress, _, _, err := ictt.DeployWrappedNativeToken(
 			icttSrcDir,
 			homeRPCEndpoint,
 			homeKey,
@@ -562,7 +562,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", nativeTokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
-		homeAddress, err = ictt.DeployNativeHome(
+		homeAddress, _, _, err = ictt.DeployNativeHome(
 			icttSrcDir,
 			homeRPCEndpoint,
 			homeKey,
@@ -632,7 +632,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if flags.remoteFlags.Decimals != 0 {
 			remoteDecimals = flags.remoteFlags.Decimals
 		}
-		remoteAddress, err = ictt.DeployERC20Remote(
+		remoteAddress, _, _, err = ictt.DeployERC20Remote(
 			icttSrcDir,
 			remoteRPCEndpoint,
 			remoteKey,
@@ -664,7 +664,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		remoteAddress, err = ictt.DeployNativeRemote(
+		remoteAddress, _, _, err = ictt.DeployNativeRemote(
 			icttSrcDir,
 			remoteRPCEndpoint,
 			remoteKey,

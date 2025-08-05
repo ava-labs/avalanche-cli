@@ -118,9 +118,9 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		cmdArgs = append(cmdArgs, "--vm-version", version)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Println(cmd.String())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(cmd.String())
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}

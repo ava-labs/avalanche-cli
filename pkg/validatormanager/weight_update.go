@@ -61,35 +61,31 @@ func InitValidatorWeightChange(
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
-	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
 	ownerAddressStr string,
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	weight uint64,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
+	managerSubnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		chainSpec,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
 	)
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	blockchainID, err := contract.GetBlockchainID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+
+	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
+
 	validationID, err := validator.GetValidationID(
 		rpcURL,
 		managerAddress,
@@ -165,8 +161,8 @@ func InitValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		unsignedMessage,
-		subnetID,
-		blockchainID,
+		managerSubnetID,
+		managerBlockchainID,
 		managerAddress,
 		validationID,
 		nonce,
@@ -204,26 +200,30 @@ func FinishValidatorWeightChange(
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
-	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
 	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 	weight uint64,
 	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	subnetID, err := contract.GetSubnetID(
+	managerAddress := common.HexToAddress(managerAddressStr)
+
+	managerSubnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		chainSpec,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
 	)
 	if err != nil {
 		return nil, err
 	}
+
 	var nonce uint64
 	if l1ValidatorRegistrationSignedMessage == nil {
 		nonce, err = GetValidatorNonce(ctx, rpcURL, validationID)
@@ -235,7 +235,7 @@ func FinishValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		0,
-		subnetID,
+		managerSubnetID,
 		l1ValidatorRegistrationSignedMessage,
 		validationID,
 		nonce,
@@ -278,8 +278,8 @@ func GetL1ValidatorWeightMessage(
 	aggregatorLogger logging.Logger,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
-	subnetID ids.ID,
-	blockchainID ids.ID,
+	managerSubnetID ids.ID,
+	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	validationID ids.ID,
 	nonce uint64,
@@ -304,7 +304,7 @@ func GetL1ValidatorWeightMessage(
 		}
 		unsignedMessage, err = warp.NewUnsignedMessage(
 			network.ID,
-			blockchainID,
+			managerBlockchainID,
 			addressedCall.Bytes(),
 		)
 		if err != nil {
@@ -312,14 +312,21 @@ func GetL1ValidatorWeightMessage(
 		}
 	}
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), 0)
+	return interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		"",
+		managerSubnetID.String(),
+		0,
+	)
 }
 
 func GetPChainL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	subnetID ids.ID,
+	managerSubnetID ids.ID,
 	// message is given
 	l1SignedMessage *warp.Message,
 	// needed to generate full message contents
@@ -365,7 +372,14 @@ func GetPChainL1ValidatorWeightMessage(
 		return nil, err
 	}
 	messageHexStr := hex.EncodeToString(unsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
+	return interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		"",
+		managerSubnetID.String(),
+		aggregatorQuorumPercentage,
+	)
 }
 
 func GetL1ValidatorWeightMessageFromTx(
