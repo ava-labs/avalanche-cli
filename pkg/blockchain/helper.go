@@ -7,15 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/network/peer"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -61,7 +61,7 @@ func GetAggregatorNetworkUris(app *application.Avalanche, clusterName string) ([
 
 func UrisToPeers(uris []string) ([]info.Peer, error) {
 	peers := []info.Peer{}
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := sdkutils.GetTimedContext(3 * time.Minute)
 	defer cancel()
 	for _, uri := range uris {
 		client := info.NewClient(uri)
@@ -120,7 +120,7 @@ func UpdatePChainHeight(
 }
 
 func GetBlockchainTimestamp(network models.Network) (time.Time, error) {
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	platformCli := platformvm.NewClient(network.Endpoint)
 	return platformCli.GetTimestamp(ctx)
@@ -129,7 +129,7 @@ func GetBlockchainTimestamp(network models.Network) (time.Time, error) {
 func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetClientResponse, error) {
 	api := network.Endpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	return pClient.GetSubnet(ctx, subnetID)
 }
@@ -137,7 +137,7 @@ func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetCli
 func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (ids.ID, error) {
 	api := network.Endpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	return pClient.ValidatedBy(ctx, blockchainID)
 }

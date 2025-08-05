@@ -12,4 +12,6 @@ const (
 	// node
 	UserOnlyWriteReadPerms     = 0o600
 	UserOnlyWriteReadExecPerms = 0o700
+
+	SignatureTimeout = 5 * time.Minute
 )

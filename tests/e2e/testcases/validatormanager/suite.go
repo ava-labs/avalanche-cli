@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -129,7 +130,7 @@ func destroyLocalNode() {
 
 func getBootstrapValidator(uri string) ([]*txs.ConvertSubnetToL1Validator, error) {
 	infoClient := info.NewClient(uri)
-	ctx, cancel := utils.GetAPILargeContext()
+	ctx, cancel := sdkutils.GetAPILargeContext()
 	defer cancel()
 	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 	if err != nil {

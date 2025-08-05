@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -105,7 +106,7 @@ func GetLocalNetworkWallet(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := GetLocalNetworkDefaultContext()
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
 	defer cancel()
 	return primary.MakeWallet(
 		ctx,

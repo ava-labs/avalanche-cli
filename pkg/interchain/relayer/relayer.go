@@ -3,7 +3,6 @@
 package relayer
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	apiConfig "github.com/ava-labs/icm-services/config"
 	offchainregistry "github.com/ava-labs/icm-services/messages/off-chain-registry"
 	"github.com/ava-labs/icm-services/relayer/config"
@@ -173,7 +173,7 @@ func RelayerCleanup(
 		if err := proc.Signal(os.Interrupt); err != nil {
 			return fmt.Errorf("failed sending interrupt signal to relayer process with pid %d: %w", pid, err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), localRelayerCheckTimeout)
+		ctx, cancel := sdkutils.GetTimedContext(localRelayerCheckTimeout)
 		defer cancel()
 		select {
 		case <-ctx.Done():

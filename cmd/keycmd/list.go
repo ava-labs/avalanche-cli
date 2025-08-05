@@ -640,7 +640,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 
 func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {
 	addr := common.HexToAddress(addrStr)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkUtils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
 	cancel()
 	if err != nil {
@@ -672,7 +672,7 @@ func getPChainBalanceStr(pClient platformvm.Client, addr string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkUtils.GetAPIContext()
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {
@@ -695,13 +695,13 @@ func getXChainBalanceStr(xClient avm.Client, addr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkUtils.GetAPIContext()
 	defer cancel()
 	asset, err := xClient.GetAssetDescription(ctx, "AVAX")
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel = utils.GetAPILargeContext()
+	ctx, cancel = sdkUtils.GetAPILargeContext()
 	defer cancel()
 	resp, err := xClient.GetBalance(ctx, xID, asset.AssetID.String(), false)
 	if err != nil {
