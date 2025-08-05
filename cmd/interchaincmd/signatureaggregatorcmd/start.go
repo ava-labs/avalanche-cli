@@ -40,6 +40,8 @@ func newStartCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &startFlags.Network, true, startNetworkOptions)
+	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &startFlags.SigAggFlags)
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
 
@@ -110,7 +112,7 @@ func createLocalSignatureAggregator(network models.Network) error {
 	if err != nil {
 		return err
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, startFlags.SigAggFlags.SignatureAggregatorVersion)
 	if err != nil {
 		return err
 	}
