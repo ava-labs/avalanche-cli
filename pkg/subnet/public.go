@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -44,13 +43,11 @@ var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain auth 
 type PublicDeployer struct {
 	kc      *keychain.Keychain
 	network models.Network
-	app     *application.Avalanche
 	wallet  *primary.Wallet
 }
 
-func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
+func NewPublicDeployer(kc *keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		app:     app,
 		kc:      kc,
 		network: network,
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -233,13 +232,22 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		BootstrapValidators:                avaGoBootstrapValidators,
 	}
 
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, subnetID.String(), network, extraAggregatorPeers, aggregatorLogger, "latest")
-	if err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	var signatureAggregatorEndpoint string
+	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			// if local machine does not have a running signature aggregator instance for the network, we will create it first
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
+			if err != nil {
+				return err
+			}
+			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 
 	switch {

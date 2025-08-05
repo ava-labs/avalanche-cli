@@ -197,7 +197,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	if validatorKind == validatorsdk.NonSovereignValidator {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
 		if err != nil {
@@ -220,6 +220,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
+		removeValidatorFlags.RPC,
+		removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
@@ -257,6 +259,8 @@ func removeValidatorSOV(
 	uptimeSec uint64,
 	isBootstrapValidator bool,
 	force bool,
+	rpcURL string,
+	signatureAggregatorEndpoint string,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -326,10 +330,6 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		removeValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		removeValidatorFlags.SigAggFlags.AggregatorLogToStdout,
@@ -341,13 +341,19 @@ func removeValidatorSOV(
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
-
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
-	}
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
+	if signatureAggregatorEndpoint == "" {
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			// if local machine does not have a running signature aggregator instance for the network, we will create it first
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, removeValidatorFlags.SigAggFlags.SignatureAggregatorVersion)
+			if err != nil {
+				return err
+			}
+			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()

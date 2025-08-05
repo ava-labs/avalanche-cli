@@ -41,7 +41,6 @@ import (
 	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -784,7 +783,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
@@ -1425,33 +1424,6 @@ func LoadBootstrapValidator(bootstrapValidatorFlags flags.BootstrapValidatorFlag
 		return nil, err
 	}
 	return subnetValidators, nil
-}
-
-func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
-	aggregatorPeers, err := blockchain.UrisToPeers(uris)
-	if err != nil {
-		return nil, err
-	}
-	nodeIDs := sdkutils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
-		return peer.Info.ID
-	})
-	nodeIDsSet := set.Of(nodeIDs...)
-	for _, uri := range uris {
-		infoClient := info.NewClient(uri)
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		peers, err := infoClient.Peers(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		for _, peer := range peers {
-			if !nodeIDsSet.Contains(peer.Info.ID) {
-				aggregatorPeers = append(aggregatorPeers, peer)
-				nodeIDsSet.Add(peer.Info.ID)
-			}
-		}
-	}
-	return aggregatorPeers, nil
 }
 
 func simulatedPublicNetwork() bool {

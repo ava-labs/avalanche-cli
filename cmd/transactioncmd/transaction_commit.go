@@ -132,7 +132,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployer := subnet.NewPublicDeployer(app, keychain.NewKeychain(network, kc, nil, nil), network)
+	deployer := subnet.NewPublicDeployer(keychain.NewKeychain(network, kc, nil, nil), network)
 	txID, err := deployer.Commit(tx, true)
 	if err != nil {
 		return err
