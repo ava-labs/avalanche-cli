@@ -65,6 +65,8 @@ const (
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
 
+	EVMEventLookupTimeout = 2 * time.Minute
+
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
 	SSHLongRunningScriptTimeout = 10 * time.Minute
@@ -349,8 +351,7 @@ const (
 	PoSL1MinimumStakeDurationSeconds = 100
 
 	// Aggregator
-	DefaultAggregatorLogLevel  = "Debug"
-	SignatureAggregator        = "signature-aggregator"
-	MaxL1TotalWeightChange     = 0.2
-	SignatureAggregatorTimeout = 60 * time.Second
+	DefaultAggregatorLogLevel = "Debug"
+	SignatureAggregator       = "signature-aggregator"
+	MaxL1TotalWeightChange    = 0.2
 )

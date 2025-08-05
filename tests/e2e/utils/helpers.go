@@ -1142,7 +1142,7 @@ func GetAPILargeContext() (context.Context, context.CancelFunc) {
 }
 
 func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.SignatureAggregatorTimeout)
+	return context.WithTimeout(context.Background(), constants.EVMEventLookupTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {
