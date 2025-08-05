@@ -326,7 +326,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
@@ -345,6 +345,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		addValidatorFlags.RPC,
+		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
 	}
@@ -378,6 +379,7 @@ func CallAddValidator(
 	disableOwnerAddr string,
 	sc models.Sidecar,
 	rpcURL string,
+	signatureAggregatorEndpoint string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -538,10 +540,6 @@ func CallAddValidator(
 		Threshold: 1,
 		Addresses: disableOwnerAddrID,
 	}
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
-	if err != nil {
-		return err
-	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
@@ -550,15 +548,22 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if err = signatureaggregator.UpdateSignatureAggregatorPeers(app, network, extraAggregatorPeers, aggregatorLogger); err != nil {
-		return err
+	if signatureAggregatorEndpoint == "" {
+		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+		if err != nil {
+			// if local machine does not have a running signature aggregator instance for the network, we will create it first
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, addValidatorFlags.SigAggFlags.SignatureAggregatorVersion)
+			if err != nil {
+				return err
+			}
+			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-	if err != nil {
-		return err
-	}
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,

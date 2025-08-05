@@ -82,10 +82,11 @@ const (
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 	OperateOfflineEnvVarName    = "CLIOFFLINE"
 
-	LatestPreReleaseVersionTag = "latest-prerelease"
-	LatestReleaseVersionTag    = "latest"
-	DefaultAvalancheGoVersion  = LatestReleaseVersionTag
-	DefaultRelayerVersion      = LatestReleaseVersionTag
+	LatestPreReleaseVersionTag        = "latest-prerelease"
+	LatestReleaseVersionTag           = "latest"
+	DefaultAvalancheGoVersion         = LatestReleaseVersionTag
+	DefaultRelayerVersion             = LatestReleaseVersionTag
+	DefaultSignatureAggregatorVersion = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
