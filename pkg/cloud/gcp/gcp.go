@@ -40,7 +40,7 @@ type GcpCloud struct {
 // NewGcpCloud creates a GCP cloud
 func NewGcpCloud(gcpClient *compute.Service, projectID string, ctx context.Context) (*GcpCloud, error) {
 	if ctx == nil {
-		ctx = context.Background()
+		ctx, _ = sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
 	}
 	return &GcpCloud{
 		gcpClient: gcpClient,

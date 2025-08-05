@@ -414,7 +414,7 @@ func GetNetworkFromCmdLineFlags(
 		networkID := uint32(0)
 		if networkFlags.Endpoint != "" {
 			infoClient := info.NewClient(networkFlags.Endpoint)
-			ctx, cancel := utils.GetAPIContext()
+			ctx, cancel := sdkutils.GetAPIContext()
 			defer cancel()
 			networkID, err = infoClient.GetNetworkID(ctx)
 			if err != nil {

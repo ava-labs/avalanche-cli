@@ -3,11 +3,11 @@
 package txutils
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -97,7 +97,8 @@ func IsTransferSubnetOwnershipTx(tx *txs.Tx) bool {
 
 func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
 	subnetResponse, err := pClient.GetSubnet(ctx, subnetID)
 	if err != nil {
 		return false, nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)

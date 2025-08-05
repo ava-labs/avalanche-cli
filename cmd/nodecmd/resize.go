@@ -19,8 +19,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var diskSize string
@@ -164,7 +164,9 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 		if err != nil {
 			return err
 		}
-		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+		ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+		defer cancel()
+		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, ctx)
 		if err != nil {
 			return err
 		}
@@ -202,7 +204,9 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		if err != nil {
 			return err
 		}
-		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+		ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+		defer cancel()
+		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, ctx)
 		if err != nil {
 			return err
 		}

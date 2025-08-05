@@ -134,7 +134,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	switch {
 	case nodeEndpoint != "":
 		infoClient := info.NewClient(nodeEndpoint)
-		ctx, cancel := utils.GetAPILargeContext()
+		ctx, cancel := sdkutils.GetAPILargeContext()
 		defer cancel()
 		nodeID, _, err = infoClient.GetNodeID(ctx)
 		if err != nil {

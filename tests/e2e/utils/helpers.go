@@ -31,7 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -466,7 +466,7 @@ func SetHardhatRPC(rpc string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	chainIDBig, err := client.ChainID(ctx)
 	cancel()
 	if err != nil {
@@ -728,7 +728,7 @@ type NodeInfo struct {
 }
 
 func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 
 	client := info.NewClient(nodeURI)
 	versionInfo, err := client.GetNodeVersion(ctx)
@@ -849,11 +849,11 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 	if err != nil {
 		return err
 	}
-	mainCtx, mainCtxCancel := utils.GetAPIContext()
+	mainCtx, mainCtxCancel := sdkutils.GetAPIContext()
 	defer mainCtxCancel()
 	for {
 		ready := true
-		ctx, ctxCancel := utils.GetAPIContext()
+		ctx, ctxCancel := sdkutils.GetAPIContext()
 		vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 		ctxCancel()
 		if err != nil {
@@ -940,6 +940,8 @@ func FundLedgerAddress(amount uint64) error {
 }
 
 func FundAddress(addr ids.ShortID, amount uint64) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
 	if err != nil {
@@ -947,7 +949,7 @@ func FundAddress(addr ids.ShortID, amount uint64) error {
 	}
 	kc := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
-		context.Background(),
+		ctx,
 		constants.LocalAPIEndpoint,
 		kc,
 		secp256k1fx.NewKeychain(),
@@ -1137,12 +1139,8 @@ func GetKeyTransferFee(output string, network string) (uint64, error) {
 	return feeNAvax, nil
 }
 
-func GetAPILargeContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
-}
-
 func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.SignatureAggregatorTimeout)
+	return sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {
@@ -1214,7 +1212,7 @@ type CurrentValidatorInfo struct {
 }
 
 func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, error) {
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
 	res := &platformvm.GetCurrentValidatorsReply{}
@@ -1245,7 +1243,7 @@ func GetCurrentValidatorsLocalAPI(subnetID ids.ID) ([]CurrentValidatorInfo, erro
 }
 
 func GetL1ValidatorInfo(validationID ids.ID) (platformvm.GetL1ValidatorReply, error) {
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	requester := rpc.NewEndpointRequester("http://127.0.0.1:9650/ext/P")
 	res := &platformvm.GetL1ValidatorReply{}
