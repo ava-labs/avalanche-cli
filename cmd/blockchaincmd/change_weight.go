@@ -283,7 +283,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		0, // automatic uptime
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
-		changeWeightFlags.RPC,
 		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	)
 	if err != nil {
@@ -315,7 +314,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		changeWeightFlags.RPC,
 		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	)
 }

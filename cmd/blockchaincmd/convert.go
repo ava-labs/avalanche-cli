@@ -239,11 +239,6 @@ func InitializeValidatorManager(
 		return tracked, err
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return tracked, err
-	}
-
 	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
 	specializedValidatorManagerAddress := common.HexToAddress(specializedValidatorManagerAddressStr)
 

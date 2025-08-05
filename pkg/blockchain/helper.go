@@ -9,79 +9,12 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/network/peer"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
-
-func GetAggregatorExtraPeers(
-	app *application.Avalanche,
-	clusterName string,
-) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(app, clusterName)
-	if err != nil {
-		return nil, err
-	}
-	urisSet := set.Of(uris...)
-	uris = urisSet.List()
-	return UrisToPeers(uris)
-}
-
-func GetAggregatorNetworkUris(app *application.Avalanche, clusterName string) ([]string, error) {
-	aggregatorExtraPeerEndpointsUris := []string{}
-	if clusterName != "" {
-		if localnet.LocalClusterExists(app, clusterName) {
-			return localnet.GetLocalClusterURIs(app, clusterName)
-		} else { // remote cluster case
-			clustersConfig, err := app.LoadClustersConfig()
-			if err != nil {
-				return nil, err
-			}
-			clusterConfig := clustersConfig.Clusters[clusterName]
-			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
-			for _, hostID := range hostIDs {
-				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
-					return nil, err
-				} else {
-					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalancheGoAPIPort))
-				}
-			}
-		}
-	}
-	return aggregatorExtraPeerEndpointsUris, nil
-}
-
-func UrisToPeers(uris []string) ([]info.Peer, error) {
-	peers := []info.Peer{}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	for _, uri := range uris {
-		client := info.NewClient(uri)
-		nodeID, _, err := client.GetNodeID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		ip, err := client.GetNodeIP(ctx)
-		if err != nil {
-			return nil, err
-		}
-		peers = append(peers, info.Peer{
-			Info: peer.Info{
-				ID:       nodeID,
-				PublicIP: ip,
-			},
-		})
-	}
-	return peers, nil
-}
 
 func ConvertToBLSProofOfPossession(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
 	type jsonProofOfPossession struct {
@@ -132,12 +65,4 @@ func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetCli
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	return pClient.GetSubnet(ctx, subnetID)
-}
-
-func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (ids.ID, error) {
-	api := network.Endpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return pClient.ValidatedBy(ctx, blockchainID)
 }

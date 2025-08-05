@@ -345,7 +345,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		addValidatorFlags.RPC,
 		addValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
@@ -379,7 +378,6 @@ func CallAddValidator(
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
 	sc models.Sidecar,
-	rpcURL string,
 	signatureAggregatorEndpoint string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)

@@ -220,7 +220,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
-		removeValidatorFlags.RPC,
 		removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
@@ -259,7 +258,6 @@ func removeValidatorSOV(
 	uptimeSec uint64,
 	isBootstrapValidator bool,
 	force bool,
-	rpcURL string,
 	signatureAggregatorEndpoint string,
 ) error {
 	chainSpec := contract.ChainSpec{

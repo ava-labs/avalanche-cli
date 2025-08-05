@@ -205,10 +205,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
-	if err != nil {
-		return err
-	}
 
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogLevel,
