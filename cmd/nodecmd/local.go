@@ -686,7 +686,7 @@ func addAsValidator(
 	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
 	if err != nil {
 		if !strings.Contains(err.Error(), "warp message already issued for validationID") {

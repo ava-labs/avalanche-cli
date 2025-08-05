@@ -328,7 +328,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 
 	if err := node.CheckHostsAreBootstrapped(hosts); err != nil {
 		return err
