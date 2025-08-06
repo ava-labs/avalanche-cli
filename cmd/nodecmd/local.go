@@ -658,6 +658,7 @@ func addAsValidator(
 
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
+		ux.Logger.Log,
 		app,
 		network,
 		localValidateFlags.RPC,
@@ -706,6 +707,7 @@ func addAsValidator(
 	defer aggregatorCancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
+		ux.Logger.Log,
 		app,
 		network,
 		localValidateFlags.RPC,

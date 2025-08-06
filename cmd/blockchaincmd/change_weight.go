@@ -395,6 +395,7 @@ func changeWeightACP99(
 	defer aggregatorCancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		aggregatorCtx,
+		ux.Logger.Log,
 		ux.Logger.PrintToUser,
 		app,
 		network,
@@ -454,6 +455,7 @@ func changeWeightACP99(
 	defer aggregatorCancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
 		aggregatorCtx,
+		ux.Logger.Log,
 		app,
 		network,
 		changeWeightFlags.RPC,

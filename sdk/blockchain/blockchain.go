@@ -379,6 +379,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+		log,
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -412,6 +413,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
 	tx, _, err = validatormanager.InitializeValidatorsSet(
+		log,
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -453,6 +455,7 @@ func (c *Subnet) InitializeProofOfStake(
 			return fmt.Errorf("could not generate manager owner address from manager owner private key: %w", err)
 		}
 		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+			log,
 			c.RPC,
 			common.HexToAddress(managerAddress),
 			privateKey,
@@ -468,6 +471,7 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 	}
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
+		log,
 		c.RPC,
 		common.HexToAddress(managerAddress),
 		common.HexToAddress(specializedManagerAddress),
@@ -503,6 +507,7 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 
 	tx, _, err = validatormanager.InitializeValidatorsSet(
+		log,
 		c.RPC,
 		common.HexToAddress(managerAddress),
 		privateKey,
