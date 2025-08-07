@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -669,12 +670,7 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			// Should contain "Custom" option
-			for _, opt := range options {
-				if opt == Custom {
-					return true
-				}
-			}
-			return false
+			return slices.Contains(options, Custom)
 		}), 11).Return(Custom, nil).Once()
 		mockPrompt.On("CaptureString", "Blockchain ID/Alias").Return("custom-blockchain-id", nil).Once()
 		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
@@ -693,12 +689,7 @@ func TestPromptChain(t *testing.T) {
 		mockPrompt := &mocks.Prompter{}
 		mockPrompt.On("CaptureListWithSize", prompt, mock.MatchedBy(func(options []string) bool {
 			// Should contain "My blockchain isn't listed" option
-			for _, opt := range options {
-				if opt == "My blockchain isn't listed" {
-					return true
-				}
-			}
-			return false
+			return slices.Contains(options, "My blockchain isn't listed")
 		}), 11).Return("My blockchain isn't listed", nil).Once()
 		notListed, pChain, xChain, cChain, subnetName, blockchainID, err := PromptChain(
 			mockPrompt, prompt, subnetNames, true, true, true, avoidBlockchainName, false)

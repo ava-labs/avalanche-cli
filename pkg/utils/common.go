@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"os/user"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -32,7 +33,6 @@ import (
 	"github.com/ava-labs/subnet-evm/core"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 )
 
@@ -88,12 +88,7 @@ func GetRealFilePath(path string) string {
 }
 
 func Any[T any](input []T, f func(T) bool) bool {
-	for _, e := range input {
-		if f(e) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(input, f)
 }
 
 func Find[T any](input []T, f func(T) bool) *T {
