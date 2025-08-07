@@ -10,13 +10,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"golang.org/x/exp/maps"
 )
 
 type Keychain struct {
 	keychain.Keychain
-	network network.Network
-	Ledger  *Ledger
+	Ledger *Ledger
+	Keys   []key.Key
 }
 
 // LedgerParams is an input to NewKeyChain if a new keychain is to be created using Ledger
@@ -49,6 +50,20 @@ type Ledger struct {
 	LedgerIndices []uint32
 }
 
+func PrivateKeyToAvalancheAccount(
+	privateKey string,
+) (*Keychain, error) {
+	k, err := key.LoadSoftFromBytes([]byte(privateKey))
+	if err != nil {
+		return nil, err
+	}
+	kc := Keychain{
+		Keychain: k.KeyChain(),
+		Keys:     []key.Key{k},
+	}
+	return &kc, nil
+}
+
 // NewKeychain generates a new key pair from either a stored key path or Ledger.
 // For stored keys, NewKeychain will generate a new key pair in the provided keyPath if no .pk
 // file currently exists in the provided path.
@@ -69,10 +84,9 @@ func NewKeychain(
 			Ledger: &Ledger{
 				LedgerDevice: dev,
 			},
-			network: network,
 		}
 		if ledgerInfo.RequiredFunds > 0 {
-			if err := kc.AddLedgerFunds(ledgerInfo.RequiredFunds); err != nil {
+			if err := kc.AddLedgerFunds(network, ledgerInfo.RequiredFunds); err != nil {
 				return nil, err
 			}
 		}
@@ -92,7 +106,6 @@ func NewKeychain(
 	}
 	kc := Keychain{
 		Keychain: sf.KeyChain(),
-		network:  network,
 	}
 	return &kc, nil
 }
@@ -126,13 +139,65 @@ func (kc *Keychain) AddLedgerAddresses(addresses []string) error {
 	return fmt.Errorf("keychain is not ledger enabled")
 }
 
-func (kc *Keychain) AddLedgerFunds(amount uint64) error {
+func (kc *Keychain) AddLedgerFunds(
+	network network.Network,
+	amount uint64,
+) error {
 	if kc.LedgerEnabled() {
-		indices, err := kc.Ledger.LedgerDevice.FindFunds(kc.network, amount, 0)
+		indices, err := kc.Ledger.LedgerDevice.FindFunds(network, amount, 0)
 		if err != nil {
 			return err
 		}
 		return kc.AddLedgerIndices(indices)
 	}
 	return fmt.Errorf("keychain is not ledger enabled")
+}
+
+func (kc *Keychain) P(
+	network *network.Network,
+) ([]string, error) {
+	addrs := kc.Addresses().List()
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("no addresses in keychain")
+	}
+	hrp := network.HRP()
+	addrsStr := []string{}
+	for _, addr := range addrs {
+		addrStr, err := address.Format("P", hrp, addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrsStr = append(addrsStr, addrStr)
+	}
+	return addrsStr, nil
+}
+
+func (kc *Keychain) X(
+	network *network.Network,
+) ([]string, error) {
+	addrs := kc.Addresses().List()
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("no addresses in keychain")
+	}
+	hrp := network.HRP()
+	addrsStr := []string{}
+	for _, addr := range addrs {
+		addrStr, err := address.Format("X", hrp, addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrsStr = append(addrsStr, addrStr)
+	}
+	return addrsStr, nil
+}
+
+func (kc *Keychain) C() ([]string, error) {
+	if len(kc.Keys) == 0 {
+		return nil, fmt.Errorf("no addresses in keychain")
+	}
+	addrsStr := []string{}
+	for _, k := range kc.Keys {
+		addrsStr = append(addrsStr, k.C())
+	}
+	return addrsStr, nil
 }

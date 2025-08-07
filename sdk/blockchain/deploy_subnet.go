@@ -63,7 +63,9 @@ func (c *Subnet) CreateBlockchainTx(wallet wallet.Wallet) (*multisig.Multisig, e
 	if c.Name == "" {
 		return nil, fmt.Errorf("blockchain name is not provided")
 	}
-	wallet.SetSubnetAuthMultisig(c.DeployInfo.SubnetAuthKeys)
+	if err := wallet.SetSubnetAuthMultisig(c.DeployInfo.SubnetAuthKeys); err != nil {
+		return nil, fmt.Errorf("error setting wallet options for multisig: %w", err)
+	}
 
 	// create tx
 	fxIDs := make([]ids.ID, 0)

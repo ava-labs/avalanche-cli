@@ -9,6 +9,7 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -22,8 +23,10 @@ var (
 
 // Key defines methods for key manager interface.
 type Key interface {
-	// P returns all formatted P-Chain addresses.
-	P(string) (string, error)
+	// P returns the P-Chain address.
+	P(network.Network) (string, error)
+	// X returns the X-Chain address.
+	X(network.Network) (string, error)
 	// C returns the C-Chain address in Ethereum format
 	C() string
 	// Addresses returns the all raw ids.ShortID address.

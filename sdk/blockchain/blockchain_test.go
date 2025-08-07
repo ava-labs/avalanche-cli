@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ethereum/go-ethereum/common"
@@ -60,10 +59,9 @@ func TestSubnetDeploy(t *testing.T) {
 	threshold := 1
 	newSubnet.SetSubnetControlParams(controlKeys, uint32(threshold))
 	wallet, err := wallet.New(
-		context.Background(),
-		network.Endpoint,
-		keychain.Keychain,
-		primary.WalletConfig{
+		&network,
+		keychain,
+		wallet.Config{
 			SubnetIDs: nil,
 		},
 	)
@@ -107,10 +105,9 @@ func TestSubnetDeployMultiSig(t *testing.T) {
 	newSubnet.SetSubnetControlParams(controlKeys, uint32(threshold))
 
 	walletA, err := wallet.New(
-		context.Background(),
-		network.Endpoint,
-		keychainA.Keychain,
-		primary.WalletConfig{
+		&network,
+		keychainA,
+		wallet.Config{
 			SubnetIDs: nil,
 		},
 	)
@@ -132,10 +129,9 @@ func TestSubnetDeployMultiSig(t *testing.T) {
 
 	// include subnetID in PChainTxsToFetch when creating second wallet
 	walletB, err := wallet.New(
-		context.Background(),
-		network.Endpoint,
-		keychainB.Keychain,
-		primary.WalletConfig{
+		&network,
+		keychainB,
+		wallet.Config{
 			SubnetIDs: []ids.ID{subnetID},
 		},
 	)
@@ -174,10 +170,9 @@ func TestSubnetDeployLedger(t *testing.T) {
 	newSubnet.SetSubnetControlParams(controlKeys, uint32(threshold))
 
 	walletA, err := wallet.New(
-		context.Background(),
-		network.Endpoint,
-		keychainA.Keychain,
-		primary.WalletConfig{
+		&network,
+		keychainA,
+		wallet.Config{
 			SubnetIDs: nil,
 		},
 	)
@@ -205,10 +200,9 @@ func TestSubnetDeployLedger(t *testing.T) {
 	require.NoError(err)
 
 	walletB, err := wallet.New(
-		context.Background(),
-		network.Endpoint,
-		keychainB.Keychain,
-		primary.WalletConfig{
+		&network,
+		keychainB,
+		wallet.Config{
 			SubnetIDs: []ids.ID{subnetID},
 		},
 	)

@@ -226,6 +226,8 @@ func (ms *Multisig) GetNetworkID() (uint32, error) {
 	unsignedTx := ms.PChainTx.Unsigned
 	var networkID uint32
 	switch unsignedTx := unsignedTx.(type) {
+	case *txs.CreateSubnetTx:
+		networkID = unsignedTx.NetworkID
 	case *txs.RemoveSubnetValidatorTx:
 		networkID = unsignedTx.NetworkID
 	case *txs.AddSubnetValidatorTx:
