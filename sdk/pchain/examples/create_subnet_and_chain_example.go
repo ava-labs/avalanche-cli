@@ -31,10 +31,12 @@ func createSubnet(
 
 	// Prepare subnet creation transaction
 	fmt.Println("Preparing subnet creation transaction...")
-	createSubnetTx, err := pchain.PrepareCreateSubnetTx(
+	createSubnetTx, err := pchain.NewCreateSubnetTx(
 		client,
-		subnetOwners,
-		subnetThreshold,
+		pchain.CreateSubnetTxParams{
+			ControlKeys: subnetOwners,
+			Threshold: subnetThreshold,
+		},
 	)
 	if err != nil {
 		return "", err
@@ -161,13 +163,15 @@ func createChain(
 
 	// Prepare chain creation transaction
 	fmt.Println("Preparing chain creation transaction...")
-	createChainTx, err := pchain.PrepareCreateChainTx(
+	createChainTx, err := pchain.NewCreateChainTx(
 		client,
-		subnetID,
-		vmID,
-		chainName,
-		[]byte(genesis),
-		subnetAuthKeys,
+		pchain.CreateChainTxParams{
+			SubnetID: subnetID,
+			VMID: vmID,
+			ChainName: chainName,
+			Genesis: []byte(genesis),
+			SubnetAuthKeys: subnetAuthKeys,
+		},
 	)
 	if err != nil {
 		return "", err
