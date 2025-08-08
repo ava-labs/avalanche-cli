@@ -29,11 +29,13 @@ func PoSValidatorManagerInitialize(
 	if err := posParams.Verify(); err != nil {
 		return nil, nil, err
 	}
-	const (
-		defaultChurnPeriodSeconds     = uint64(0) // no churn period
-		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
-	)
 	if useACP99 {
+		weightToValueFactor := new(big.Int)
+		weightToValueFactor.Mul(posParams.WeightToValueFactor, big.NewInt(1_000_000_000_000_000_000))
+		minimumStakeAmount := new(big.Int)
+		minimumStakeAmount.Mul(posParams.MinimumStakeAmount, big.NewInt(1_000_000_000_000_000_000))
+		maximumStakeAmount := new(big.Int)
+		maximumStakeAmount.Mul(posParams.MaximumStakeAmount, big.NewInt(1_000_000_000_000_000_000))
 		if tx, receipt, err := contract.TxToMethod(
 			rpcURL,
 			false,
@@ -46,12 +48,12 @@ func PoSValidatorManagerInitialize(
 			"initialize((address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
 			NativeTokenValidatorManagerSettingsV2_0_0{
 				Manager:                  managerAddress,
-				MinimumStakeAmount:       posParams.MinimumStakeAmount,
-				MaximumStakeAmount:       posParams.MaximumStakeAmount,
+				MinimumStakeAmount:       minimumStakeAmount,
+				MaximumStakeAmount:       maximumStakeAmount,
 				MinimumStakeDuration:     posParams.MinimumStakeDuration,
 				MinimumDelegationFeeBips: posParams.MinimumDelegationFee,
 				MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
-				WeightToValueFactor:      posParams.WeightToValueFactor,
+				WeightToValueFactor:      weightToValueFactor,
 				RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
 				UptimeBlockchainID:       posParams.UptimeBlockchainID,
 			},
@@ -95,8 +97,8 @@ func PoSValidatorManagerInitialize(
 		NativeTokenValidatorManagerSettingsV1_0_0{
 			BaseSettings: ValidatorManagerSettings{
 				SubnetID:               subnetID,
-				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-				MaximumChurnPercentage: defaultMaximumChurnPercentage,
+				ChurnPeriodSeconds:     ChurnPeriodSeconds,
+				MaximumChurnPercentage: MaximumChurnPercentage,
 			},
 			MinimumStakeAmount:       posParams.MinimumStakeAmount,
 			MaximumStakeAmount:       posParams.MaximumStakeAmount,

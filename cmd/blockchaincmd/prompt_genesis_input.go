@@ -9,7 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -130,6 +129,7 @@ func promptBootstrapValidators(
 	network models.Network,
 	validatorBalance uint64,
 	availableBalance uint64,
+	validatorWeight uint64,
 	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
 ) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
@@ -198,7 +198,7 @@ func promptBootstrapValidators(
 		}
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               constants.BootstrapValidatorWeight,
+			Weight:               validatorWeight,
 			Balance:              validatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
