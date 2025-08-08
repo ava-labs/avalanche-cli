@@ -280,6 +280,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"100s",
 		"--weight",
 		strconv.Itoa(constants.DefaultStakeWeight),
+		"--staker-genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
 	if clusterName != "" {
@@ -324,6 +325,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--uptime",
 		strconv.Itoa(int(uptimeSec)),
+		"--staker-genesis-key",
 		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)
