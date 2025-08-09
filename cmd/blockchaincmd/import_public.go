@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"

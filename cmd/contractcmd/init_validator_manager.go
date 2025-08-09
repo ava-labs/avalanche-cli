@@ -279,6 +279,28 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
 			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
 		}
+		nativeMinterPrecompileAdminFound, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainID: validatorManagerBlockchainID.String(),
+			},
+		)
+		if err != nil {
+			return err
+		}
+		if !nativeMinterPrecompileAdminFound {
+			nativeMinterPrecompileAdminFound, _, _, _, nativeMinterPrecompileAdminPrivateKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainID: validatorManagerBlockchainID.String(),
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
 		if err := validatormanager.SetupPoS(
 			app.Log,
 			subnetSDK,
@@ -296,6 +318,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			},
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
+			nativeMinterPrecompileAdminPrivateKey,
 		); err != nil {
 			return err
 		}

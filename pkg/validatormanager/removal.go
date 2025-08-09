@@ -41,9 +41,27 @@ func InitializeValidatorRemoval(
 	uptimeProofSignedMessage *warp.Message,
 	force bool,
 	useACP99 bool,
+	uptimeSec uint64,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
 		if useACP99 {
+			validatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if validatorInfo.MinStakeDuration != 0 {
+				// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
+				currentAddress, err := evm.PrivateKeyToAddress(privateKey)
+				if err != nil {
+					return nil, nil, err
+				}
+				if currentAddress != validatorInfo.Owner {
+					return nil, nil, fmt.Errorf("removal operation is started by address %s, but should be started by validator owner %s", currentAddress, validatorInfo.Owner)
+				}
+				if uptimeSec < validatorInfo.MinStakeDuration + 60 {
+					return nil, nil, fmt.Errorf("removal operation is started with uptime sec %d, which is less than min stake duration (+60 sec) of %d", uptimeSec, validatorInfo.MinStakeDuration + 60)
+				}
+			}
 			if force {
 				return contract.TxToMethod(
 					rpcURL,
@@ -241,6 +259,9 @@ func InitValidatorRemoval(
 	if validationID == ids.Empty {
 		return nil, ids.Empty, nil, fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
+	if err != nil {
+		return nil, ids.Empty, nil, err
+	}
 
 	var unsignedMessage *warp.UnsignedMessage
 	if initiateTxHash != "" {
@@ -292,6 +313,7 @@ func InitValidatorRemoval(
 			signedUptimeProof, // is empty for non-PoS
 			force,
 			useACP99,
+			uptimeSec,
 		)
 		switch {
 		case err != nil:

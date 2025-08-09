@@ -8,11 +8,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -65,17 +68,64 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
+
+	header := table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner"}
+	if sc.PoS() {
+		header = table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "Stake"}
+	}
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
-		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)"},
+		header,
 	)
 	for _, validator := range validators {
-		t.AppendRow(table.Row{
+		owner := sc.ValidatorManagerOwner
+		stake := "0"
+		if sc.PoS() {
+			validatorInfo, err := validatormanager.GetStakingValidator(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(validatorManagerAddress),
+				validator.ValidationID,
+			)
+			if err != nil {
+				return err
+			}
+			if validatorInfo.MinStakeDuration != 0 {
+				owner = validatorInfo.Owner.Hex()
+				stakeAmount, err := validatormanager.PoSWeightToValue(
+					validatorManagerRPCEndpoint,
+					common.HexToAddress(validatorManagerAddress),
+					uint64(validator.Weight),
+				)
+				if err != nil {
+					return fmt.Errorf("failure obtaining value from weight: %w", err)
+				}
+				stake = utils.FormatAmount(stakeAmount, 18)
+			}
+		}
+		row := table.Row{
 			validator.NodeID,
 			validator.ValidationID,
 			validator.Weight,
 			float64(validator.Balance) / float64(units.Avax),
-		})
+			owner,
+		}
+		if sc.PoS() {
+			row = table.Row{
+				validator.NodeID,
+				validator.ValidationID,
+				validator.Weight,
+				float64(validator.Balance) / float64(units.Avax),
+				owner,
+				stake,
+			}
+		}
+		t.AppendRow(row)
 	}
 	fmt.Println(t.Render())
 
