@@ -8,6 +8,7 @@ const (
 	// http
 	APIRequestTimeout      = 10 * time.Second
 	APIRequestLargeTimeout = 30 * time.Second
+	WalletCreationTimeout  = 3 * time.Minute
 
 	// node
 	UserOnlyWriteReadPerms     = 0o600
