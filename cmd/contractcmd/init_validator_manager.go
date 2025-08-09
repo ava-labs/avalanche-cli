@@ -290,7 +290,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if !nativeMinterPrecompileAdminFound {
-			nativeMinterPrecompileAdminFound, _, _, _, nativeMinterPrecompileAdminPrivateKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
+			_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
 				app,
 				network,
 				contract.ChainSpec{

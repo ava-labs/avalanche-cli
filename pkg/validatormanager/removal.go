@@ -58,8 +58,8 @@ func InitializeValidatorRemoval(
 				if currentAddress != validatorInfo.Owner {
 					return nil, nil, fmt.Errorf("removal operation is started by address %s, but should be started by validator owner %s", currentAddress, validatorInfo.Owner)
 				}
-				if uptimeSec < validatorInfo.MinStakeDuration + 60 {
-					return nil, nil, fmt.Errorf("removal operation is started with uptime sec %d, which is less than min stake duration (+60 sec) of %d", uptimeSec, validatorInfo.MinStakeDuration + 60)
+				if uptimeSec < validatorInfo.MinStakeDuration+60 {
+					return nil, nil, fmt.Errorf("removal operation is started with uptime sec %d, which is less than min stake duration (+60 sec) of %d", uptimeSec, validatorInfo.MinStakeDuration+60)
 				}
 			}
 			if force {

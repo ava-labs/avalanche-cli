@@ -42,7 +42,7 @@ func PoSValidatorManagerInitialize(
 			return nil, nil, err
 		}
 		if !nativeMinterPrecompileOn {
-			return nil, nil, fmt.Errorf("Native minter precompile should be enabled for Native PoS")
+			return nil, nil, fmt.Errorf("native minter precompile should be enabled for Native PoS")
 		}
 		allowedStatus, err := precompiles.ReadAllowList(
 			rpcURL,
@@ -54,7 +54,7 @@ func PoSValidatorManagerInitialize(
 		}
 		if allowedStatus.Cmp(big.NewInt(0)) == 0 {
 			if nativeMinterPrecompileAdminPrivateKey == "" {
-				return nil, nil, fmt.Errorf("No managed native minter precompile admin was found, and need to be used to enable Native PoS")
+				return nil, nil, fmt.Errorf("no managed native minter precompile admin was found, and need to be used to enable Native PoS")
 			}
 			if err := precompiles.SetEnabled(
 				rpcURL,
@@ -165,15 +165,15 @@ func PoSWeightToValue(
 }
 
 type GetSettingsReturn struct {
-	ValidatorManager common.Address
-	MinimumStakeAmount *big.Int
-	MaximumStakeAmount *big.Int
-	MinimumStakeDuration uint64
+	ValidatorManager         common.Address
+	MinimumStakeAmount       *big.Int
+	MaximumStakeAmount       *big.Int
+	MinimumStakeDuration     uint64
 	MinimumDelegationFeeBips uint16
-	MaximumStakeMultiplier uint8
-	WeightToValueFactor *big.Int
-	RewardCalculator common.Address
-	UptimeBlockchainID [32]byte
+	MaximumStakeMultiplier   uint8
+	WeightToValueFactor      *big.Int
+	RewardCalculator         common.Address
+	UptimeBlockchainID       [32]byte
 }
 
 func GetSettings(
@@ -233,10 +233,10 @@ func GetSettings(
 }
 
 type GetStakingValidatorReturn struct {
-	Owner common.Address
+	Owner             common.Address
 	DelegationFeeBips uint16
-	MinStakeDuration uint64
-	UptimeSeconds uint64
+	MinStakeDuration  uint64
+	UptimeSeconds     uint64
 }
 
 func GetStakingValidator(

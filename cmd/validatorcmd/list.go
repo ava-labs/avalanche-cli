@@ -14,8 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/units"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 

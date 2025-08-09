@@ -32,7 +32,7 @@ type DeployValidatorManagerFlags struct {
 	poa                  bool
 	pos                  bool
 	validatorManagerPath string
-	rewardBasisPoints             uint64
+	rewardBasisPoints    uint64
 }
 
 var deployValidatorManagerFlags DeployValidatorManagerFlags
@@ -225,6 +225,9 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 			privateKey,
 			flags.rewardBasisPoints,
 		)
+		if err != nil {
+			return err
+		}
 		ux.Logger.PrintToUser("Reward Calculator Address: %s", rewardCalculatorAddress.Hex())
 		validatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
