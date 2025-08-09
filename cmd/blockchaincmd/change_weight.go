@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	validatormanagersdk "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
@@ -79,6 +80,10 @@ func setWeight(_ *cobra.Command, args []string) error {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
+	if sc.PoS() {
+		return fmt.Errorf("weight can't be changed on Proof of Stake Validator Managers")
 	}
 
 	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions)
@@ -187,7 +192,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			return err
 		}
 
-		allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
+		allowedChange := float64(totalWeight*validatormanagersdk.MaximumChurnPercentage) / 100.0
 		allowedWeightFunction := func(v uint64) error {
 			delta := uint64(0)
 			if v > validatorInfo.Weight {
@@ -205,7 +210,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			if float64(validatorInfo.Weight) > allowedChange {
 				return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
 			}
-			allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+			allowedChange = float64((totalWeight-validatorInfo.Weight)*validatormanagersdk.MaximumChurnPercentage) / 100.0
 			allowedWeightFunction = func(v uint64) error {
 				if v > uint64(allowedChange) {
 					return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
@@ -305,7 +310,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		network,
 		kc,
 		blockchainName,
-		subnetID,
 		nodeID.String(),
 		publicKey,
 		pop,

@@ -425,7 +425,7 @@ func prepareBootstrapValidators(
 	sidecar models.Sidecar,
 	kc keychain.Keychain,
 	blockchainName string,
-	deployBalance,
+	deployBalance uint64,
 	availableBalance uint64,
 	localMachineFlags *flags.LocalMachineFlags,
 	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
@@ -468,7 +468,7 @@ func prepareBootstrapValidators(
 
 			*bootstrapValidators = append(*bootstrapValidators, models.SubnetValidator{
 				NodeID:               nodeID.String(),
-				Weight:               constants.BootstrapValidatorWeight,
+				Weight:               bootstrapValidatorFlags.DeployWeight,
 				Balance:              deployBalance,
 				BLSPublicKey:         publicKey,
 				BLSProofOfPossession: pop,
@@ -477,7 +477,7 @@ func prepareBootstrapValidators(
 		}
 	case clusterNameFlagValue != "":
 		// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-		*bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
+		*bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance, bootstrapValidatorFlags.DeployWeight)
 		if err != nil {
 			return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 		}
@@ -488,6 +488,7 @@ func prepareBootstrapValidators(
 				network,
 				deployBalance,
 				availableBalance,
+				bootstrapValidatorFlags.DeployWeight,
 				bootstrapValidatorFlags,
 			)
 			if err != nil {
@@ -703,7 +704,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployBalance := uint64(deployFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign && !subnetOnly {
-		err = prepareBootstrapValidators(&bootstrapValidators, network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &deployFlags.LocalMachineFlags, &deployFlags.BootstrapValidatorFlags)
+		err = prepareBootstrapValidators(
+			&bootstrapValidators,
+			network,
+			sidecar,
+			*kc, blockchainName,
+			deployBalance,
+			availableBalance,
+			&deployFlags.LocalMachineFlags,
+			&deployFlags.BootstrapValidatorFlags,
+		)
 		if err != nil {
 			return err
 		}
@@ -1216,6 +1226,7 @@ func getClusterBootstrapValidators(
 	clusterName string,
 	network models.Network,
 	deployBalance uint64,
+	deployWeight uint64,
 ) ([]models.SubnetValidator, error) {
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
@@ -1239,7 +1250,7 @@ func getClusterBootstrapValidators(
 		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, nodeID, hex.EncodeToString(pub), hex.EncodeToString(pop))
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               constants.BootstrapValidatorWeight,
+			Weight:               deployWeight,
 			Balance:              deployBalance,
 			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
 			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),

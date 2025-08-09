@@ -22,10 +22,6 @@ func PoAValidatorManagerInitialize(
 	ownerAddress common.Address,
 	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
-	const (
-		defaultChurnPeriodSeconds     = uint64(0)
-		defaultMaximumChurnPercentage = uint8(20)
-	)
 	if useACP99 {
 		return contract.TxToMethod(
 			rpcURL,
@@ -40,8 +36,8 @@ func PoAValidatorManagerInitialize(
 			ACP99ValidatorManagerSettings{
 				Admin:                  ownerAddress,
 				SubnetID:               subnetID,
-				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-				MaximumChurnPercentage: defaultMaximumChurnPercentage,
+				ChurnPeriodSeconds:     ChurnPeriodSeconds,
+				MaximumChurnPercentage: MaximumChurnPercentage,
 			},
 		)
 	}
@@ -57,8 +53,8 @@ func PoAValidatorManagerInitialize(
 		"initialize((bytes32,uint64,uint8),address)",
 		ValidatorManagerSettings{
 			SubnetID:               subnetID,
-			ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-			MaximumChurnPercentage: defaultMaximumChurnPercentage,
+			ChurnPeriodSeconds:     ChurnPeriodSeconds,
+			MaximumChurnPercentage: MaximumChurnPercentage,
 		},
 		ownerAddress,
 	)

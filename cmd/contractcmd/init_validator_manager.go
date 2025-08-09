@@ -67,7 +67,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "(PoS only) maximum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "(PoS only) minimum stake duration (in seconds)")
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
-	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only )maximum stake multiplier")
+	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only) maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
@@ -279,6 +279,28 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
 			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
 		}
+		nativeMinterPrecompileAdminFound, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainID: validatorManagerBlockchainID.String(),
+			},
+		)
+		if err != nil {
+			return err
+		}
+		if !nativeMinterPrecompileAdminFound {
+			_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainID: validatorManagerBlockchainID.String(),
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
 		if err := validatormanager.SetupPoS(
 			app.Log,
 			subnetSDK,
@@ -296,6 +318,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			},
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
+			nativeMinterPrecompileAdminPrivateKey,
 		); err != nil {
 			return err
 		}

@@ -38,7 +38,7 @@ import (
 func InitializeValidatorRegistrationPoSNative(
 	rpcURL string,
 	managerAddress common.Address,
-	managerOwnerPrivateKey string,
+	privateKey string,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
 	expiry uint64,
@@ -81,7 +81,7 @@ func InitializeValidatorRegistrationPoSNative(
 			rpcURL,
 			false,
 			common.Address{},
-			managerOwnerPrivateKey,
+			privateKey,
 			managerAddress,
 			stakeAmount,
 			"initialize validator registration with stake",
@@ -101,7 +101,7 @@ func InitializeValidatorRegistrationPoSNative(
 		rpcURL,
 		false,
 		common.Address{},
-		managerOwnerPrivateKey,
+		privateKey,
 		managerAddress,
 		stakeAmount,
 		"initialize validator registration with stake",
@@ -474,7 +474,7 @@ func InitValidatorRegistration(
 			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
 			ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
-			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
+			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18))
 			ux.Logger.PrintLineSeparator()
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
 				rpcURL,
@@ -500,7 +500,7 @@ func InitValidatorRegistration(
 			} else {
 				ux.Logger.PrintToUser("Validator registration initialized. InitiateTxHash: %s", tx.Hash())
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
+			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
 		} else {
 			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(

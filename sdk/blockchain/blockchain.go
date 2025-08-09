@@ -461,6 +461,7 @@ func (c *Subnet) InitializeProofOfStake(
 	posParams validatormanager.PoSParams,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
+	nativeMinterPrecompileAdminPrivateKey string,
 ) error {
 	if c.Network == network.UndefinedNetwork {
 		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingNetwork)
@@ -521,6 +522,7 @@ func (c *Subnet) InitializeProofOfStake(
 		c.SubnetID,
 		posParams,
 		useACP99,
+		nativeMinterPrecompileAdminPrivateKey,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {

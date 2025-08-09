@@ -18,6 +18,7 @@ const (
 	numBootstrapValidatorsFlag = "num-bootstrap-validators"
 	balanceFlag                = "balance"
 	changeOwnerAddressFlag     = "change-owner-address"
+	weightFlag                 = "weight"
 )
 
 type BootstrapValidatorFlags struct {
@@ -27,6 +28,7 @@ type BootstrapValidatorFlags struct {
 	NumBootstrapValidators          int
 	DeployBalanceAVAX               float64
 	ChangeOwnerAddress              string
+	DeployWeight                    uint64
 }
 
 func validateBootstrapFilepathFlag(cmd *cobra.Command, bootstrapValidatorFlags BootstrapValidatorFlags) error {
@@ -77,6 +79,12 @@ func AddBootstrapValidatorFlagsToCmd(cmd *cobra.Command, bootstrapFlags *Bootstr
 			balanceFlag,
 			float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
 			"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain (setting balance=1 equals to 1 AVAX for each bootstrap validator)",
+		)
+		set.Uint64Var(
+			&bootstrapFlags.DeployWeight,
+			weightFlag,
+			uint64(constants.BootstrapValidatorWeight),
+			"set the weight of each bootstrap validator",
 		)
 		set.StringVar(&bootstrapFlags.ChangeOwnerAddress, changeOwnerAddressFlag, "", "address that will receive change if node is no longer L1 validator")
 		bootstrapValidatorPreRun := func(cmd *cobra.Command, _ []string) error {
