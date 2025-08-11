@@ -164,7 +164,7 @@ func PoSWeightToValue(
 	return value, nil
 }
 
-type GetSettingsReturn struct {
+type GetStakingManagerSetttingsReturn struct {
 	ValidatorManager         common.Address
 	MinimumStakeAmount       *big.Int
 	MaximumStakeAmount       *big.Int
@@ -176,60 +176,60 @@ type GetSettingsReturn struct {
 	UptimeBlockchainID       [32]byte
 }
 
-func GetSettings(
+func GetStakingManagerSettings(
 	rpcURL string,
 	managerAddress common.Address,
-) (GetSettingsReturn, error) {
-	getSettingsReturn := GetSettingsReturn{}
+) (GetStakingManagerSetttingsReturn, error) {
+	getStakingManagerSetttingsReturn := GetStakingManagerSetttingsReturn{}
 	out, err := contract.CallToMethod(
 		rpcURL,
 		managerAddress,
 		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
 	)
 	if err != nil {
-		return getSettingsReturn, err
+		return getStakingManagerSetttingsReturn, err
 	}
 	if len(out) != 9 {
-		return getSettingsReturn, fmt.Errorf("incorrect number of outputs for getStakingManagerSettings: expected 9 got %d", len(out))
+		return getStakingManagerSetttingsReturn, fmt.Errorf("incorrect number of outputs for getStakingManagerSettings: expected 9 got %d", len(out))
 	}
 	var ok bool
-	getSettingsReturn.ValidatorManager, ok = out[0].(common.Address)
+	getStakingManagerSetttingsReturn.ValidatorManager, ok = out[0].(common.Address)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for validatorManager output of getStakingManagerSettings: expected common.Address, got %T", out[0])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for validatorManager output of getStakingManagerSettings: expected common.Address, got %T", out[0])
 	}
-	getSettingsReturn.MinimumStakeAmount, ok = out[1].(*big.Int)
+	getStakingManagerSetttingsReturn.MinimumStakeAmount, ok = out[1].(*big.Int)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for minimumStakeAmount output of getStakingManagerSettings: expected *big.Int, got %T", out[1])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for minimumStakeAmount output of getStakingManagerSettings: expected *big.Int, got %T", out[1])
 	}
-	getSettingsReturn.MaximumStakeAmount, ok = out[2].(*big.Int)
+	getStakingManagerSetttingsReturn.MaximumStakeAmount, ok = out[2].(*big.Int)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for maximumStakeAmount output of getStakingManagerSettings: expected *big.Int, got %T", out[2])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for maximumStakeAmount output of getStakingManagerSettings: expected *big.Int, got %T", out[2])
 	}
-	getSettingsReturn.MinimumStakeDuration, ok = out[3].(uint64)
+	getStakingManagerSetttingsReturn.MinimumStakeDuration, ok = out[3].(uint64)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for minimumStakeDuration output of getStakingManagerSettings: expected uint64, got %T", out[3])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for minimumStakeDuration output of getStakingManagerSettings: expected uint64, got %T", out[3])
 	}
-	getSettingsReturn.MinimumDelegationFeeBips, ok = out[4].(uint16)
+	getStakingManagerSetttingsReturn.MinimumDelegationFeeBips, ok = out[4].(uint16)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for minimumDelegationFeeBips output of getStakingManagerSettings: expected uint16, got %T", out[4])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for minimumDelegationFeeBips output of getStakingManagerSettings: expected uint16, got %T", out[4])
 	}
-	getSettingsReturn.MaximumStakeMultiplier, ok = out[5].(uint8)
+	getStakingManagerSetttingsReturn.MaximumStakeMultiplier, ok = out[5].(uint8)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for maximumStakeMultiplier output of getStakingManagerSettings: expected uint8, got %T", out[5])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for maximumStakeMultiplier output of getStakingManagerSettings: expected uint8, got %T", out[5])
 	}
-	getSettingsReturn.WeightToValueFactor, ok = out[6].(*big.Int)
+	getStakingManagerSetttingsReturn.WeightToValueFactor, ok = out[6].(*big.Int)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for weightToValueFactor output of getStakingManagerSettings: expected *big.Int, got %T", out[6])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for weightToValueFactor output of getStakingManagerSettings: expected *big.Int, got %T", out[6])
 	}
-	getSettingsReturn.RewardCalculator, ok = out[7].(common.Address)
+	getStakingManagerSetttingsReturn.RewardCalculator, ok = out[7].(common.Address)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for rewardCalculator output of getStakingManagerSettings: expected common.Address, got %T", out[7])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for rewardCalculator output of getStakingManagerSettings: expected common.Address, got %T", out[7])
 	}
-	getSettingsReturn.UptimeBlockchainID, ok = out[8].([32]byte)
+	getStakingManagerSetttingsReturn.UptimeBlockchainID, ok = out[8].([32]byte)
 	if !ok {
-		return getSettingsReturn, fmt.Errorf("invalid type for uptimeBlockchainID output of getStakingManagerSettings: expected [32]byte, got %T", out[8])
+		return getStakingManagerSetttingsReturn, fmt.Errorf("invalid type for uptimeBlockchainID output of getStakingManagerSettings: expected [32]byte, got %T", out[8])
 	}
-	return getSettingsReturn, nil
+	return getStakingManagerSetttingsReturn, nil
 }
 
 type GetStakingValidatorReturn struct {

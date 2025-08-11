@@ -259,7 +259,22 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		allowedChange := float64(totalWeight*validatormanagersdk.MaximumChurnPercentage) / 100.0
+		validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+		validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+		if validatorManagerRPCEndpoint == "" {
+			return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+		}
+		if validatorManagerAddress == "" {
+			return fmt.Errorf("unable to find Validator Manager address")
+		}
+		churnSettings, err := validatormanagersdk.GetChurnSettings(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+		)
+		if err != nil {
+			return err
+		}
+		allowedChange := float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0
 		if !cmd.Flags().Changed(validatorWeightFlag) {
 			weight, err = app.Prompt.CaptureWeight(
 				fmt.Sprintf("What weight would you like to assign to the validator (max=%d)?", uint64(allowedChange)),
