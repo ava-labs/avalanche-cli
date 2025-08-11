@@ -77,6 +77,7 @@ func SetupProxyImplementation(
 		rpcURL,
 		proxyAdminContractAddress,
 		"UPGRADE_INTERFACE_VERSION()->(string)",
+		nil,
 	); err == nil {
 		if v, err := contract.GetSmartContractCallResult[string]("UPGRADE_INTERFACE_VERSION", out); err == nil && v == "5.0.0" {
 			useUpgradeAndCall = true
@@ -122,6 +123,7 @@ func GetProxyImplementation(
 		rpcURL,
 		proxyAdminContractAddress,
 		"getProxyImplementation(address)->(address)",
+		nil,
 		transparentProxyContractAddress,
 	)
 	if err != nil {

@@ -214,6 +214,7 @@ func ParseSpec(
 	event bool,
 	paid bool,
 	view bool,
+	outputParams interface{},
 	params ...interface{},
 ) (string, string, error) {
 	index := strings.Index(esp, "(")
@@ -246,7 +247,7 @@ func ParseSpec(
 	if err != nil {
 		return "", "", err
 	}
-	outputsMaps, err := getMap(outputTypes, nil)
+	outputsMaps, err := getMap(outputTypes, outputParams)
 	if err != nil {
 		return "", "", err
 	}
@@ -319,7 +320,7 @@ func TxToMethod(
 	if !generateRawTxOnly && privateKey == "" {
 		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethod")
 	}
-	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, payment != nil, false, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, payment != nil, false, nil, params...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -417,7 +418,7 @@ func TxToMethodWithWarpMessage(
 	if !generateRawTxOnly && privateKey == "" {
 		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethodWithWarpMessage")
 	}
-	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, nil, params...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -519,7 +520,7 @@ func DebugTraceCall(
 	methodSpec string,
 	params ...interface{},
 ) (map[string]interface{}, error) {
-	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, nil, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -562,9 +563,10 @@ func CallToMethod(
 	rpcURL string,
 	contractAddress common.Address,
 	methodSpec string,
+	outputParams interface{},
 	params ...interface{},
 ) ([]interface{}, error) {
-	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, true, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, true, outputParams, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -611,7 +613,7 @@ func DeployContract(
 	methodSpec string,
 	params ...interface{},
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
-	_, methodABI, err := ParseSpec(methodSpec, nil, true, false, false, false, params...)
+	_, methodABI, err := ParseSpec(methodSpec, nil, true, false, false, false, nil, params...)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -655,7 +657,7 @@ func UnpackLog(
 	log types.Log,
 	event interface{},
 ) error {
-	eventName, eventABI, err := ParseSpec(eventSpec, indexedFields, false, true, false, false, event)
+	eventName, eventABI, err := ParseSpec(eventSpec, indexedFields, false, true, false, false, nil, event)
 	if err != nil {
 		return err
 	}

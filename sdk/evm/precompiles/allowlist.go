@@ -103,6 +103,7 @@ func ReadAllowList(
 		rpcURL,
 		precompile,
 		"readAllowList(address)->(uint256)",
+		nil,
 		toQuery,
 	)
 	if err != nil {

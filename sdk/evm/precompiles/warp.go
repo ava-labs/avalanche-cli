@@ -16,6 +16,7 @@ func WarpPrecompileGetBlockchainID(
 		rpcURL,
 		WarpPrecompile,
 		"getBlockchainID()->(bytes32)",
+		nil,
 	)
 	if err != nil {
 		return ids.Empty, err

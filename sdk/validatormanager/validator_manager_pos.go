@@ -152,6 +152,7 @@ func PoSWeightToValue(
 		rpcURL,
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
+		nil,
 		weight,
 	)
 	if err != nil {
@@ -185,6 +186,7 @@ func GetStakingManagerSettings(
 		rpcURL,
 		managerAddress,
 		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
+		nil,
 	)
 	if err != nil {
 		return getStakingManagerSetttingsReturn, err
@@ -249,6 +251,7 @@ func GetStakingValidator(
 		rpcURL,
 		managerAddress,
 		"getStakingValidator(bytes32)->(address,uint16,uint64,uint64)",
+		nil,
 		[32]byte(validationID),
 	)
 	if err != nil {

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/accounts/abi"
 	"github.com/ava-labs/subnet-evm/core/types"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -77,52 +77,33 @@ func GetValidator(
 	rpcURL string,
 	managerAddress common.Address,
 	validationID ids.ID,
-) (GetValidatorReturn, error) {
-	getValidatorReturn := GetValidatorReturn{}
+) (*GetValidatorReturn, error) {
+	stakingManagerSettings, err := GetStakingManagerSettings(
+		rpcURL,
+		managerAddress,
+	)
+	if err == nil {
+		// fix address if specialized
+		managerAddress = stakingManagerSettings.ValidatorManager
+	}
+	getValidatorReturn := &GetValidatorReturn{}
 	out, err := contract.CallToMethod(
 		rpcURL,
 		managerAddress,
-		"getValidator(bytes32)->(uint8,bytes,uint64,uint64,uint64,uint64,uint64,uint64)",
+		"getValidator(bytes32)->((uint8,bytes,uint64,uint64,uint64,uint64,uint64,uint64))",
+		[]interface{}{*getValidatorReturn},
 		[32]byte(validationID),
 	)
 	if err != nil {
 		return getValidatorReturn, err
 	}
-	if len(out) != 4 {
-		return getValidatorReturn, fmt.Errorf("incorrect number of outputs for getValidator: expected 4 got %d", len(out))
+	if len(out) != 1 {
+		return getValidatorReturn, fmt.Errorf("incorrect number of outputs for getValidator: expected 1 got %d", len(out))
 	}
 	var ok bool
-	getValidatorReturn.Status, ok = out[0].(uint8)
+	getValidatorReturn, ok = abi.ConvertType(out[0], new(GetValidatorReturn)).(*GetValidatorReturn)
 	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for status output of getValidator: expected uint8, got %T", out[0])
-	}
-	getValidatorReturn.NodeID, ok = out[1].([]byte)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for nodeID output of getValidator: expected []byte, got %T", out[1])
-	}
-	getValidatorReturn.StartingWeight, ok = out[2].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for startingWeight output of getValidator: expected uint64, got %T", out[2])
-	}
-	getValidatorReturn.SentNonce, ok = out[3].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for sentNonce output of getValidator: expected uint64, got %T", out[3])
-	}
-	getValidatorReturn.ReceivedNonce, ok = out[4].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for receivedNonce output of getValidator: expected uint64, got %T", out[4])
-	}
-	getValidatorReturn.Weight, ok = out[5].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for weight output of getValidator: expected uint64, got %T", out[5])
-	}
-	getValidatorReturn.StartTime, ok = out[6].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for startTime output of getValidator: expected uint64, got %T", out[6])
-	}
-	getValidatorReturn.EndTime, ok = out[7].(uint64)
-	if !ok {
-		return getValidatorReturn, fmt.Errorf("invalid type for endTime output of getValidator: expected uint64, got %T", out[7])
+		return getValidatorReturn, fmt.Errorf("invalid type for output of getValidator: expected GetValidatorReturn, got %T", out[0])
 	}
 	return getValidatorReturn, nil
 }
@@ -149,6 +130,7 @@ func GetChurnSettings(
 		rpcURL,
 		managerAddress,
 		"getChurnTracker()->(uint64,uint8,uint256,uint64,uint64,uint64)",
+		nil,
 	)
 	if err != nil {
 		return churnSettings, err

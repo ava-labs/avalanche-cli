@@ -86,6 +86,7 @@ func GetValidationID(
 		rpcURL,
 		managerAddress,
 		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
+		nil,
 	)
 	if err == nil && len(out) == 9 {
 		validatorManager, ok := out[0].(common.Address)
@@ -97,6 +98,7 @@ func GetValidationID(
 		rpcURL,
 		managerAddress,
 		"registeredValidators(bytes)->(bytes32)",
+		nil,
 		nodeID[:],
 	)
 	if err != nil {

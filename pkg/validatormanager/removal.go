@@ -4,11 +4,11 @@ package validatormanager
 
 import (
 	"context"
-	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 
@@ -41,25 +41,31 @@ func InitializeValidatorRemoval(
 	uptimeProofSignedMessage *warp.Message,
 	force bool,
 	useACP99 bool,
-	uptimeSec uint64,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
 		if useACP99 {
-			validatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
+			validatorInfo, err := validatormanager.GetValidator(rpcURL, managerAddress, validationID)
 			if err != nil {
 				return nil, nil, err
 			}
-			if validatorInfo.MinStakeDuration != 0 {
+			stakingValidatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if stakingValidatorInfo.MinStakeDuration != 0 {
 				// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
 				currentAddress, err := evm.PrivateKeyToAddress(privateKey)
 				if err != nil {
 					return nil, nil, err
 				}
-				if currentAddress != validatorInfo.Owner {
-					return nil, nil, fmt.Errorf("removal operation is started by address %s, but should be started by validator owner %s", currentAddress, validatorInfo.Owner)
+				if currentAddress != stakingValidatorInfo.Owner {
+					return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", currentAddress, stakingValidatorInfo.Owner)
 				}
-				if uptimeSec < validatorInfo.MinStakeDuration+60 {
-					return nil, nil, fmt.Errorf("removal operation is started with uptime sec %d, which is less than min stake duration (+60 sec) of %d", uptimeSec, validatorInfo.MinStakeDuration+60)
+				startTime := time.Unix(int64(validatorInfo.StartTime), 0)
+				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
+				endTimeStr := endTime.Format("2006-01-02 15:04:05")
+				if !time.Now().After(endTime) {
+					return nil, nil, fmt.Errorf("can't remove validator before %s", endTimeStr)
 				}
 			}
 			if force {
@@ -313,7 +319,6 @@ func InitValidatorRemoval(
 			signedUptimeProof, // is empty for non-PoS
 			force,
 			useACP99,
-			uptimeSec,
 		)
 		switch {
 		case err != nil:

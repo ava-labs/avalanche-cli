@@ -21,6 +21,7 @@ func GetNextMessageID(
 		rpcURL,
 		messengerAddress,
 		"getNextMessageID(bytes32)->(bytes32)",
+		nil,
 		destinationBlockchainID,
 	)
 	if err != nil {
@@ -38,6 +39,7 @@ func MessageReceived(
 		rpcURL,
 		messengerAddress,
 		"messageReceived(bytes32)->(bool)",
+		nil,
 		messageID,
 	)
 	if err != nil {

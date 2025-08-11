@@ -317,6 +317,7 @@ func PoSWeightToValue(
 		rpcURL,
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
+		nil,
 		weight,
 	)
 	if err != nil {

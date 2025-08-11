@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -75,19 +76,31 @@ func list(_ *cobra.Command, args []string) error {
 		validatorManagerAddress = specializedValidatorManagerAddress
 	}
 
-	header := table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner"}
+	header := table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "StartTime"}
 	if sc.PoS() {
-		header = table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "Stake"}
+		header = table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "StartTime", "Stake", "EndTime", "Ready"}
 	}
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
 		header,
 	)
 	for _, validator := range validators {
+		validatorInfo, err := validatormanager.GetValidator(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+			validator.ValidationID,
+		)
+		if err != nil {
+			return err
+		}
+		startTime := time.Unix(int64(validatorInfo.StartTime), 0)
+		startTimeStr := startTime.Format("2006-01-02 15:04:05")
+		endTimeStr := ""
+		readyToRemove := ""
 		owner := sc.ValidatorManagerOwner
 		stake := "0"
 		if sc.PoS() {
-			validatorInfo, err := validatormanager.GetStakingValidator(
+			stakingValidatorInfo, err := validatormanager.GetStakingValidator(
 				validatorManagerRPCEndpoint,
 				common.HexToAddress(validatorManagerAddress),
 				validator.ValidationID,
@@ -95,8 +108,11 @@ func list(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if validatorInfo.MinStakeDuration != 0 {
-				owner = validatorInfo.Owner.Hex()
+			if stakingValidatorInfo.MinStakeDuration != 0 {
+				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
+				endTimeStr = endTime.Format("2006-01-02 15:04:05")
+				readyToRemove = fmt.Sprintf("%v", time.Now().After(endTime))
+				owner = stakingValidatorInfo.Owner.Hex()
 				stakeAmount, err := validatormanager.PoSWeightToValue(
 					validatorManagerRPCEndpoint,
 					common.HexToAddress(validatorManagerAddress),
@@ -114,6 +130,7 @@ func list(_ *cobra.Command, args []string) error {
 			validator.Weight,
 			float64(validator.Balance) / float64(units.Avax),
 			owner,
+			startTimeStr,
 		}
 		if sc.PoS() {
 			row = table.Row{
@@ -122,7 +139,10 @@ func list(_ *cobra.Command, args []string) error {
 				validator.Weight,
 				float64(validator.Balance) / float64(units.Avax),
 				owner,
+				startTimeStr,
 				stake,
+				endTimeStr,
+				readyToRemove,
 			}
 		}
 		t.AppendRow(row)
