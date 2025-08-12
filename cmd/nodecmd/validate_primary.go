@@ -17,8 +17,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -71,7 +71,7 @@ Network.`,
 
 func GetMinStakingAmount(network models.Network) (uint64, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
 	if err != nil {
@@ -328,7 +328,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(kc, network)
 
 	if err := node.CheckHostsAreBootstrapped(hosts); err != nil {
 		return err

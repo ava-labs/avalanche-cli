@@ -391,4 +391,5 @@ func handleInterrupt() {
 	fmt.Println()
 	fmt.Println("received signal:", sig.String())
 	ansi.CursorShow()
+	os.Exit(1)
 }

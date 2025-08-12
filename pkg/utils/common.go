@@ -5,7 +5,6 @@ package utils
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -23,7 +22,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -78,26 +77,6 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 		}
 	}
 	return kvMap, nil
-}
-
-// Context for ANR network operations
-func GetANRContext() (context.Context, context.CancelFunc) {
-	return GetTimedContext(constants.ANRRequestTimeout)
-}
-
-// Context for API requests
-func GetAPIContext() (context.Context, context.CancelFunc) {
-	return GetTimedContext(constants.APIRequestTimeout)
-}
-
-// Context for API requests with large timeout
-func GetAPILargeContext() (context.Context, context.CancelFunc) {
-	return GetTimedContext(constants.APIRequestLargeTimeout)
-}
-
-// Timed Context
-func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), timeout)
 }
 
 func GetRealFilePath(path string) string {
@@ -191,7 +170,7 @@ func TimedFunction[T any](
 		err error
 	)
 	ch := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := sdkutils.GetTimedContext(timeout)
 	defer cancel()
 	go func() {
 		ret, err = f()
@@ -213,7 +192,7 @@ func TimedFunctionWithRetry[T any](
 	maxAttempts int,
 	retryInterval time.Duration,
 ) (T, error) {
-	return utils.Retry(
+	return sdkutils.Retry(
 		func() (T, error) {
 			return TimedFunction(f, name, timeout)
 		},
@@ -374,14 +353,14 @@ func InsideCodespace() bool {
 
 func GetChainID(endpoint string, chainName string) (ids.ID, error) {
 	client := info.NewClient(endpoint)
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	return client.GetBlockchainID(ctx, chainName)
 }
 
 func GetChainIDs(endpoint string, chainName string) (string, string, error) {
 	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	blockChains, err := pClient.GetBlockchains(ctx)
 	if err != nil {
@@ -400,7 +379,7 @@ func GetNodeID(endpoint string) (
 	error,
 ) {
 	infoClient := info.NewClient(endpoint)
-	ctx, cancel := GetAPILargeContext()
+	ctx, cancel := sdkutils.GetAPILargeContext()
 	defer cancel()
 	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 	if err != nil {
@@ -414,7 +393,7 @@ func GetNodeID(endpoint string) (
 
 func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, error) {
 	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := GetAPIContext()
+	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	txBytes, err := pClient.GetTx(ctx, blockchainID)
 	if err != nil {

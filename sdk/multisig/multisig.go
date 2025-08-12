@@ -3,18 +3,16 @@
 package multisig
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
 type TxKind int64
@@ -339,7 +337,8 @@ func (ms *Multisig) GetSubnetOwners() ([]ids.ShortID, uint32, error) {
 
 func GetOwners(network network.Network, subnetID ids.ID) ([]ids.ShortID, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
-	ctx := context.Background()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	subnetResponse, err := pClient.GetSubnet(ctx, subnetID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)

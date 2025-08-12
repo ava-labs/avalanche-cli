@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkNetwork "github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/genesis"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -216,14 +216,14 @@ func (n *Network) Equals(n2 Network) bool {
 
 // Context for bootstrapping a partial synced Node
 func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
-	timeout := constants.ANRRequestTimeout
+	timeout := constants.LocalBootstrapTimeout
 	switch n.Kind {
 	case Fuji:
 		timeout = constants.FujiBootstrapTimeout
 	case Mainnet:
 		timeout = constants.MainnetBootstrapTimeout
 	}
-	return context.WithTimeout(context.Background(), timeout)
+	return utils.GetTimedContext(timeout)
 }
 
 func (n Network) SDKNetwork() sdkNetwork.Network {

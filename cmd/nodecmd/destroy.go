@@ -16,8 +16,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"golang.org/x/exp/maps"
-	"golang.org/x/net/context"
 
 	"github.com/spf13/cobra"
 )
@@ -266,7 +266,9 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+					ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+					defer cancel()
+					gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, ctx)
 					if err != nil {
 						return err
 					}

@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -59,7 +58,9 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 				if err != nil {
 					return nil, err
 				}
-				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+				ctx, cancel := sdkutils.GetTimedContext(constants.CloudConnectionTimeout)
+				defer cancel()
+				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, ctx)
 				if err != nil {
 					return nil, err
 				}

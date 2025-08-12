@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -234,7 +235,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 			return nil, err
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := sdkutils.GetTimedContext(timeout)
 	defer cancel()
 	// ux.Logger.Info("DEBUG Command on host %s: %s", h.IP, script)
 	cmd, err := h.Connection.CommandContext(ctx, "", script)
@@ -497,7 +498,7 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := sdkutils.GetTimedContext(timeout)
 	defer cancel()
 
 	session, err := h.Connection.NewSession()

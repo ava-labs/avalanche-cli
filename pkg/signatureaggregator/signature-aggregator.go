@@ -3,7 +3,6 @@
 package signatureaggregator
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/api/info"
 	basecfg "github.com/ava-labs/icm-services/config"
 	signatureAggregatorConfig "github.com/ava-labs/icm-services/signature-aggregator/config"
 
@@ -29,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
@@ -203,7 +202,7 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 }
 
 func waitForAggregatorReady(url string, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := sdkutils.GetTimedContext(timeout)
 	defer cancel()
 
 	ticker := time.NewTicker(300 * time.Millisecond)
@@ -266,30 +265,18 @@ func readExistingConfig(configPath string) (*signatureAggregatorConfig.Config, e
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(subnetID string, networkEndpoint string, peers []info.Peer, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
+func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
 	config := &signatureAggregatorConfig.Config{
 		LogLevel:             "debug",
 		PChainAPI:            &basecfg.APIConfig{BaseURL: networkEndpoint},
 		InfoAPI:              &basecfg.APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
 		AllowPrivateIPs:      true,
-		TrackedSubnetIDs:     []string{subnetID},
+		TrackedSubnetIDs:     []string{},
 		ManuallyTrackedPeers: make([]*basecfg.PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
 	}
-
-	for _, peer := range peers {
-		// Skip peers with invalid IP addresses
-		if !peer.Info.PublicIP.IsValid() {
-			continue
-		}
-		config.ManuallyTrackedPeers = append(config.ManuallyTrackedPeers, &basecfg.PeerConfig{
-			ID: peer.Info.ID.String(),
-			IP: peer.Info.PublicIP.String(),
-		})
-	}
-
 	return config
 }
 
@@ -355,7 +342,7 @@ func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, co
 	return nil
 }
 
-func isPortAvailable(port int) bool {
+func IsPortAvailable(port int) bool {
 	addr := fmt.Sprintf("localhost:%d", port)
 	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 	if err != nil {
@@ -372,12 +359,12 @@ func isPortAvailable(port int) bool {
 
 func generateAPIMetricsPorts() (int, int, error) {
 	// Create a context with a 30 second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := sdkutils.GetTimedContext(30 * time.Second)
 	defer cancel()
 
 	// Start with default ports and increment by 2 each time
-	apiPort := 8080
-	metricsPort := 8081
+	apiPort := 9090
+	metricsPort := 9091
 
 	// Keep trying until we find available ports or timeout
 	for {
@@ -385,7 +372,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 		case <-ctx.Done():
 			return 0, 0, fmt.Errorf("timeout while searching for available ports: %w", ctx.Err())
 		default:
-			if isPortAvailable(apiPort) && isPortAvailable(metricsPort) {
+			if IsPortAvailable(apiPort) && IsPortAvailable(metricsPort) {
 				return apiPort, metricsPort, nil
 			}
 			apiPort += 2
@@ -394,7 +381,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 	}
 }
 
-func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr string, network models.Network, extraAggregatorPeers []info.Peer, aggregatorLogger logging.Logger, version string) error {
+func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, version string) error {
 	// Create config file for signature aggregator
 	var apiPort, metricsPort int
 	var err error
@@ -402,7 +389,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 	// Check if run file exists and read ports from it
 	if _, err := os.Stat(runFilePath); err == nil {
 		// File exists, get process details
-		runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+		runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 		if err != nil {
 			return fmt.Errorf("failed to get process details: %w", err)
 		}
@@ -417,7 +404,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 		}
 	}
 
-	config := CreateSignatureAggregatorConfig(subnetIDStr, network.Endpoint, extraAggregatorPeers, uint16(apiPort), uint16(metricsPort))
+	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort))
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
@@ -433,7 +420,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, subnetIDStr s
 }
 
 func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.Network) (string, error) {
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return "", fmt.Errorf("failed to get process details: %w", err)
 	}
@@ -467,9 +454,9 @@ func saveSignatureAggregatorFile(runFilePath string, pid, apiPort, metricsPort i
 	return nil
 }
 
-// getCurrentSignatureAggregatorProcessDetails reads the run file and returns the current process details.
+// GetCurrentSignatureAggregatorProcessDetails reads the run file and returns the current process details.
 // It returns the run file information including PID, ports, and version.
-func getCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, network models.Network) (*signatureAggregatorRunFile, error) {
+func GetCurrentSignatureAggregatorProcessDetails(app *application.Avalanche, network models.Network) (*signatureAggregatorRunFile, error) {
 	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
 	runFileBytes, err := os.ReadFile(runFilePath)
 	if err != nil {
@@ -492,7 +479,7 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 		return nil
 	}
 
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		return fmt.Errorf("failed to get process details: %w", err)
 	}
@@ -512,79 +499,6 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 	return nil
 }
 
-// restartSignatureAggregator restarts the signature aggregator with the given config.
-// It reads the run file to get the current ports and version, kills the existing process,
-// and starts a new one with the updated config.
-func restartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logger logging.Logger) error {
-	// Get current process details
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
-	if err != nil {
-		return fmt.Errorf("failed to get process details: %w", err)
-	}
-
-	// Restart signature aggregator with updated config
-	runFilePath := app.GetLocalSignatureAggregatorRunPath(network.Kind)
-	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
-	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", runFile.APIPort)
-	pid, err := StartSignatureAggregator(app, network, configPath, logPath, logger, runFile.Version, signatureAggregatorEndpoint)
-	if err != nil {
-		return fmt.Errorf("failed to restart signature aggregator: %w", err)
-	}
-
-	// Update run file with new PID
-	return saveSignatureAggregatorFile(runFilePath, pid, runFile.APIPort, runFile.MetricsPort, runFile.Version)
-}
-
-// UpdateSignatureAggregatorPeers updates the existing signature aggregator config with new peers.
-// If new peers are found, it updates the config and restarts the signature aggregator.
-func UpdateSignatureAggregatorPeers(app *application.Avalanche, network models.Network, extraAggregatorPeers []info.Peer, logger logging.Logger) error {
-	// Get the config path
-	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
-
-	// Read existing config
-	existingConfig, err := readExistingConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read existing config: %w", err)
-	}
-	if existingConfig == nil {
-		return fmt.Errorf("no existing config found at %s", configPath)
-	}
-	// Convert existing peers to a map for easy lookup
-	existingPeers := make(map[string]*basecfg.PeerConfig)
-	for _, peer := range existingConfig.ManuallyTrackedPeers {
-		existingPeers[peer.ID] = peer
-	}
-
-	// Check for new peers
-	hasNewPeers := false
-	for _, peer := range extraAggregatorPeers {
-		if !peer.Info.PublicIP.IsValid() {
-			continue
-		}
-		peerID := peer.Info.ID.String()
-		if _, exists := existingPeers[peerID]; !exists {
-			hasNewPeers = true
-			existingConfig.ManuallyTrackedPeers = append(existingConfig.ManuallyTrackedPeers, &basecfg.PeerConfig{
-				ID: peerID,
-				IP: peer.Info.PublicIP.String(),
-			})
-		}
-	}
-
-	// If no new peers, no need to update
-	if !hasNewPeers {
-		return nil
-	}
-
-	// Write updated config
-	if err := WriteSignatureAggregatorConfig(existingConfig, configPath); err != nil {
-		return fmt.Errorf("failed to write updated config: %w", err)
-	}
-
-	// Restart the signature aggregator with the updated config
-	return restartSignatureAggregator(app, network, configPath, logger)
-}
-
 // SignatureAggregatorCleanup cleans up the signature aggregator process and files.
 // It removes the log file and run file, and stops the running process if any.
 func SignatureAggregatorCleanup(
@@ -595,7 +509,7 @@ func SignatureAggregatorCleanup(
 	if _, err := os.Stat(runFilePath); os.IsNotExist(err) {
 		return nil
 	}
-	runFile, err := getCurrentSignatureAggregatorProcessDetails(app, network)
+	runFile, err := GetCurrentSignatureAggregatorProcessDetails(app, network)
 	if err != nil {
 		// If we can't get process details, just continue with cleanup
 		ux.Logger.RedXToUser("unable to get signature aggregator process details: %s", err)

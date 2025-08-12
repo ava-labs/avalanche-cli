@@ -3,22 +3,23 @@
 package keycmd
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkconstants "github.com/ava-labs/avalanche-cli/sdk/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -620,9 +621,11 @@ func pToPSend(
 	destinationAddrStr string,
 	amount uint64,
 ) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
-		context.Background(),
+		ctx,
 		network.Endpoint,
 		kc,
 		ethKeychain,
@@ -658,10 +661,12 @@ func pToPSend(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	ctx, cancel = sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(
 		&tx,
@@ -691,9 +696,11 @@ func pToXSend(
 	usingLedger bool,
 	amount uint64,
 ) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
-		context.Background(),
+		ctx,
 		network.Endpoint,
 		kc,
 		ethKeychain,
@@ -754,10 +761,12 @@ func exportFromP(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(
 		&tx,
@@ -800,10 +809,12 @@ func importIntoX(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
-	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.X().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.X().IssueTx(
 		&tx,
@@ -828,9 +839,11 @@ func pToCSend(
 	destinationAddrStr string,
 	amount uint64,
 ) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
-		context.Background(),
+		ctx,
 		network.Endpoint,
 		kc,
 		ethKeychain,
@@ -900,10 +913,12 @@ func importIntoC(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
-	if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
+	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.C().Signer().SignAtomic(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.C().IssueAtomicTx(
 		&tx,
@@ -932,9 +947,11 @@ func cToPSend(
 	usingLedger bool,
 	amount uint64,
 ) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	ethKeychain := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
-		context.Background(),
+		ctx,
 		network.Endpoint,
 		kc,
 		ethKeychain,
@@ -959,8 +976,10 @@ func cToPSend(
 		return err
 	}
 	time.Sleep(5 * time.Second)
+	ctx, cancel = sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
 	wallet, err = primary.MakeWallet(
-		context.Background(),
+		ctx,
 		network.Endpoint,
 		kc,
 		ethKeychain,
@@ -1014,10 +1033,12 @@ func exportFromC(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
-	if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
+	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.C().Signer().SignAtomic(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.C().IssueAtomicTx(
 		&tx,
@@ -1058,10 +1079,12 @@ func importIntoP(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel = sdkutils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(
 		&tx,
