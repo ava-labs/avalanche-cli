@@ -397,10 +397,10 @@ func changeWeightACP99(
 			}
 		}
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
-		aggregatorCtx,
+		ctx,
 		ux.Logger.PrintToUser,
 		app,
 		network,
@@ -456,10 +456,10 @@ func changeWeightACP99(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		validatorManagerRPCEndpoint,

@@ -353,11 +353,11 @@ func removeValidatorSOV(
 			}
 		}
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		validatorManagerRPCEndpoint,
@@ -386,10 +386,10 @@ func removeValidatorSOV(
 		if !force {
 			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
 		}
-		aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-		defer aggregatorCancel()
+		ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+		defer cancel()
 		signedMessage, validationID, _, err = validatormanager.InitValidatorRemoval(
-			aggregatorCtx,
+			ctx,
 			app,
 			network,
 			validatorManagerRPCEndpoint,
@@ -438,10 +438,10 @@ func removeValidatorSOV(
 			return err
 		}
 	}
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		validatorManagerRPCEndpoint,

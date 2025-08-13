@@ -5,7 +5,6 @@ package utils
 
 import (
 	"bufio"
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -1137,10 +1136,6 @@ func GetKeyTransferFee(output string, network string) (uint64, error) {
 		}
 	}
 	return feeNAvax, nil
-}
-
-func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
-	return sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {
