@@ -640,8 +640,8 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	signatureAggregatorEndpoint, err := signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 	if err != nil {
 		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
@@ -659,7 +659,7 @@ func addAsValidator(
 	}
 
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		localValidateFlags.RPC,
@@ -705,10 +705,10 @@ func addAsValidator(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		localValidateFlags.RPC,

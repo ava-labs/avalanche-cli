@@ -16,24 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed smart_contracts/proxy_admin_bytecode.txt
-var proxyAdminBytecode []byte
-
-func DeployProxyAdmin(
-	rpcURL string,
-	privateKey string,
-	owner common.Address,
-) (common.Address, *types.Transaction, *types.Receipt, error) {
-	proxyAdminBytes := []byte(strings.TrimSpace(string(proxyAdminBytecode)))
-	return contract.DeployContract(
-		rpcURL,
-		privateKey,
-		proxyAdminBytes,
-		"(address)",
-		owner,
-	)
-}
-
 //go:embed smart_contracts/transparent_proxy_bytecode.txt
 var transparentProxyBytecode []byte
 

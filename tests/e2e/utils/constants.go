@@ -48,6 +48,8 @@ const (
 	BlockchainName = "testBlockchain"
 
 	EwoqEVMAddress = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+
+	ValidatorManagerContractPath = "tests/e2e/assets/validator_manager.txt"
 )
 
 var TestLocalNodeName = localnet.LocalClusterName(models.NewLocalNetwork(), BlockchainName)

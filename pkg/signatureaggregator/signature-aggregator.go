@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	basecfg "github.com/ava-labs/icm-services/config"
 	signatureAggregatorConfig "github.com/ava-labs/icm-services/signature-aggregator/config"
@@ -74,7 +76,7 @@ func InstallSignatureAggregator(app *application.Avalanche, version *string) (st
 	}
 	if *version == constants.LatestReleaseVersionTag {
 		var err error
-		*version, err = GetLatestSignatureAggregatorReleaseVersion()
+		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, models.UndefinedNetwork, nil)
 		if err != nil {
 			return "", err
 		}

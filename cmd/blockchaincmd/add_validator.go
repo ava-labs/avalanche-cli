@@ -632,10 +632,10 @@ func CallAddValidator(
 			}
 		}
 	}
-	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		validatorManagerRPCEndpoint,
@@ -687,10 +687,10 @@ func CallAddValidator(
 		}
 	}
 
-	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
-	defer aggregatorCancel()
+	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
-		aggregatorCtx,
+		ctx,
 		app,
 		network,
 		validatorManagerRPCEndpoint,

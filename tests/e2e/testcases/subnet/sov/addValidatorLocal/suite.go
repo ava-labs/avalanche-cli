@@ -21,7 +21,7 @@ const (
 
 var avagoVersion string
 
-var _ = ginkgo.Describe("[Etna Add Validator SOV L1 Manager Local]", func() {
+var _ = ginkgo.Describe("[Add Validator SOV L1 Manager Local]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.BlockchainName,
