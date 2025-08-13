@@ -1318,21 +1318,24 @@ func ParseValidatorManagerAddressesFromOutput(output string) (string, string, st
 			if startIndex == -1 {
 				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
 			}
-			validatorManagerAddress = strings.TrimSpace(line[startIndex+1 : len(line)])
+			endIndex := len(line)
+			validatorManagerAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
 		}
 		if strings.Contains(line, "Proxy Address: ") {
 			startIndex := strings.Index(line, ":")
 			if startIndex == -1 {
 				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
 			}
-			proxyAddress = strings.TrimSpace(line[startIndex+1 : len(line)])
+			endIndex := len(line)
+			proxyAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
 		}
 		if strings.Contains(line, "Proxy Admin Address: ") {
 			startIndex := strings.Index(line, ":")
 			if startIndex == -1 {
 				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
 			}
-			proxyAdminAddress = strings.TrimSpace(line[startIndex+1 : len(line)])
+			endIndex := len(line)
+			proxyAdminAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
 		}
 	}
 
