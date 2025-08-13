@@ -26,7 +26,7 @@ var (
 	avagoVersion     string
 )
 
-var _ = ginkgo.Describe("[Etna AddRemove Validator SOV L1 Manager PoA]", func() {
+var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.BlockchainName,
@@ -184,7 +184,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV L1 Manager PoA]", func() 
 	})
 })
 
-var _ = ginkgo.Describe("[Etna AddRemove Validator SOV External Manager PoA]", func() {
+var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.BlockchainName,

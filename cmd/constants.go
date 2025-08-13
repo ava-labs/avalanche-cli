@@ -11,4 +11,5 @@ const (
 	ICMCmd        CommandGroup = "icm"
 	InterchainCmd CommandGroup = "interchain"
 	NetworkCmd    CommandGroup = "network"
+	ContractCmd   CommandGroup = "contract"
 )

@@ -13,6 +13,7 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/configure"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/convert"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/blockchain/deploy"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/contract/deploy/validatorManager"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/icm/deploy"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/icm/sendMsg"
