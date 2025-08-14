@@ -22,8 +22,8 @@ var (
 	testAvagoCompat5 = []byte("{\"39\": [\"v1.12.2\", \"v1.13.0\"],\"38\": [\"v1.11.13\", \"v1.12.0\", \"v1.12.1\"]}")
 	testAvagoCompat6 = []byte("{\"39\": [\"v1.12.2\", \"v1.13.0\", \"v1.13.1\"],\"38\": [\"v1.11.13\", \"v1.12.0\", \"v1.12.1\"]}")
 	testAvagoCompat7 = []byte("{\"40\": [\"v1.13.2\"],\"39\": [\"v1.12.2\", \"v1.13.0\", \"v1.13.1\"]}")
-	testCLICompat    = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0"},"DevNet":{"latest-version":"v1.13.0"},"Fuji":{"latest-version":"v1.13.0"},"Mainnet":{"latest-version":"v1.13.0"}}}`)
-	testCLICompat2   = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0"},"DevNet":{"latest-version":"v1.13.0"},"Fuji":{"latest-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0"}}}`)
+	testCLICompat    = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0"},"DevNet":{"latest-version":"v1.13.0"},"Fuji":{"latest-version":"v1.13.0"},"Mainnet":{"latest-version":"v1.13.0"}}, "signature-aggregator": "signature-aggregator-v0.4.4"}`)
+	testCLICompat2   = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0"},"DevNet":{"latest-version":"v1.13.0"},"Fuji":{"latest-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0"}}, "signature-aggregator": "signature-aggregator-v0.4.4"}`)
 )
 
 func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
@@ -193,6 +193,22 @@ func TestGetLatestCLISupportedDependencyVersion(t *testing.T) {
 			expectedError:     false,
 			expectedResult:    "v0.7.3",
 			latestVersion:     "v0.7.3",
+		},
+		{
+			name:              "signature-aggregator dependency, where cli latest.json doesn't support newest signature-aggregator version yet",
+			dependency:        constants.SignatureAggregatorRepoName,
+			cliDependencyData: testCLICompat,
+			expectedError:     false,
+			expectedResult:    "signature-aggregator-v0.4.4",
+			latestVersion:     "signature-aggregator-v0.4.5",
+		},
+		{
+			name:              "signature-aggregator dependency, where cli supports newest signature-aggregator version",
+			dependency:        constants.SignatureAggregatorRepoName,
+			cliDependencyData: testCLICompat,
+			expectedError:     false,
+			expectedResult:    "signature-aggregator-v0.4.4",
+			latestVersion:     "signature-aggregator-v0.4.4",
 		},
 		{
 			name:           "empty dependency",
