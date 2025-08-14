@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -685,7 +687,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
 	if err := ictt.RegisterRemote(
-		app.Log,
+		duallogger.NewDualLogger(true, app),
 		remoteRPCEndpoint,
 		remoteKey,
 		remoteAddress,
@@ -721,7 +723,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// Collateralize the remote contract on the home contract if necessary
 	if collateralNeeded.Cmp(big.NewInt(0)) != 0 {
 		err = ictt.TokenHomeAddCollateral(
-			app.Log,
+			duallogger.NewDualLogger(true, app),
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,
@@ -751,7 +753,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if flags.remoteFlags.native {
 		ux.Logger.PrintToUser("Enabling native token remote contract to mint native tokens")
 		if err := precompiles.SetEnabled(
-			app.Log,
+			duallogger.NewDualLogger(true, app),
 			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
 			remoteMinterManagerPrivKey,
@@ -762,7 +764,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 		// Send a single token unit to report that the remote is collateralized.
 		_, _, err = ictt.Send(
-			app.Log,
+			duallogger.NewDualLogger(true, app),
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,
@@ -797,7 +799,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if flags.remoteFlags.removeMinterAdmin && remoteMinterManagerIsAdmin {
 			ux.Logger.PrintToUser("Removing minter admin %s", remoteMinterManagerAddress)
 			if err := precompiles.SetNone(
-				app.Log,
+				duallogger.NewDualLogger(true, app),
 				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
 				remoteMinterManagerPrivKey,

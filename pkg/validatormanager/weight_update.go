@@ -147,7 +147,7 @@ func InitValidatorWeightChange(
 			ux.Logger.PrintToUser("Validator weight change initialized. InitiateTxHash: %s", tx.Hash())
 		}
 	} else {
-		logger.Error(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
+		logger.Info(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
 	}
 
 	if receipt != nil {
