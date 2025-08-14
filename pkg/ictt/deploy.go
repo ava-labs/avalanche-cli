@@ -3,16 +3,15 @@
 package ictt
 
 import (
-	_ "embed"
 	"math/big"
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/sdk/contract"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 

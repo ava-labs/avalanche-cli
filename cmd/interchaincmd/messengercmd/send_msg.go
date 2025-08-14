@@ -14,8 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -170,7 +170,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	// send tx to the ICM contract at the source
 	ux.Logger.PrintToUser("Delivering message %q from source blockchain %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := interchain.SendCrossChainMessage(
-		ux.Logger.Log,
+		app.Log,
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,

@@ -7,10 +7,9 @@ import (
 	"math/big"
 	"strings"
 
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
-
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"

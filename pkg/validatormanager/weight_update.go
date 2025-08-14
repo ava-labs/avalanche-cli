@@ -9,14 +9,13 @@ import (
 	"fmt"
 	"math/big"
 
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/contract"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -62,7 +61,6 @@ func InitializeValidatorWeightChange(
 func InitValidatorWeightChange(
 	ctx context.Context,
 	logger logging.Logger,
-	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -123,7 +121,7 @@ func InitValidatorWeightChange(
 	if unsignedMessage == nil {
 		unsignedMessage, err = SearchForL1ValidatorWeightMessage(ctx, rpcURL, validationID, weight)
 		if err != nil {
-			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
+			logger.Error(fmt.Sprintf(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err))
 		}
 	}
 
@@ -149,7 +147,7 @@ func InitValidatorWeightChange(
 			ux.Logger.PrintToUser("Validator weight change initialized. InitiateTxHash: %s", tx.Hash())
 		}
 	} else {
-		printFunc(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
+		logger.Error(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
 	}
 
 	if receipt != nil {

@@ -566,7 +566,7 @@ func CallAddValidator(
 	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		ctx,
-		ux.Logger.Log,
+		app.Log,
 		app,
 		network,
 		rpcURL,
@@ -621,7 +621,7 @@ func CallAddValidator(
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
 		ctx,
-		ux.Logger.Log,
+		app.Log,
 		app,
 		network,
 		rpcURL,

@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/utils/logging"
-
-	"github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"

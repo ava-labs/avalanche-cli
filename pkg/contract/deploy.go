@@ -6,7 +6,7 @@ import (
 	_ "embed"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/sdk/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ethereum/go-ethereum/common"
 )
 

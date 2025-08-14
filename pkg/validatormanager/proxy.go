@@ -6,11 +6,10 @@ import (
 	_ "embed"
 	"math/big"
 
-	"github.com/ava-labs/avalanchego/utils/logging"
-
-	"github.com/ava-labs/avalanche-cli/sdk/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"

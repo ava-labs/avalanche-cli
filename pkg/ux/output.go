@@ -18,20 +18,20 @@ import (
 var Logger *UserLog
 
 type UserLog struct {
-	Log    logging.Logger
+	log    logging.Logger
 	Writer io.Writer
 }
 
 func NewUserLog(log logging.Logger, userwriter io.Writer) {
 	if Logger == nil {
 		Logger = &UserLog{
-			Log:    log,
+			log:    log,
 			Writer: userwriter,
 		}
 	}
 }
 
-// PrintToUser prints msg directly on the screen, but also to Log file
+// PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
 	ul.print(fmt.Sprintf(msg, args...) + "\n")
@@ -40,20 +40,20 @@ func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 func (ul *UserLog) print(msg string) {
 	if ul != nil {
 		fmt.Fprint(ul.Writer, msg)
-		ul.Log.Info(msg)
+		ul.log.Info(msg)
 	} else {
 		fmt.Print(msg)
 	}
 }
 
-// Info prints to the Log file
+// Info prints to the log file
 func (ul *UserLog) Info(msg string, args ...interface{}) {
-	ul.Log.Info(fmt.Sprintf(msg, args...) + "\n")
+	ul.log.Info(fmt.Sprintf(msg, args...) + "\n")
 }
 
-// Error prints to the Log file
+// Error prints to the log file
 func (ul *UserLog) Error(msg string, args ...interface{}) {
-	ul.Log.Error(fmt.Sprintf(msg, args...))
+	ul.log.Error(fmt.Sprintf(msg, args...))
 }
 
 // GreenCheckmarkToUser prints a green checkmark to the user before the message

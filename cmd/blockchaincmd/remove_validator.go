@@ -347,7 +347,7 @@ func removeValidatorSOV(
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
 		ctx,
-		ux.Logger.Log,
+		app.Log,
 		app,
 		network,
 		rpcURL,
@@ -378,7 +378,7 @@ func removeValidatorSOV(
 		defer cancel()
 		signedMessage, validationID, _, err = validatormanager.InitValidatorRemoval(
 			ctx,
-			ux.Logger.Log,
+			app.Log,
 			app,
 			network,
 			rpcURL,
@@ -429,7 +429,7 @@ func removeValidatorSOV(
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
 		ctx,
-		ux.Logger.Log,
+		app.Log,
 		app,
 		network,
 		rpcURL,

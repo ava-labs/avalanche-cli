@@ -5,7 +5,7 @@ package precompiles
 import (
 	_ "embed"
 
-	"github.com/ava-labs/avalanche-cli/sdk/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 )
 

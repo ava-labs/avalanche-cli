@@ -346,7 +346,7 @@ func InitializeValidatorManager(
 			}
 			if useACP99 {
 				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
-					ux.Logger.Log,
+					app.Log,
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -355,7 +355,7 @@ func InitializeValidatorManager(
 					return tracked, err
 				}
 				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
-					ux.Logger.Log,
+					app.Log,
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -365,7 +365,7 @@ func InitializeValidatorManager(
 				}
 			} else {
 				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
-					ux.Logger.Log,
+					app.Log,
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
