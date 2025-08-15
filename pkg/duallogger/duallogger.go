@@ -34,42 +34,42 @@ func NewDualLogger(cliOutputOnly bool, app *application.Avalanche) *DualLogger {
 	}
 }
 
-func (h *DualLogger) Info(msg string, fields ...zap.Field) {
+func (h *DualLogger) Info(msg string, _ ...zap.Field) {
 	ux.Logger.PrintToUser(msg)
 	if !h.CliOutputOnly {
 		h.appLogger.Info(msg)
 	}
 }
 
-func (h *DualLogger) Error(msg string, fields ...zap.Field) {
+func (h *DualLogger) Error(msg string, _ ...zap.Field) {
 	ux.Logger.RedXToUser(msg)
 	if !h.CliOutputOnly {
 		h.appLogger.Error(fmt.Sprintf("error fucn %s", msg))
 	}
 }
 
-func (h *DualLogger) Debug(msg string, fields ...zap.Field) {
+func (h *DualLogger) Debug(msg string, _ ...zap.Field) {
 	ux.Logger.PrintToUser(msg)
 	if !h.CliOutputOnly {
 		h.appLogger.Debug(msg)
 	}
 }
 
-func (h *DualLogger) Warn(msg string, fields ...zap.Field) {
+func (h *DualLogger) Warn(msg string, _ ...zap.Field) {
 	ux.Logger.PrintToUser(logging.Yellow.Wrap(msg))
 	if !h.CliOutputOnly {
 		h.appLogger.Warn(msg)
 	}
 }
 
-func (h *DualLogger) Fatal(msg string, fields ...zap.Field) {
+func (h *DualLogger) Fatal(msg string, _ ...zap.Field) {
 	ux.Logger.RedXToUser(msg)
 	if !h.CliOutputOnly {
 		h.appLogger.Fatal(msg)
 	}
 }
 
-func (h *DualLogger) Verbo(msg string, fields ...zap.Field) {
+func (h *DualLogger) Verbo(msg string, _ ...zap.Field) {
 	ux.Logger.PrintToUser(msg)
 	if !h.CliOutputOnly {
 		h.appLogger.Verbo(msg)
@@ -100,7 +100,7 @@ func (h *DualLogger) StopOnPanic() {
 	h.appLogger.StopOnPanic()
 }
 
-func (h *DualLogger) Trace(msg string, fields ...zap.Field) {
+func (h *DualLogger) Trace(msg string, _ ...zap.Field) {
 	ux.Logger.PrintToUser(logging.Blue.Wrap(msg))
 	h.appLogger.Trace(msg)
 }

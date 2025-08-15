@@ -464,7 +464,7 @@ func InitValidatorRegistration(
 			logger.Info("")
 			logger.Info("Initializing validator registration with PoS validator manager")
 			logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
-			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens\", nodeID.String(), stakeAmount"))
+			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount))
 			logger.Info("")
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
 				logger,
@@ -596,10 +596,10 @@ func FinishValidatorRegistration(
 	}
 	if privateKey != "" {
 		if client, err := evm.GetClient(rpcURL); err != nil {
-			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %w", err))
+			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
 			if err := client.SetupProposerVM(privateKey); err != nil {
-				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %w", err))
+				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
