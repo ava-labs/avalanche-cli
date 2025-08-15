@@ -263,7 +263,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if validatorManagerAddress == "" {
 			return fmt.Errorf("unable to find Validator Manager address")
 		}
-		allowedChange, err := validatormanagersdk.GetNewValidatorMaxWeight(
+		currentWeightInfo, err := validatormanagersdk.GetCurrentWeightInfo(
 			network.SDKNetwork(),
 			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
@@ -271,6 +271,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		allowedChange := currentWeightInfo.AllowedWeight
 		if !cmd.Flags().Changed(validatorWeightFlag) {
 			weight, err = app.Prompt.CaptureWeight(
 				fmt.Sprintf("What weight would you like to assign to the validator (max=%d)?", uint64(allowedChange)),

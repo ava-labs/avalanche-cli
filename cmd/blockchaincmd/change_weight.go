@@ -193,20 +193,16 @@ func setWeight(_ *cobra.Command, args []string) error {
 			return err
 		}
 
-		totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
-		if err != nil {
-			return err
-		}
-
-		churnSettings, err := validatormanagersdk.GetChurnSettings(
+		currentWeightInfo, err := validatormanagersdk.GetCurrentWeightInfo(
+			network.SDKNetwork(),
 			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
 		)
 		if err != nil {
 			return err
 		}
+		allowedChange := currentWeightInfo.AllowedWeight
 
-		allowedChange := float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0
 		allowedWeightFunction := func(v uint64) error {
 			delta := uint64(0)
 			if v > validatorInfo.Weight {
@@ -224,7 +220,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			if float64(validatorInfo.Weight) > allowedChange {
 				return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
 			}
-			allowedChange = float64((totalWeight-validatorInfo.Weight)*uint64(churnSettings.MaximumChurnPercentage)) / 100.0
+			allowedChange = float64((currentWeightInfo.TotalWeight-validatorInfo.Weight)*uint64(currentWeightInfo.MaximumPercentage)) / 100.0
 			allowedWeightFunction = func(v uint64) error {
 				if v > uint64(allowedChange) {
 					return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))

@@ -155,28 +155,38 @@ func GetSubnetID(
 	return contract.GetSmartContractCallResult[[32]byte]("subnetID", out)
 }
 
-func GetNewValidatorMaxWeight(
+type CurrentWeightInfo struct {
+	TotalWeight       uint64
+	MaximumPercentage uint8
+	AllowedWeight     float64
+}
+
+func GetCurrentWeightInfo(
 	network network.Network,
 	rpcURL string,
 	managerAddress common.Address,
-) (float64, error) {
+) (CurrentWeightInfo, error) {
 	subnetID, err := GetSubnetID(
 		rpcURL,
 		managerAddress,
 	)
 	if err != nil {
-		return 0, err
+		return CurrentWeightInfo{}, err
 	}
 	totalWeight, err := validator.GetTotalWeight(network, subnetID)
 	if err != nil {
-		return 0, err
+		return CurrentWeightInfo{}, err
 	}
 	churnSettings, err := GetChurnSettings(
 		rpcURL,
 		managerAddress,
 	)
 	if err != nil {
-		return 0, err
+		return CurrentWeightInfo{}, err
 	}
-	return float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0, nil
+	return CurrentWeightInfo{
+		TotalWeight:       totalWeight,
+		MaximumPercentage: churnSettings.MaximumChurnPercentage,
+		AllowedWeight:     float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0,
+	}, nil
 }

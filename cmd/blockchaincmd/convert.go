@@ -331,7 +331,7 @@ func InitializeValidatorManager(
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-		nativeMinterPrecompileAdminFound, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
+		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
 			app,
 			network,
 			contract.ChainSpec{
@@ -340,18 +340,6 @@ func InitializeValidatorManager(
 		)
 		if err != nil {
 			return tracked, err
-		}
-		if !nativeMinterPrecompileAdminFound {
-			_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
-				app,
-				network,
-				contract.ChainSpec{
-					BlockchainID: validatorManagerBlockchainID.String(),
-				},
-			)
-			if err != nil {
-				return tracked, err
-			}
 		}
 		if err := subnetSDK.InitializeProofOfStake(
 			app.Log,

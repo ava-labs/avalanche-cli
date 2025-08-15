@@ -299,6 +299,32 @@ func GetEVMSubnetGenesisNativeMinterManager(
 	return getGenesisNativeMinterManager(app, network, genesisData)
 }
 
+func GetEVMSubnetGenesisNativeMinterAdminOrManager(
+	app *application.Avalanche,
+	network models.Network,
+	chainSpec ChainSpec,
+) (bool, bool, string, string, string, error) {
+	found, isManaged, keyName, address, privKey, err := GetEVMSubnetGenesisNativeMinterAdmin(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return false, false, "", "", "", err
+	}
+	if !found {
+		found, isManaged, keyName, address, privKey, err = GetEVMSubnetGenesisNativeMinterManager(
+			app,
+			network,
+			chainSpec,
+		)
+		if err != nil {
+			return false, false, "", "", "", err
+		}
+	}
+	return found, isManaged, keyName, address, privKey, nil
+}
+
 func ContractAddressIsInGenesisData(
 	genesisData []byte,
 	contractAddress common.Address,
