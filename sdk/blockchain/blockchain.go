@@ -399,6 +399,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+		log,
 		c.ValidatorManagerRPC,
 		*c.ValidatorManagerAddress,
 		privateKey,
@@ -439,6 +440,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
 	tx, _, err = validatormanager.InitializeValidatorsSet(
+		log,
 		c.ValidatorManagerRPC,
 		*c.ValidatorManagerAddress,
 		privateKey,
@@ -498,6 +500,7 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 	if useACP99 {
 		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+			log,
 			c.ValidatorManagerRPC,
 			*c.ValidatorManagerAddress,
 			privateKey,
@@ -513,6 +516,7 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 	}
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
+		log,
 		c.ValidatorManagerRPC,
 		*c.ValidatorManagerAddress,
 		*c.SpecializedValidatorManagerAddress,
@@ -555,6 +559,7 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 
 	tx, _, err = validatormanager.InitializeValidatorsSet(
+		log,
 		c.ValidatorManagerRPC,
 		*c.ValidatorManagerAddress,
 		privateKey,

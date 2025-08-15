@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
@@ -31,11 +32,13 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/interfaces"
 	subnetEvmWarp "github.com/ava-labs/subnet-evm/precompile/contracts/warp"
+
 	"github.com/ethereum/go-ethereum/common"
 	"google.golang.org/protobuf/proto"
 )
 
 func InitializeValidatorRegistrationPoSNative(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	managerOwnerPrivateKey string,
@@ -77,7 +80,8 @@ func InitializeValidatorRegistrationPoSNative(
 	}
 
 	if useACP99 {
-		return contract.TxToMethod(
+		return contractSDK.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -97,7 +101,8 @@ func InitializeValidatorRegistrationPoSNative(
 		)
 	}
 
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -121,6 +126,7 @@ func InitializeValidatorRegistrationPoSNative(
 
 // step 1 of flow for adding a new validator
 func InitializeValidatorRegistrationPoA(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -151,7 +157,8 @@ func InitializeValidatorRegistrationPoA(
 		}),
 	}
 	if useACP99 {
-		return contract.TxToMethod(
+		return contractSDK.TxToMethod(
+			logger,
 			rpcURL,
 			generateRawTxOnly,
 			managerOwnerAddress,
@@ -175,7 +182,8 @@ func InitializeValidatorRegistrationPoA(
 		RemainingBalanceOwner PChainOwner
 		DisableOwner          PChainOwner
 	}
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		managerOwnerAddress,
@@ -313,7 +321,7 @@ func PoSWeightToValue(
 	managerAddress common.Address,
 	weight uint64,
 ) (*big.Int, error) {
-	out, err := contract.CallToMethod(
+	out, err := contractSDK.CallToMethod(
 		rpcURL,
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
@@ -322,7 +330,7 @@ func PoSWeightToValue(
 	if err != nil {
 		return nil, err
 	}
-	return contract.GetSmartContractCallResult[*big.Int]("weightToValue", out)
+	return contractSDK.GetSmartContractCallResult[*big.Int]("weightToValue", out)
 }
 
 func GetPChainL1ValidatorRegistrationMessage(
@@ -377,6 +385,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 
 // last step of flow for adding a new validator
 func CompleteValidatorRegistration(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -384,7 +393,8 @@ func CompleteValidatorRegistration(
 	privateKey string, // not need to be owner atm
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethodWithWarpMessage(
+	return contractSDK.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		ownerAddress,
@@ -401,6 +411,7 @@ func CompleteValidatorRegistration(
 
 func InitValidatorRegistration(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -471,12 +482,13 @@ func InitValidatorRegistration(
 			if err != nil {
 				return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 			}
-			ux.Logger.PrintLineSeparator()
-			ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
-			ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
-			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
-			ux.Logger.PrintLineSeparator()
+			logger.Info("")
+			logger.Info("Initializing validator registration with PoS validator manager")
+			logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
+			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount))
+			logger.Info("")
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
+				logger,
 				rpcURL,
 				managerAddress,
 				ownerPrivateKey,
@@ -495,15 +507,16 @@ func InitValidatorRegistration(
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
 			} else {
-				ux.Logger.PrintToUser("Validator registration initialized. InitiateTxHash: %s", tx.Hash())
+				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 		} else {
 			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
+				logger,
 				rpcURL,
 				managerAddress,
 				generateRawTxOnly,
@@ -521,15 +534,15 @@ func InitValidatorRegistration(
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
 			} else if generateRawTxOnly {
 				return nil, ids.Empty, tx, nil
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
+			logger.Info(fmt.Sprintf("Validator weight: %d", weight))
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+		logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 	}
 
 	var unsignedMessage *warp.UnsignedMessage
@@ -567,6 +580,7 @@ func InitValidatorRegistration(
 
 func FinishValidatorRegistration(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -619,16 +633,17 @@ func FinishValidatorRegistration(
 	}
 	if privateKey != "" {
 		if client, err := evm.GetClient(rpcURL); err != nil {
-			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %w", err)
+			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
 			if err := client.SetupProposerVM(privateKey); err != nil {
-				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
+		logger,
 		rpcURL,
 		managerAddress,
 		generateRawTxOnly,

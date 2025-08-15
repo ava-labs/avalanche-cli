@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,6 +18,7 @@ import (
 // initializes contract [managerAddress] at [rpcURL], to
 // manage validators on [subnetID] using PoS specific settings
 func PoSValidatorManagerInitialize(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	specializedManagerAddress common.Address,
@@ -35,6 +37,7 @@ func PoSValidatorManagerInitialize(
 	)
 	if useACP99 {
 		if tx, receipt, err := contract.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -75,6 +78,7 @@ func PoSValidatorManagerInitialize(
 			return nil, nil, err
 		}
 		err = contract.TransferOwnership(
+			logger,
 			rpcURL,
 			managerAddress,
 			managerOwnerPrivateKey,
@@ -83,6 +87,7 @@ func PoSValidatorManagerInitialize(
 		return nil, nil, err
 	}
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

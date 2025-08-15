@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -251,6 +252,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	if !flags.deployProxy {
 		ux.Logger.PrintToUser("Updating proxy")
 		_, _, err = validatormanager.SetupProxyImplementation(
+			duallogger.NewDualLogger(true, app),
 			flags.rpcEndpoint,
 			common.HexToAddress(flags.proxyAdmin),
 			common.HexToAddress(flags.proxy),

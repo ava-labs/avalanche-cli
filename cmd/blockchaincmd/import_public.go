@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	contract "github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	contractsdk "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
@@ -291,7 +292,7 @@ func GetBaseValidatorManagerInfo(
 		// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
 		//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
 		//   owner of this main manager, interacts with the users
-		owner, err := contract.GetContractOwner(validatorManagerRPCEndpoint, validatorManagerAddress)
+		owner, err := contractsdk.GetContractOwner(validatorManagerRPCEndpoint, validatorManagerAddress)
 		if err != nil {
 			return validatorManagement, common.Address{}, common.Address{}, err
 		}

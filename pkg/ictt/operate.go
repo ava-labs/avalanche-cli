@@ -3,15 +3,16 @@
 package ictt
 
 import (
-	_ "embed"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -185,6 +186,7 @@ func NativeTokenRemoteGetTotalNativeAssetSupply(
 }
 
 func ERC20TokenHomeSend(
+	logger logging.Logger,
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -208,6 +210,7 @@ func ERC20TokenHomeSend(
 		return nil, nil, err
 	}
 	_, receipt, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -235,6 +238,7 @@ func ERC20TokenHomeSend(
 		MultiHopFallback:        common.Address{},
 	}
 	_, receipt2, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -255,6 +259,7 @@ func ERC20TokenHomeSend(
 }
 
 func NativeTokenHomeSend(
+	logger logging.Logger,
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -288,6 +293,7 @@ func NativeTokenHomeSend(
 		MultiHopFallback:        common.Address{},
 	}
 	_, receipt, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -303,6 +309,7 @@ func NativeTokenHomeSend(
 }
 
 func ERC20TokenRemoteSend(
+	logger logging.Logger,
 	rpcURL string,
 	remoteAddress common.Address,
 	privateKey string,
@@ -312,6 +319,7 @@ func ERC20TokenRemoteSend(
 	amount *big.Int,
 ) (*types.Receipt, *types.Receipt, error) {
 	_, receipt, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -348,6 +356,7 @@ func ERC20TokenRemoteSend(
 		MultiHopFallback:        common.Address{},
 	}
 	_, receipt2, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -367,6 +376,7 @@ func ERC20TokenRemoteSend(
 }
 
 func NativeTokenRemoteSend(
+	logger logging.Logger,
 	rpcURL string,
 	remoteAddress common.Address,
 	privateKey string,
@@ -396,6 +406,7 @@ func NativeTokenRemoteSend(
 		MultiHopFallback:        common.Address{},
 	}
 	_, receipt, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -411,6 +422,7 @@ func NativeTokenRemoteSend(
 }
 
 func NativeTokenHomeAddCollateral(
+	logger logging.Logger,
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -419,6 +431,7 @@ func NativeTokenHomeAddCollateral(
 	amount *big.Int,
 ) error {
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -435,6 +448,7 @@ func NativeTokenHomeAddCollateral(
 }
 
 func ERC20TokenHomeAddCollateral(
+	logger logging.Logger,
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -447,6 +461,7 @@ func ERC20TokenHomeAddCollateral(
 		return err
 	}
 	if _, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -464,6 +479,7 @@ func ERC20TokenHomeAddCollateral(
 	// TODO: use the same API node connection for this two operations
 	time.Sleep(5 * time.Second)
 	_, _, err = contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -481,6 +497,7 @@ func ERC20TokenHomeAddCollateral(
 }
 
 func TokenHomeAddCollateral(
+	logger logging.Logger,
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -499,6 +516,7 @@ func TokenHomeAddCollateral(
 	switch endpointKind {
 	case ERC20TokenHome:
 		return ERC20TokenHomeAddCollateral(
+			logger,
 			rpcURL,
 			homeAddress,
 			privateKey,
@@ -508,6 +526,7 @@ func TokenHomeAddCollateral(
 		)
 	case NativeTokenHome:
 		return NativeTokenHomeAddCollateral(
+			logger,
 			rpcURL,
 			homeAddress,
 			privateKey,
@@ -524,6 +543,7 @@ func TokenHomeAddCollateral(
 }
 
 func Send(
+	logger logging.Logger,
 	rpcURL string,
 	address common.Address,
 	privateKey string,
@@ -542,6 +562,7 @@ func Send(
 	switch endpointKind {
 	case ERC20TokenRemote:
 		return ERC20TokenRemoteSend(
+			logger,
 			rpcURL,
 			address,
 			privateKey,
@@ -552,6 +573,7 @@ func Send(
 		)
 	case ERC20TokenHome:
 		return ERC20TokenHomeSend(
+			logger,
 			rpcURL,
 			address,
 			privateKey,
@@ -562,6 +584,7 @@ func Send(
 		)
 	case NativeTokenHome:
 		receipt, err := NativeTokenHomeSend(
+			logger,
 			rpcURL,
 			address,
 			privateKey,
@@ -573,6 +596,7 @@ func Send(
 		return receipt, nil, err
 	case NativeTokenRemote:
 		receipt, err := NativeTokenRemoteSend(
+			logger,
 			rpcURL,
 			address,
 			privateKey,

@@ -6,7 +6,9 @@ import (
 	_ "embed"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -47,6 +49,7 @@ func MessageReceived(
 }
 
 func SendCrossChainMessage(
+	logger logging.Logger,
 	rpcURL string,
 	messengerAddress common.Address,
 	privateKey string,
@@ -78,6 +81,7 @@ func SendCrossChainMessage(
 		Message:                 message,
 	}
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
