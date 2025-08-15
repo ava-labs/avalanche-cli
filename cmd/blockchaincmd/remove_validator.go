@@ -29,7 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
-	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagersdk "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -170,7 +170,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to find Validator Manager address")
 		}
 
-		validationID, err := validatorsdk.GetValidationID(
+		validationID, err := validatormanagersdk.GetValidationID(
 			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
@@ -419,7 +419,7 @@ func removeValidatorSOV(
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 	)
-	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
+	if err != nil && errors.Is(err, validatormanagersdk.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
 		force, err = app.Prompt.CaptureNoYes("Do you want to continue with validator removal?")
 		if err != nil {

@@ -31,7 +31,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	validatormanagersdk "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -246,7 +245,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.Name()].SubnetID
 	sovereign := sc.Sovereign
 
 	if nodeEndpoint != "" {
@@ -257,10 +255,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if sovereign {
-		totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
-		if err != nil {
-			return err
-		}
 		validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
 		validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
 		if validatorManagerRPCEndpoint == "" {
@@ -269,14 +263,14 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if validatorManagerAddress == "" {
 			return fmt.Errorf("unable to find Validator Manager address")
 		}
-		churnSettings, err := validatormanagersdk.GetChurnSettings(
+		allowedChange, err := validatormanagersdk.GetNewValidatorMaxWeight(
+			network.SDKNetwork(),
 			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
 		)
 		if err != nil {
 			return err
 		}
-		allowedChange := float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0
 		if !cmd.Flags().Changed(validatorWeightFlag) {
 			weight, err = app.Prompt.CaptureWeight(
 				fmt.Sprintf("What weight would you like to assign to the validator (max=%d)?", uint64(allowedChange)),

@@ -15,7 +15,6 @@ import (
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 
 	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -315,7 +314,7 @@ func GetValidatorManagerType(
 		return validatormanagertypes.ProofOfStake
 	}
 	// verify it is PoA
-	if _, err := validator.GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err == nil {
+	if _, err := GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err == nil {
 		return validatormanagertypes.ProofOfAuthority
 	}
 	return validatormanagertypes.UndefinedValidatorManagement

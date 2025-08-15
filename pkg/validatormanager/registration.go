@@ -20,7 +20,6 @@ import (
 	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
@@ -231,7 +230,7 @@ func GetRegisterL1ValidatorMessage(
 	)
 	if registerSubnetValidatorUnsignedMessage == nil {
 		if alreadyInitialized {
-			validationID, err = validator.GetValidationID(
+			validationID, err = validatormanager.GetValidationID(
 				rpcURL,
 				managerAddress,
 				nodeID,
@@ -461,7 +460,7 @@ func InitValidatorRegistration(
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	alreadyInitialized := initiateTxHash != ""
-	if validationID, err := validator.GetValidationID(
+	if validationID, err := validatormanager.GetValidationID(
 		rpcURL,
 		managerAddress,
 		nodeID,

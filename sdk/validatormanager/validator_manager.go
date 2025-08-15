@@ -6,6 +6,8 @@ package validatormanager
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/accounts/abi"
@@ -99,4 +101,82 @@ func GetChurnSettings(
 		return churnSettings, fmt.Errorf("invalid type for maximumChurnPercentage output of getChurnTracker: expected uint8, got %T", out[1])
 	}
 	return churnSettings, nil
+}
+
+// Returns the validation ID for the Node ID, as registered at the validator manager
+// Will return ids.Empty in case it is not registered
+func GetValidationID(
+	rpcURL string,
+	managerAddress common.Address,
+	nodeID ids.NodeID,
+) (ids.ID, error) {
+	stakingManagerSettings, err := GetStakingManagerSettings(
+		rpcURL,
+		managerAddress,
+	)
+	if err == nil {
+		// fix address if specialized
+		managerAddress = stakingManagerSettings.ValidatorManager
+	}
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"registeredValidators(bytes)->(bytes32)",
+		nil,
+		nodeID[:],
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return contract.GetSmartContractCallResult[[32]byte]("registeredValidators", out)
+}
+
+func GetSubnetID(
+	rpcURL string,
+	managerAddress common.Address,
+) (ids.ID, error) {
+	stakingManagerSettings, err := GetStakingManagerSettings(
+		rpcURL,
+		managerAddress,
+	)
+	if err == nil {
+		// fix address if specialized
+		managerAddress = stakingManagerSettings.ValidatorManager
+	}
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"subnetID()->(bytes32)",
+		nil,
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return contract.GetSmartContractCallResult[[32]byte]("subnetID", out)
+}
+
+func GetNewValidatorMaxWeight(
+	network network.Network,
+	rpcURL string,
+	managerAddress common.Address,
+) (float64, error) {
+	subnetID, err := GetSubnetID(
+		rpcURL,
+		managerAddress,
+	)
+	if err != nil {
+		return 0, err
+	}
+	totalWeight, err := validator.GetTotalWeight(network, subnetID)
+	if err != nil {
+		return 0, err
+	}
+	churnSettings, err := GetChurnSettings(
+		rpcURL,
+		managerAddress,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return float64(totalWeight*uint64(churnSettings.MaximumChurnPercentage)) / 100.0, nil
 }

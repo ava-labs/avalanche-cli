@@ -171,7 +171,11 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 
-	validationID, err := validator.GetValidationID(validatorManagerRPCEndpoint, common.HexToAddress(validatorManagerAddress), nodeID)
+	validationID, err := validatormanagersdk.GetValidationID(
+		validatorManagerRPCEndpoint,
+		common.HexToAddress(validatorManagerAddress),
+		nodeID,
+	)
 	if err != nil {
 		return err
 	}

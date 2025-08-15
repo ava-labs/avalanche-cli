@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -89,7 +88,7 @@ func InitValidatorWeightChange(
 	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
-	validationID, err := validator.GetValidationID(
+	validationID, err := validatormanager.GetValidationID(
 		rpcURL,
 		managerAddress,
 		nodeID,

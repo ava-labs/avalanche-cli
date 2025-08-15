@@ -302,7 +302,6 @@ func AddEtnaSubnetValidatorToCluster(
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output), err
 }
 

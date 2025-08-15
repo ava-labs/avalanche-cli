@@ -5,15 +5,12 @@ package validator
 import (
 	"encoding/json"
 
-	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type ValidatorKind int64
@@ -71,40 +68,6 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 		return platformvm.L1Validator{}, err
 	}
 	return vdrInfo, nil
-}
-
-// Returns the validation ID for the Node ID, as registered at the validator manager
-// Will return ids.Empty in case it is not registered
-func GetValidationID(
-	rpcURL string,
-	managerAddress common.Address,
-	nodeID ids.NodeID,
-) (ids.ID, error) {
-	// if specialized, need to retrieve underlying manager
-	// needs to directly access the manager, does not work with a proxy
-	out, err := contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"getStakingManagerSettings()->(address,uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32)",
-		nil,
-	)
-	if err == nil && len(out) == 9 {
-		validatorManager, ok := out[0].(common.Address)
-		if ok {
-			managerAddress = validatorManager
-		}
-	}
-	out, err = contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"registeredValidators(bytes)->(bytes32)",
-		nil,
-		nodeID[:],
-	)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return contract.GetSmartContractCallResult[[32]byte]("registeredValidators", out)
 }
 
 func GetValidatorKind(
