@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
@@ -655,9 +657,9 @@ func addAsValidator(
 			}
 		}
 	}
-
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		localValidateFlags.RPC,
@@ -706,6 +708,7 @@ func addAsValidator(
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		localValidateFlags.RPC,

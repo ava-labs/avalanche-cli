@@ -4,7 +4,8 @@
 package validatormanager
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -15,6 +16,7 @@ import (
 // manage validators on [subnetID], with
 // owner given by [ownerAddress]
 func PoAValidatorManagerInitialize(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
@@ -28,6 +30,7 @@ func PoAValidatorManagerInitialize(
 	)
 	if useACP99 {
 		return contract.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -46,6 +49,7 @@ func PoAValidatorManagerInitialize(
 		)
 	}
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

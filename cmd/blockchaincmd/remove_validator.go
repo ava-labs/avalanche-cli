@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -347,6 +349,7 @@ func removeValidatorSOV(
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRemoval(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		rpcURL,
@@ -377,6 +380,7 @@ func removeValidatorSOV(
 		defer cancel()
 		signedMessage, validationID, _, err = validatormanager.InitValidatorRemoval(
 			ctx,
+			duallogger.NewDualLogger(true, app),
 			app,
 			network,
 			rpcURL,
@@ -427,6 +431,7 @@ func removeValidatorSOV(
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRemoval(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		rpcURL,

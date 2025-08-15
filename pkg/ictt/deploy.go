@@ -3,14 +3,15 @@
 package ictt
 
 import (
-	_ "embed"
 	"math/big"
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -28,6 +29,7 @@ type TokenRemoteSettings struct {
 }
 
 func RegisterRemote(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	remoteAddress common.Address,
@@ -37,6 +39,7 @@ func RegisterRemote(
 		Amount: big.NewInt(0),
 	}
 	_, _, err := contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

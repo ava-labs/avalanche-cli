@@ -6,20 +6,23 @@ import (
 	_ "embed"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func SetupValidatorProxyImplementation(
+	logger logging.Logger,
 	rpcURL string,
 	proxyManagerPrivateKey string,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -81,11 +84,13 @@ func GetSpecializedValidatorProxyImplementation(
 }
 
 func SetupSpecializationProxyImplementation(
+	logger logging.Logger,
 	rpcURL string,
 	proxyManagerPrivateKey string,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

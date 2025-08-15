@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/spf13/pflag"
@@ -564,8 +566,11 @@ func CallAddValidator(
 	}
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
+
+	// Example of using the HybridLogger with SDK functions
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		rpcURL,
@@ -620,6 +625,7 @@ func CallAddValidator(
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
 		ctx,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		rpcURL,

@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -346,6 +348,7 @@ func InitializeValidatorManager(
 			}
 			if useACP99 {
 				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
+					duallogger.NewDualLogger(true, app),
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -354,6 +357,7 @@ func InitializeValidatorManager(
 					return tracked, err
 				}
 				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
+					duallogger.NewDualLogger(true, app),
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,
@@ -363,6 +367,7 @@ func InitializeValidatorManager(
 				}
 			} else {
 				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
+					duallogger.NewDualLogger(true, app),
 					rpcURL,
 					genesisPrivateKey,
 					proxyOwnerPrivateKey,

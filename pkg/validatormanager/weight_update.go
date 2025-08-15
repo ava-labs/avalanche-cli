@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -32,6 +33,7 @@ import (
 )
 
 func InitializeValidatorWeightChange(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -40,7 +42,8 @@ func InitializeValidatorWeightChange(
 	validationID ids.ID,
 	weight uint64,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		managerOwnerAddress,
@@ -57,7 +60,7 @@ func InitializeValidatorWeightChange(
 
 func InitValidatorWeightChange(
 	ctx context.Context,
-	printFunc func(msg string, args ...interface{}),
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -118,7 +121,7 @@ func InitValidatorWeightChange(
 	if unsignedMessage == nil {
 		unsignedMessage, err = SearchForL1ValidatorWeightMessage(ctx, rpcURL, validationID, weight)
 		if err != nil {
-			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
+			logger.Error(fmt.Sprintf(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err))
 		}
 	}
 
@@ -126,6 +129,7 @@ func InitValidatorWeightChange(
 	if unsignedMessage == nil {
 		var tx *types.Transaction
 		tx, receipt, err = InitializeValidatorWeightChange(
+			logger,
 			rpcURL,
 			managerAddress,
 			generateRawTxOnly,
@@ -143,7 +147,7 @@ func InitValidatorWeightChange(
 			ux.Logger.PrintToUser("Validator weight change initialized. InitiateTxHash: %s", tx.Hash())
 		}
 	} else {
-		printFunc(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
+		logger.Info(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
 	}
 
 	if receipt != nil {
@@ -177,6 +181,7 @@ func InitValidatorWeightChange(
 }
 
 func CompleteValidatorWeightChange(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -184,7 +189,8 @@ func CompleteValidatorWeightChange(
 	privateKey string, // not need to be owner atm
 	pchainL1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
-	return contract.TxToMethodWithWarpMessage(
+	return contractSDK.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		ownerAddress,
@@ -201,6 +207,7 @@ func CompleteValidatorWeightChange(
 
 func FinishValidatorWeightChange(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -257,6 +264,7 @@ func FinishValidatorWeightChange(
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorWeightChange(
+		logger,
 		rpcURL,
 		managerAddress,
 		generateRawTxOnly,
