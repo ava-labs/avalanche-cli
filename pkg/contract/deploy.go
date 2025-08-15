@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +22,7 @@ func DeployERC20(
 	funded common.Address,
 	supply *big.Int,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
-	return DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		tokenBin,

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -264,6 +266,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
 			// we assume it is fully CLI managed
 			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
+				duallogger.NewDualLogger(true, app),
 				network,
 				blockchainName,
 				validatorManagerRPCEndpoint,

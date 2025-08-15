@@ -303,6 +303,7 @@ func StartLocalMachine(
 }
 
 func CompleteValidatorManagerL1Deploy(
+	logger logging.Logger,
 	network models.Network,
 	blockchainName string,
 	validatorManagerRPCEndpoint string,
@@ -339,6 +340,7 @@ func CompleteValidatorManagerL1Deploy(
 			}
 			if useACP99 {
 				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+					logger,
 					validatorManagerRPCEndpoint,
 					genesisPrivateKey,
 					true,
@@ -348,6 +350,7 @@ func CompleteValidatorManagerL1Deploy(
 					return err
 				}
 				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+					logger,
 					validatorManagerRPCEndpoint,
 					genesisPrivateKey,
 					true,
@@ -358,6 +361,7 @@ func CompleteValidatorManagerL1Deploy(
 				}
 			} else {
 				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
+					logger,
 					validatorManagerRPCEndpoint,
 					genesisPrivateKey,
 					true,

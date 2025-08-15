@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
@@ -250,6 +252,7 @@ func GetPChainSubnetToL1ConversionUnsignedMessage(
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // to verify p-chain already processed the associated ConvertSubnetToL1Tx
 func InitializeValidatorsSet(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
@@ -284,6 +287,7 @@ func InitializeValidatorsSet(
 		InitialValidators:            validators,
 	}
 	return contract.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

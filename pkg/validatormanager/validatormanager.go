@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -150,6 +150,7 @@ func DeployValidatorManagerV2_0_0Contract(
 }
 
 func DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
@@ -164,6 +165,7 @@ func DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupGenesisValidatorProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		validatorManagerAddress,
@@ -190,6 +192,7 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 }
 
 func DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
@@ -204,6 +207,7 @@ func DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupGenesisValidatorProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,
@@ -230,6 +234,7 @@ func DeployPoSValidatorManagerV2_0_0Contract(
 }
 
 func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+	logger logging.Logger,
 	rpcURL string,
 	privateKey string,
 	validatorMessagesAtGenesis bool,
@@ -244,6 +249,7 @@ func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 		return common.Address{}, err
 	}
 	if _, _, err := SetupGenesisSpecializationProxyImplementation(
+		logger,
 		rpcURL,
 		proxyOwnerPrivateKey,
 		posValidatorManagerAddress,

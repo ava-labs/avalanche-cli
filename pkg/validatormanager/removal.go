@@ -10,14 +10,13 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
@@ -31,6 +30,7 @@ import (
 )
 
 func InitializeValidatorRemoval(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -69,7 +69,8 @@ func InitializeValidatorRemoval(
 				}
 			}
 			if force {
-				return contract.TxToMethod(
+				return contractSDK.TxToMethod(
+					logger,
 					rpcURL,
 					false,
 					common.Address{},
@@ -85,7 +86,8 @@ func InitializeValidatorRemoval(
 				)
 			}
 			// remove PoS validator with uptime proof
-			return contract.TxToMethodWithWarpMessage(
+			return contractSDK.TxToMethodWithWarpMessage(
+				logger,
 				rpcURL,
 				false,
 				common.Address{},
@@ -102,7 +104,8 @@ func InitializeValidatorRemoval(
 			)
 		}
 		if force {
-			return contract.TxToMethod(
+			return contractSDK.TxToMethod(
+				logger,
 				rpcURL,
 				false,
 				common.Address{},
@@ -118,7 +121,8 @@ func InitializeValidatorRemoval(
 			)
 		}
 		// remove PoS validator with uptime proof
-		return contract.TxToMethodWithWarpMessage(
+		return contractSDK.TxToMethodWithWarpMessage(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -136,7 +140,8 @@ func InitializeValidatorRemoval(
 	}
 	// PoA case
 	if useACP99 {
-		return contract.TxToMethod(
+		return contractSDK.TxToMethod(
+			logger,
 			rpcURL,
 			generateRawTxOnly,
 			managerOwnerAddress,
@@ -149,7 +154,8 @@ func InitializeValidatorRemoval(
 			validationID,
 		)
 	}
-	return contract.TxToMethod(
+	return contractSDK.TxToMethod(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		managerOwnerAddress,
@@ -203,6 +209,7 @@ func GetUptimeProofMessage(
 
 func InitValidatorRemoval(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -292,7 +299,7 @@ func InitValidatorRemoval(
 					return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
 				}
 			}
-			ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
+			logger.Info(fmt.Sprintf("Using uptime: %ds", uptimeSec))
 			signedUptimeProof, err = GetUptimeProofMessage(
 				network,
 				aggregatorLogger,
@@ -309,6 +316,7 @@ func InitValidatorRemoval(
 		}
 		var tx *types.Transaction
 		tx, receipt, err = InitializeValidatorRemoval(
+			logger,
 			rpcURL,
 			managerAddress,
 			generateRawTxOnly,
@@ -325,14 +333,14 @@ func InitValidatorRemoval(
 			if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
 				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
 			}
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
+			logger.Info(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
 		case generateRawTxOnly:
 			return nil, ids.Empty, tx, nil
 		default:
-			ux.Logger.PrintToUser("Validator removal initialized. InitiateTxHash: %s", tx.Hash())
+			logger.Info(fmt.Sprintf("Validator removal initialized. InitiateTxHash: %s", tx.Hash()))
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
+		logger.Info(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
 	}
 
 	if receipt != nil {
@@ -366,6 +374,7 @@ func InitValidatorRemoval(
 }
 
 func CompleteValidatorRemoval(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	generateRawTxOnly bool,
@@ -375,7 +384,8 @@ func CompleteValidatorRemoval(
 	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if useACP99 {
-		return contract.TxToMethodWithWarpMessage(
+		return contractSDK.TxToMethodWithWarpMessage(
+			logger,
 			rpcURL,
 			generateRawTxOnly,
 			ownerAddress,
@@ -389,7 +399,8 @@ func CompleteValidatorRemoval(
 			uint32(0),
 		)
 	}
-	return contract.TxToMethodWithWarpMessage(
+	return contractSDK.TxToMethodWithWarpMessage(
+		logger,
 		rpcURL,
 		generateRawTxOnly,
 		ownerAddress,
@@ -406,6 +417,7 @@ func CompleteValidatorRemoval(
 
 func FinishValidatorRemoval(
 	ctx context.Context,
+	logger logging.Logger,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -458,16 +470,17 @@ func FinishValidatorRemoval(
 	}
 	if privateKey != "" {
 		if client, err := evm.GetClient(rpcURL); err != nil {
-			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
 			if err := client.SetupProposerVM(privateKey); err != nil {
-				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRemoval(
+		logger,
 		rpcURL,
 		managerAddress,
 		generateRawTxOnly,

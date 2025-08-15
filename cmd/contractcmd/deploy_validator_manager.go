@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -42,9 +43,13 @@ func newDeployValidatorManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validatorManager",
 		Short: "Deploy a Validator Manager into a given Network and Blockchain",
-		Long:  "Deploy a Validator Manager into a given Network and Blockchain",
-		RunE:  deployValidatorManager,
-		Args:  cobrautils.ExactArgs(0),
+		Long: `Deploy a Validator Manager, a Proxy, and a Proxy Admin, into a given Network and Blockchain.
+If a proxy is provided, configures it to point to the deployed validator manager.
+Note: This command deploys smart contracts for a validator manager, but does not initializate it to start operating on a given
+L1. For that, you need to call 'avalanche contract initValidatorManager'.
+`,
+		RunE: deployValidatorManager,
+		Args: cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployValidatorManagerFlags.network, true, networkoptions.DefaultSupportedNetworkOptions)
 	deployValidatorManagerFlags.privateKey.AddToCmd(cmd, "as contract deployer")
@@ -258,6 +263,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	if !flags.deployProxy {
 		ux.Logger.PrintToUser("Updating proxy")
 		_, _, err = validatormanager.SetupProxyImplementation(
+			duallogger.NewDualLogger(true, app),
 			flags.rpcEndpoint,
 			common.HexToAddress(flags.proxyAdmin),
 			common.HexToAddress(flags.proxy),

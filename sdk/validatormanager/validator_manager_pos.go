@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm/precompiles"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,6 +20,7 @@ import (
 // initializes contract [managerAddress] at [rpcURL], to
 // manage validators on [subnetID] using PoS specific settings
 func PoSValidatorManagerInitialize(
+	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
 	specializedManagerAddress common.Address,
@@ -57,6 +59,7 @@ func PoSValidatorManagerInitialize(
 				return nil, nil, fmt.Errorf("no managed native minter precompile admin was found, and need to be used to enable Native PoS")
 			}
 			if err := precompiles.SetEnabled(
+				logger,
 				rpcURL,
 				precompiles.NativeMinterPrecompile,
 				nativeMinterPrecompileAdminPrivateKey,
@@ -72,6 +75,7 @@ func PoSValidatorManagerInitialize(
 		maximumStakeAmount := new(big.Int)
 		maximumStakeAmount.Mul(posParams.MaximumStakeAmount, big.NewInt(1_000_000_000_000_000_000))
 		if tx, receipt, err := contract.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -108,6 +112,7 @@ func PoSValidatorManagerInitialize(
 			return nil, nil, err
 		}
 		err = contract.TransferOwnership(
+			logger,
 			rpcURL,
 			managerAddress,
 			managerOwnerPrivateKey,
@@ -116,6 +121,7 @@ func PoSValidatorManagerInitialize(
 		return nil, nil, err
 	}
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

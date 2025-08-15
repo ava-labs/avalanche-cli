@@ -8,9 +8,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -47,6 +48,7 @@ func DeployTransparentProxy(
 }
 
 func SetupProxyImplementation(
+	logger logging.Logger,
 	rpcURL string,
 	proxyAdminContractAddress common.Address,
 	transparentProxyContractAddress common.Address,
@@ -67,6 +69,7 @@ func SetupProxyImplementation(
 	}
 	if useUpgradeAndCall {
 		return contract.TxToMethod(
+			logger,
 			rpcURL,
 			false,
 			common.Address{},
@@ -82,6 +85,7 @@ func SetupProxyImplementation(
 		)
 	}
 	return contract.TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},
@@ -134,11 +138,13 @@ func ParseAdminChanged(log types.Log) (*TransparentUpgradeableProxyAdminChanged,
 }
 
 func SetupGenesisValidatorProxyImplementation(
+	logger logging.Logger,
 	rpcURL string,
 	proxyOwnerPrivateKey string,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return SetupProxyImplementation(
+		logger,
 		rpcURL,
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress),
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress),
@@ -185,11 +191,13 @@ func GetGenesisSpecializedValidatorProxyImplementation(
 }
 
 func SetupGenesisSpecializationProxyImplementation(
+	logger logging.Logger,
 	rpcURL string,
 	proxyOwnerPrivateKey string,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return SetupProxyImplementation(
+		logger,
 		rpcURL,
 		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
 		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),

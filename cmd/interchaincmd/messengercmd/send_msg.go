@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
@@ -15,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -169,6 +172,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	// send tx to the ICM contract at the source
 	ux.Logger.PrintToUser("Delivering message %q from source blockchain %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := interchain.SendCrossChainMessage(
+		duallogger.NewDualLogger(true, app),
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,
@@ -179,7 +183,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err == contract.ErrFailedReceiptStatus {
+	if err == contractSDK.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 		trace, err := evm.GetTxTrace(sourceRPCEndpoint, txHash)

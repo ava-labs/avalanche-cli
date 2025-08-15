@@ -2,7 +2,10 @@
 // See the file LICENSE for licensing terms.
 package contract
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ethereum/go-ethereum/common"
+)
 
 // GetContractOwner gets owner for https://docs.openzeppelin.com/contracts/2.x/api/ownership#Ownable-owner contracts
 func GetContractOwner(
@@ -22,12 +25,14 @@ func GetContractOwner(
 }
 
 func TransferOwnership(
+	logger logging.Logger,
 	rpcURL string,
 	contractAddress common.Address,
 	ownerPrivateKey string,
 	newOwner common.Address,
 ) error {
 	_, _, err := TxToMethod(
+		logger,
 		rpcURL,
 		false,
 		common.Address{},

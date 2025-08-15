@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -580,6 +582,7 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
 	receipt, receipt2, err := ictt.Send(
+		duallogger.NewDualLogger(true, app),
 		senderURL,
 		goethereumcommon.HexToAddress(originTransferrerAddress),
 		privateKey,
