@@ -16,6 +16,7 @@ func GetContractOwner(
 		rpcURL,
 		contractAddress,
 		"owner()->(address)",
+		nil,
 	)
 	if err != nil {
 		return common.Address{}, err

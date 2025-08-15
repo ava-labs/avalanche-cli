@@ -33,6 +33,7 @@ type DeployValidatorManagerFlags struct {
 	poa                  bool
 	pos                  bool
 	validatorManagerPath string
+	rewardBasisPoints    uint64
 }
 
 var deployValidatorManagerFlags DeployValidatorManagerFlags
@@ -64,6 +65,7 @@ L1. For that, you need to call 'avalanche contract initValidatorManager'.
 	cmd.Flags().BoolVar(&deployValidatorManagerFlags.poa, "poa", false, "deploy a v2.0.0 Proof of Authority Validator Manager")
 	cmd.Flags().BoolVar(&deployValidatorManagerFlags.pos, "pos", false, "deploy a v2.0.0 Proof of Stake Validator Manager")
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.validatorManagerPath, "validator-manager-path", "", "deploy the validator manager contained in the given path (hex encoded)")
+	cmd.Flags().Uint64Var(&deployValidatorManagerFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	return cmd
 }
 
@@ -223,6 +225,15 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 			return err
 		}
 	case flags.pos:
+		rewardCalculatorAddress, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+			flags.rpcEndpoint,
+			privateKey,
+			flags.rewardBasisPoints,
+		)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Reward Calculator Address: %s", rewardCalculatorAddress.Hex())
 		validatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
 			privateKey,

@@ -108,6 +108,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			ewoqPChainAddress,
 			1,
 			false, // use existing avago running
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -121,6 +122,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			ewoqPChainAddress,
 			1,
 			false, // use existing avago running
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -266,6 +268,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			ewoqPChainAddress,
 			1,
 			false, // use existing avago running
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -279,6 +282,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			ewoqPChainAddress,
 			1,
 			false, // use existing avago running
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

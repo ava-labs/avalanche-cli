@@ -4,14 +4,18 @@ package validatorcmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/units"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -65,17 +69,83 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
+
+	header := table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "StartTime"}
+	if sc.PoS() {
+		header = table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)", "Owner", "StartTime", "Stake", "EndTime", "Ready"}
+	}
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
-		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)"},
+		header,
 	)
 	for _, validator := range validators {
-		t.AppendRow(table.Row{
+		validatorInfo, err := validatormanager.GetValidator(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+			validator.ValidationID,
+		)
+		if err != nil {
+			return err
+		}
+		startTime := time.Unix(int64(validatorInfo.StartTime), 0)
+		startTimeStr := startTime.Format("2006-01-02 15:04:05")
+		endTimeStr := ""
+		readyToRemove := ""
+		owner := sc.ValidatorManagerOwner
+		stake := "0"
+		if sc.PoS() {
+			stakingValidatorInfo, err := validatormanager.GetStakingValidator(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(validatorManagerAddress),
+				validator.ValidationID,
+			)
+			if err != nil {
+				return err
+			}
+			if stakingValidatorInfo.MinStakeDuration != 0 {
+				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
+				endTimeStr = endTime.Format("2006-01-02 15:04:05")
+				readyToRemove = fmt.Sprintf("%v", time.Now().After(endTime))
+				owner = stakingValidatorInfo.Owner.Hex()
+				stakeAmount, err := validatormanager.PoSWeightToValue(
+					validatorManagerRPCEndpoint,
+					common.HexToAddress(validatorManagerAddress),
+					uint64(validator.Weight),
+				)
+				if err != nil {
+					return fmt.Errorf("failure obtaining value from weight: %w", err)
+				}
+				stake = utils.FormatAmount(stakeAmount, 18)
+			}
+		}
+		row := table.Row{
 			validator.NodeID,
 			validator.ValidationID,
 			validator.Weight,
 			float64(validator.Balance) / float64(units.Avax),
-		})
+			owner,
+			startTimeStr,
+		}
+		if sc.PoS() {
+			row = table.Row{
+				validator.NodeID,
+				validator.ValidationID,
+				validator.Weight,
+				float64(validator.Balance) / float64(units.Avax),
+				owner,
+				startTimeStr,
+				stake,
+				endTimeStr,
+				readyToRemove,
+			}
+		}
+		t.AppendRow(row)
 	}
 	fmt.Println(t.Render())
 

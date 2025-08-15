@@ -29,7 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
-	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatormanagersdk "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -76,6 +76,8 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
+	stakerPrivateKeyFlags.SetFlagNames("staker-private-key", "staker-key", "staker-genesis-key")
+	stakerPrivateKeyFlags.AddToCmd(cmd, "as removal authorizer")
 	return cmd
 }
 
@@ -168,7 +170,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to find Validator Manager address")
 		}
 
-		validationID, err := validatorsdk.GetValidationID(
+		validationID, err := validatormanagersdk.GetValidationID(
 			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
@@ -280,21 +282,56 @@ func removeValidatorSOV(
 		return err
 	}
 
-	var ownerPrivateKey string
-	if !externalValidatorManagerOwner {
-		var ownerPrivateKeyFound bool
-		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+	var from, privateKey string
+	if sc.PoS() {
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 			app,
 			network,
-			common.HexToAddress(validatorManagerOwner),
-			true,
+			chainSpec,
 		)
 		if err != nil {
 			return err
 		}
-		if !ownerPrivateKeyFound {
-			return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
+		privateKey, err = stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+		if err != nil {
+			return err
 		}
+		if privateKey == "" {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to authorize the removal. Should be the one that provided the original staking funds"))
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"authorize the removal",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return err
+			}
+		}
+		address, err := evm.PrivateKeyToAddress(privateKey)
+		if err != nil {
+			return err
+		}
+		from = address.Hex()
+	} else {
+		if !externalValidatorManagerOwner {
+			var ownerPrivateKeyFound bool
+			ownerPrivateKeyFound, _, _, privateKey, err = contract.SearchForManagedKey(
+				app,
+				network,
+				common.HexToAddress(validatorManagerOwner),
+				true,
+			)
+			if err != nil {
+				return err
+			}
+			if !ownerPrivateKeyFound {
+				return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
+			}
+		}
+		from = validatorManagerOwner
 	}
 
 	if sc.UseACP99 {
@@ -303,7 +340,9 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), validatorManagerOwner)
+	if !sc.PoS() {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), validatorManagerOwner)
+	}
 
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
@@ -367,8 +406,8 @@ func removeValidatorSOV(
 		chainSpec,
 		l1RPCEndpoint,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		from,
+		privateKey,
 		nodeID,
 		aggregatorLogger,
 		sc.PoS(),
@@ -380,7 +419,7 @@ func removeValidatorSOV(
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 	)
-	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
+	if err != nil && errors.Is(err, validatormanagersdk.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
 		force, err = app.Prompt.CaptureNoYes("Do you want to continue with validator removal?")
 		if err != nil {
@@ -400,8 +439,8 @@ func removeValidatorSOV(
 			chainSpec,
 			l1RPCEndpoint,
 			externalValidatorManagerOwner,
-			validatorManagerOwner,
-			ownerPrivateKey,
+			from,
+			privateKey,
 			nodeID,
 			aggregatorLogger,
 			sc.PoS(),
@@ -452,8 +491,8 @@ func removeValidatorSOV(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		from,
+		privateKey,
 		validationID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,

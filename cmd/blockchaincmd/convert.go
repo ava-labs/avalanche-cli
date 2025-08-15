@@ -331,6 +331,16 @@ func InitializeValidatorManager(
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainID: validatorManagerBlockchainID.String(),
+			},
+		)
+		if err != nil {
+			return tracked, err
+		}
 		if err := subnetSDK.InitializeProofOfStake(
 			app.Log,
 			privateKey,
@@ -347,6 +357,7 @@ func InitializeValidatorManager(
 			},
 			useACP99,
 			signatureAggregatorEndpoint,
+			nativeMinterPrecompileAdminPrivateKey,
 		); err != nil {
 			return tracked, err
 		}

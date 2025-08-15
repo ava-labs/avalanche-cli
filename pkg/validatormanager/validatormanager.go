@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -39,7 +39,7 @@ func DeployValidatorMessagesV2_0_0Contract(
 	privateKey string,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	validatorMessagesBytes := []byte(strings.TrimSpace(string(validatorMessagesV2_0_0Bytecode)))
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		validatorMessagesBytes,
@@ -124,7 +124,7 @@ func DeployValidatorManagerContract(
 		}
 	}
 	validatorManagerBytes := []byte(validatorManagerString)
-	return contractSDK.DeployContract(
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		validatorManagerBytes,
@@ -336,21 +336,39 @@ func AddSpecializationTransparentProxyContractToAllocations(
 }
 
 //go:embed smart_contracts/deployed_example_reward_calculator_bytecode_v2.0.0.txt
-var deployedRewardCalculatorV2_0_0Bytecode []byte
+var deployedExampleRewardCalculatorV2_0_0Bytecode []byte
 
 func AddRewardCalculatorV2_0_0ToAllocations(
 	allocs core.GenesisAlloc,
 	rewardBasisPoints uint64,
 ) {
-	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorV2_0_0Bytecode)))
+	deployedExampleRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedExampleRewardCalculatorV2_0_0Bytecode)))
 	allocs[common.HexToAddress(validatormanagerSDK.RewardCalculatorAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
-		Code:    deployedRewardCalculatorBytes,
+		Code:    deployedExampleRewardCalculatorBytes,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
 			common.HexToHash("0x0"): common.BigToHash(new(big.Int).SetUint64(rewardBasisPoints)),
 		},
 	}
+}
+
+//go:embed smart_contracts/example_reward_calculator_bytecode_v2.0.0.txt
+var exampleRewardCalculatorV2_0_0Bytecode []byte
+
+func DeployRewardCalculatorV2_0_0Contract(
+	rpcURL string,
+	privateKey string,
+	rewardBasisPoints uint64,
+) (common.Address, *types.Transaction, *types.Receipt, error) {
+	exampleRewardCalculatorBytes := []byte(strings.TrimSpace(string(exampleRewardCalculatorV2_0_0Bytecode)))
+	return contract.DeployContract(
+		rpcURL,
+		privateKey,
+		exampleRewardCalculatorBytes,
+		"(uint64)",
+		rewardBasisPoints,
+	)
 }
 
 // setups PoA manager after a successful execution of
@@ -388,6 +406,7 @@ func SetupPoS(
 	posParams validatormanagerSDK.PoSParams,
 	v2_0_0 bool,
 	signatureAggregatorEndpoint string,
+	nativeMinterPrecompileAdminPrivateKey string,
 ) error {
 	return subnet.InitializeProofOfStake(
 		log,
@@ -396,5 +415,6 @@ func SetupPoS(
 		posParams,
 		v2_0_0,
 		signatureAggregatorEndpoint,
+		nativeMinterPrecompileAdminPrivateKey,
 	)
 }

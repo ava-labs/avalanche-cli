@@ -133,9 +133,7 @@ const (
 	BootstrapValidatorBalanceNanoAVAX = uint64(BootstrapValidatorBalanceAVAX * float64(units.Avax))
 	BootstrapValidatorBalanceAVAX     = 0.1
 	// Default weight when we prompt users for bootstrap validators
-	BootstrapValidatorWeight = 100
-	// Default weight when we prompt users for non bootstrap validators
-	NonBootstrapValidatorWeight       = BootstrapValidatorWeight / 5
+	BootstrapValidatorWeight          = 100
 	DefaultStakeWeight                = 20
 	AVAXSymbol                        = "AVAX"
 	DefaultFujiStakeDuration          = "48h"
@@ -355,5 +353,4 @@ const (
 	// Aggregator
 	DefaultAggregatorLogLevel = "Debug"
 	SignatureAggregator       = "signature-aggregator"
-	MaxL1TotalWeightChange    = 0.2
 )

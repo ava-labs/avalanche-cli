@@ -20,7 +20,6 @@ import (
 	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
@@ -41,7 +40,7 @@ func InitializeValidatorRegistrationPoSNative(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	managerOwnerPrivateKey string,
+	privateKey string,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
 	expiry uint64,
@@ -85,7 +84,7 @@ func InitializeValidatorRegistrationPoSNative(
 			rpcURL,
 			false,
 			common.Address{},
-			managerOwnerPrivateKey,
+			privateKey,
 			managerAddress,
 			stakeAmount,
 			"initialize validator registration with stake",
@@ -106,7 +105,7 @@ func InitializeValidatorRegistrationPoSNative(
 		rpcURL,
 		false,
 		common.Address{},
-		managerOwnerPrivateKey,
+		privateKey,
 		managerAddress,
 		stakeAmount,
 		"initialize validator registration with stake",
@@ -231,7 +230,7 @@ func GetRegisterL1ValidatorMessage(
 	)
 	if registerSubnetValidatorUnsignedMessage == nil {
 		if alreadyInitialized {
-			validationID, err = validator.GetValidationID(
+			validationID, err = validatormanager.GetValidationID(
 				rpcURL,
 				managerAddress,
 				nodeID,
@@ -325,6 +324,7 @@ func PoSWeightToValue(
 		rpcURL,
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
+		nil,
 		weight,
 	)
 	if err != nil {
@@ -460,7 +460,7 @@ func InitValidatorRegistration(
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	alreadyInitialized := initiateTxHash != ""
-	if validationID, err := validator.GetValidationID(
+	if validationID, err := validatormanager.GetValidationID(
 		rpcURL,
 		managerAddress,
 		nodeID,
@@ -485,7 +485,7 @@ func InitValidatorRegistration(
 			logger.Info("")
 			logger.Info("Initializing validator registration with PoS validator manager")
 			logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
-			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount))
+			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
 			logger.Info("")
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
 				logger,
@@ -512,7 +512,7 @@ func InitValidatorRegistration(
 			} else {
 				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
+			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
 		} else {
 			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(

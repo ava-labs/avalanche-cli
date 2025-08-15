@@ -54,6 +54,7 @@ func ERC20TokenHomeGetTokenAddress(
 		rpcURL,
 		address,
 		"token()->(address)",
+		nil,
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -69,6 +70,7 @@ func NativeTokenHomeGetTokenAddress(
 		rpcURL,
 		address,
 		"wrappedToken()->(address)",
+		nil,
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -84,6 +86,7 @@ func TokenRemoteIsCollateralized(
 		rpcURL,
 		address,
 		"isCollateralized()->(bool)",
+		nil,
 	)
 	if err != nil {
 		return false, err
@@ -99,6 +102,7 @@ func TokenHomeGetDecimals(
 		rpcURL,
 		address,
 		"tokenDecimals()->(uint8)",
+		nil,
 	)
 	if err != nil {
 		return 0, err
@@ -123,6 +127,7 @@ func TokenHomeGetRegisteredRemote(
 		rpcURL,
 		address,
 		"registeredRemotes(bytes32, address)->(bool,uint256,uint256,bool)",
+		nil,
 		remoteBlockchainID,
 		remoteAddress,
 	)
@@ -163,6 +168,7 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 		rpcURL,
 		address,
 		"tokenHomeAddress()->(address)",
+		nil,
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -178,6 +184,7 @@ func NativeTokenRemoteGetTotalNativeAssetSupply(
 		rpcURL,
 		address,
 		"totalNativeAssetSupply()->(uint256)",
+		nil,
 	)
 	if err != nil {
 		return nil, err

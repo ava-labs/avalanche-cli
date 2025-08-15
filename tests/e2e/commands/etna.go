@@ -259,6 +259,7 @@ func AddEtnaSubnetValidatorToCluster(
 	ewoqPChainAddress string,
 	balance int,
 	createLocalValidator bool,
+	weight int,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -279,7 +280,8 @@ func AddEtnaSubnetValidatorToCluster(
 		"--staking-period",
 		"100s",
 		"--weight",
-		strconv.Itoa(constants.DefaultStakeWeight),
+		strconv.Itoa(weight),
+		"--staker-genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
 	if clusterName != "" {
@@ -300,7 +302,6 @@ func AddEtnaSubnetValidatorToCluster(
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output), err
 }
 
@@ -324,6 +325,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--uptime",
 		strconv.Itoa(int(uptimeSec)),
+		"--staker-genesis-key",
 		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)

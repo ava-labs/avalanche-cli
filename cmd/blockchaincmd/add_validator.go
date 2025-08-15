@@ -31,7 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	validatormanagersdk "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -73,6 +73,7 @@ var (
 	httpPort                            uint32
 	stakingPort                         uint32
 	addValidatorFlags                   BlockchainAddValidatorFlags
+	stakerPrivateKeyFlags               contract.PrivateKeyFlags
 )
 
 type BlockchainAddValidatorFlags struct {
@@ -124,6 +125,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
+	stakerPrivateKeyFlags.SetFlagNames("staker-private-key", "staker-key", "staker-genesis-key")
+	stakerPrivateKeyFlags.AddToCmd(cmd, "as source of staking funds")
 
 	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", true, func(set *pflag.FlagSet) {
 		set.StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
@@ -252,14 +255,39 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if sovereign {
+		validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+		validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+		if validatorManagerRPCEndpoint == "" {
+			return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+		}
+		if validatorManagerAddress == "" {
+			return fmt.Errorf("unable to find Validator Manager address")
+		}
+		currentWeightInfo, err := validatormanagersdk.GetCurrentWeightInfo(
+			network.SDKNetwork(),
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+		)
+		if err != nil {
+			return err
+		}
+		allowedChange := currentWeightInfo.AllowedWeight
 		if !cmd.Flags().Changed(validatorWeightFlag) {
 			weight, err = app.Prompt.CaptureWeight(
-				"What weight would you like to assign to the validator?",
-				func(uint64) error { return nil },
+				fmt.Sprintf("What weight would you like to assign to the validator (max=%d)?", uint64(allowedChange)),
+				func(weight uint64) error {
+					if float64(weight) > allowedChange {
+						return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", weight, uint64(allowedChange))
+					}
+					return nil
+				},
 			)
 			if err != nil {
 				return err
 			}
+		}
+		if float64(weight) > allowedChange {
+			return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", weight, uint64(allowedChange))
 		}
 	}
 
@@ -283,8 +311,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-
-	subnetID := sc.Networks[network.Name()].SubnetID
 
 	// if user chose to upsize a local node to add another local validator
 	var localValidatorClusterName string
@@ -338,7 +364,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		network,
 		kc,
 		blockchainName,
-		subnetID,
 		nodeIDStr,
 		publicKey,
 		pop,
@@ -371,7 +396,6 @@ func CallAddValidator(
 	network models.Network,
 	kc *keychain.Keychain,
 	blockchainName string,
-	subnetID ids.ID,
 	nodeIDStr string,
 	publicKey string,
 	pop string,
@@ -428,24 +452,69 @@ func CallAddValidator(
 		validatorManagerOwner = sc.ValidatorManagerOwner
 	}
 
-	var ownerPrivateKey string
-	if !externalValidatorManagerOwner {
-		var ownerPrivateKeyFound bool
-		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+	var from, privateKey string
+
+	pos := sc.PoS()
+
+	if pos {
+		stakeAmount, err := validatormanager.PoSWeightToValue(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+			weight,
+		)
+		if err != nil {
+			return fmt.Errorf("failure obtaining value from weight: %w", err)
+		}
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 			app,
 			network,
-			common.HexToAddress(validatorManagerOwner),
-			true,
+			chainSpec,
 		)
 		if err != nil {
 			return err
 		}
-		if !ownerPrivateKeyFound {
-			return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
+		privateKey, err = stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+		if err != nil {
+			return err
 		}
+		if privateKey == "" {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to provide the staking funds and pay the validator manager fees"))
+			ux.Logger.PrintToUser("Staking funds: %s tokens", utils.FormatAmount(stakeAmount, 18))
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"provide the staking funds",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return err
+			}
+		}
+		address, err := evm.PrivateKeyToAddress(privateKey)
+		if err != nil {
+			return err
+		}
+		from = address.Hex()
+	} else {
+		if !externalValidatorManagerOwner {
+			var ownerPrivateKeyFound bool
+			ownerPrivateKeyFound, _, _, privateKey, err = contract.SearchForManagedKey(
+				app,
+				network,
+				common.HexToAddress(validatorManagerOwner),
+				true,
+			)
+			if err != nil {
+				return err
+			}
+			if !ownerPrivateKeyFound {
+				return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
+			}
+		}
+		from = validatorManagerOwner
 	}
-
-	pos := sc.PoS()
 
 	if pos {
 		// should take input prior to here for delegation fee, and min stake duration
@@ -478,18 +547,11 @@ func CallAddValidator(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
+	if !pos {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
+	}
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
-
-	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
-	if err != nil {
-		return err
-	}
-	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
-	if float64(weight) > allowedChange {
-		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
-	}
 
 	if balanceAVAX == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
@@ -579,8 +641,8 @@ func CallAddValidator(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		from,
+		privateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
 		expiry,
@@ -635,8 +697,8 @@ func CallAddValidator(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		from,
+		privateKey,
 		validationID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,

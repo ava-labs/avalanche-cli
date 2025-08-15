@@ -4,11 +4,11 @@ package validatormanager
 
 import (
 	"context"
-	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -44,6 +43,30 @@ func InitializeValidatorRemoval(
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
 		if useACP99 {
+			validatorInfo, err := validatormanager.GetValidator(rpcURL, managerAddress, validationID)
+			if err != nil {
+				return nil, nil, err
+			}
+			stakingValidatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
+			if err != nil {
+				return nil, nil, err
+			}
+			if stakingValidatorInfo.MinStakeDuration != 0 {
+				// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
+				currentAddress, err := evm.PrivateKeyToAddress(privateKey)
+				if err != nil {
+					return nil, nil, err
+				}
+				if currentAddress != stakingValidatorInfo.Owner {
+					return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", currentAddress, stakingValidatorInfo.Owner)
+				}
+				startTime := time.Unix(int64(validatorInfo.StartTime), 0)
+				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
+				endTimeStr := endTime.Format("2006-01-02 15:04:05")
+				if !time.Now().After(endTime) {
+					return nil, nil, fmt.Errorf("can't remove validator before %s", endTimeStr)
+				}
+			}
 			if force {
 				return contractSDK.TxToMethod(
 					logger,
@@ -237,7 +260,7 @@ func InitValidatorRemoval(
 	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
 
-	validationID, err := validator.GetValidationID(
+	validationID, err := validatormanager.GetValidationID(
 		rpcURL,
 		managerAddress,
 		nodeID,
@@ -247,6 +270,9 @@ func InitValidatorRemoval(
 	}
 	if validationID == ids.Empty {
 		return nil, ids.Empty, nil, fmt.Errorf("node %s is not a L1 validator", nodeID)
+	}
+	if err != nil {
+		return nil, ids.Empty, nil, err
 	}
 
 	var unsignedMessage *warp.UnsignedMessage

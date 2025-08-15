@@ -5,11 +5,11 @@ package validatormanager
 
 import (
 	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
-	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // PoAValidatorManagerInitialize initializes contract [managerAddress] at [rpcURL], to
@@ -24,10 +24,6 @@ func PoAValidatorManagerInitialize(
 	ownerAddress common.Address,
 	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
-	const (
-		defaultChurnPeriodSeconds     = uint64(0)
-		defaultMaximumChurnPercentage = uint8(20)
-	)
 	if useACP99 {
 		return contract.TxToMethod(
 			logger,
@@ -43,8 +39,8 @@ func PoAValidatorManagerInitialize(
 			ACP99ValidatorManagerSettings{
 				Admin:                  ownerAddress,
 				SubnetID:               subnetID,
-				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-				MaximumChurnPercentage: defaultMaximumChurnPercentage,
+				ChurnPeriodSeconds:     ChurnPeriodSeconds,
+				MaximumChurnPercentage: MaximumChurnPercentage,
 			},
 		)
 	}
@@ -61,8 +57,8 @@ func PoAValidatorManagerInitialize(
 		"initialize((bytes32,uint64,uint8),address)",
 		ValidatorManagerSettings{
 			SubnetID:               subnetID,
-			ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-			MaximumChurnPercentage: defaultMaximumChurnPercentage,
+			ChurnPeriodSeconds:     ChurnPeriodSeconds,
+			MaximumChurnPercentage: MaximumChurnPercentage,
 		},
 		ownerAddress,
 	)
