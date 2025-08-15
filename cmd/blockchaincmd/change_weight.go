@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -395,7 +397,7 @@ func changeWeightACP99(
 	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		ctx,
-		app.Log,
+		duallogger.NewDualLogger(true, app),
 		app,
 		network,
 		changeWeightFlags.RPC,

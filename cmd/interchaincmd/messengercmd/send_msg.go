@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
@@ -170,7 +172,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	// send tx to the ICM contract at the source
 	ux.Logger.PrintToUser("Delivering message %q from source blockchain %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := interchain.SendCrossChainMessage(
-		app.Log,
+		duallogger.NewDualLogger(true, app),
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,

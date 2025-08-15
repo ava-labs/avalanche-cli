@@ -461,11 +461,11 @@ func InitValidatorRegistration(
 			if err != nil {
 				return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 			}
-			ux.Logger.PrintLineSeparator()
-			ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
-			ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
-			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
-			ux.Logger.PrintLineSeparator()
+			logger.Info("")
+			logger.Info("Initializing validator registration with PoS validator manager")
+			logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
+			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount))
+			logger.Info("")
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
 				logger,
 				rpcURL,
@@ -486,10 +486,10 @@ func InitValidatorRegistration(
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
 			} else {
-				ux.Logger.PrintToUser("Validator registration initialized. InitiateTxHash: %s", tx.Hash())
+				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 		} else {
@@ -513,15 +513,15 @@ func InitValidatorRegistration(
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
 			} else if generateRawTxOnly {
 				return nil, ids.Empty, tx, nil
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
+			logger.Info(fmt.Sprintf("Validator weight: %d", weight))
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+		logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 	}
 
 	var unsignedMessage *warp.UnsignedMessage
@@ -596,10 +596,10 @@ func FinishValidatorRegistration(
 	}
 	if privateKey != "" {
 		if client, err := evm.GetClient(rpcURL); err != nil {
-			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %w", err)
+			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
 			if err := client.SetupProposerVM(privateKey); err != nil {
-				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
