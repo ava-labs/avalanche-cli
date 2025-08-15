@@ -49,6 +49,7 @@ var _ = ginkgo.Describe("[Add Validator SOV L1 Manager Local]", func() {
 			ewoqPChainAddress,
 			1,
 			true,
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

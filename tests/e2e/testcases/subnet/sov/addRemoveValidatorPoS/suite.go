@@ -102,6 +102,20 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoS]", func() {
 		fmt.Println(output)
 	})
 
+	ginkgo.It("Can't add validator with too much of a weight", func() {
+		output, err := commands.AddEtnaSubnetValidatorToCluster(
+			utils.TestLocalNodeName,
+			utils.BlockchainName,
+			localClusterUris[5],
+			ewoqPChainAddress,
+			1,
+			false, // use existing
+			200,
+		)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		fmt.Println(output)
+	})
+
 	ginkgo.It("Can add validator", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			utils.TestLocalNodeName,
@@ -110,6 +124,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoS]", func() {
 			ewoqPChainAddress,
 			1,
 			false, // use existing
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -123,6 +138,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoS]", func() {
 			ewoqPChainAddress,
 			1,
 			false, // use existing
+			20,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

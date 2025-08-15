@@ -259,6 +259,7 @@ func AddEtnaSubnetValidatorToCluster(
 	ewoqPChainAddress string,
 	balance int,
 	createLocalValidator bool,
+	weight int,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -279,7 +280,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"--staking-period",
 		"100s",
 		"--weight",
-		strconv.Itoa(constants.DefaultStakeWeight),
+		strconv.Itoa(weight),
 		"--staker-genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
