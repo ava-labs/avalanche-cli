@@ -45,7 +45,6 @@ var (
 )
 
 type BlockchainRemoveValidatorFlags struct {
-	RPC         string
 	SigAggFlags flags.SignatureAggregatorFlags
 }
 
@@ -63,7 +62,6 @@ these prompts by providing the values with flags.`,
 		PreRunE: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd, app, &removeValidatorFlags.RPC)
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &removeValidatorFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
@@ -154,21 +152,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.Sovereign && removeValidatorFlags.RPC == "" {
-		removeValidatorFlags.RPC, _, err = contract.GetBlockchainEndpoints(
-			app,
-			network,
-			contract.ChainSpec{
-				BlockchainName: blockchainName,
-			},
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
 	validatorKind, err := validatorsdk.GetValidatorKind(network.SDKNetwork(), subnetID, nodeID)
 	if err != nil {
 		return err
@@ -176,9 +159,17 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if validatorKind == validatorsdk.NonValidator {
 		// it may be unregistered from P-Chain, but registered on validator manager
 		// due to a previous partial removal operation
-		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+		validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+		validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+		if validatorManagerRPCEndpoint == "" {
+			return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+		}
+		if validatorManagerAddress == "" {
+			return fmt.Errorf("unable to find Validator Manager address")
+		}
+
 		validationID, err := validatorsdk.GetValidationID(
-			removeValidatorFlags.RPC,
+			validatorManagerRPCEndpoint,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
 		)
@@ -231,7 +222,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
-		removeValidatorFlags.RPC,
 		removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
 	); err != nil {
 		return err
@@ -270,7 +260,6 @@ func removeValidatorSOV(
 	uptimeSec uint64,
 	isBootstrapValidator bool,
 	force bool,
-	rpcURL string,
 	signatureAggregatorEndpoint string,
 ) error {
 	chainSpec := contract.ChainSpec{
@@ -284,6 +273,11 @@ func removeValidatorSOV(
 
 	if validatorManagerOwner == "" {
 		validatorManagerOwner = sc.ValidatorManagerOwner
+	}
+
+	l1RPCEndpoint, _, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, false)
+	if err != nil {
+		return err
 	}
 
 	var ownerPrivateKey string
@@ -314,9 +308,26 @@ func removeValidatorSOV(
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
+	validatorManagerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddress := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
+	if specializedValidatorManagerAddress != "" {
+		validatorManagerAddress = specializedValidatorManagerAddress
+	}
+
+	if validatorManagerRPCEndpoint == "" {
+		return fmt.Errorf("unable to find Validator Manager RPC endpoint")
+	}
+	if validatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to find Validator Manager blockchain ID")
+	}
+	if validatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
@@ -352,8 +363,9 @@ func removeValidatorSOV(
 		duallogger.NewDualLogger(true, app),
 		app,
 		network,
-		rpcURL,
+		validatorManagerRPCEndpoint,
 		chainSpec,
+		l1RPCEndpoint,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
@@ -362,6 +374,7 @@ func removeValidatorSOV(
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		sc.UseACP99,
 		initiateTxHash,
@@ -383,8 +396,9 @@ func removeValidatorSOV(
 			duallogger.NewDualLogger(true, app),
 			app,
 			network,
-			rpcURL,
+			validatorManagerRPCEndpoint,
 			chainSpec,
+			l1RPCEndpoint,
 			externalValidatorManagerOwner,
 			validatorManagerOwner,
 			ownerPrivateKey,
@@ -393,6 +407,7 @@ func removeValidatorSOV(
 			sc.PoS(),
 			uptimeSec,
 			true, // force
+			validatorManagerBlockchainID,
 			validatorManagerAddress,
 			sc.UseACP99,
 			initiateTxHash,
@@ -434,13 +449,14 @@ func removeValidatorSOV(
 		duallogger.NewDualLogger(true, app),
 		app,
 		network,
-		rpcURL,
+		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		aggregatorLogger,
+		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		sc.UseACP99,
 		signatureAggregatorEndpoint,

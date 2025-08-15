@@ -77,9 +77,6 @@ func newInitValidatorManagerCmd() *cobra.Command {
 
 func initValidatorManager(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
-	chainSpec := contract.ChainSpec{
-		BlockchainName: blockchainName,
-	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -95,23 +92,62 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	if initValidatorManagerFlags.RPC == "" {
-		initValidatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
-			app,
+
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+	if blockchainID == ids.Empty {
+		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())
+	}
+
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return fmt.Errorf("unable to find Subnet ID")
+	}
+
+	validatorManagerRPCEndpoint := sc.Networks[network.Name()].ValidatorManagerRPCEndpoint
+	validatorManagerBlockchainID := sc.Networks[network.Name()].ValidatorManagerBlockchainID
+	validatorManagerAddressStr := sc.Networks[network.Name()].ValidatorManagerAddress
+	specializedValidatorManagerAddressStr := sc.Networks[network.Name()].SpecializedValidatorManagerAddress
+
+	if validatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to find Validator Manager blockchain ID")
+	}
+	if validatorManagerAddressStr == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+
+	validatorManagerSubnetID, err := blockchaincmd.GetValidatorManagerSubnetID(network, validatorManagerBlockchainID)
+	if err != nil {
+		return err
+	}
+
+	if initValidatorManagerFlags.RPC != "" {
+		validatorManagerRPCEndpoint = initValidatorManagerFlags.RPC
+	}
+
+	if validatorManagerRPCEndpoint == "" {
+		validatorManagerRPCEndpoint, err = blockchaincmd.GetValidatorManagerRPCEndpoint(
 			network,
-			chainSpec,
-			true,
-			false,
+			blockchainName,
+			blockchainID,
+			validatorManagerBlockchainID,
 		)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initValidatorManagerFlags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerRPCEndpoint)
+
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
-		chainSpec,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
 	)
 	if err != nil {
 		return err
@@ -123,7 +159,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
+			"pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -133,24 +169,45 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+
+	if specializedValidatorManagerAddressStr == "" && sc.UseACP99 && sc.PoS() {
+		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			// assumed to be managed by CLI
+			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
+		} else {
+			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
+			if err != nil {
+				return err
+			}
+			specializedValidatorManagerAddressStr = specializedValidatorManagerAddress.String()
+		}
+	}
+
+	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
+	specializedValidatorManagerAddress := common.HexToAddress(specializedValidatorManagerAddressStr)
+
+	validatorManagerOwnerAddressStr := sc.ValidatorManagerOwner
+	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
+
+	// needed for ACP99 PoS (that flow will fail if missing)
+	_, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
+		app,
+		network,
+		validatorManagerOwnerAddress,
+		true,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+		return err
 	}
-	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
-		return fmt.Errorf("unable to find Validator Manager address")
-	}
-	managerAddress := sc.Networks[network.Name()].ValidatorManagerAddress
-	scNetwork := sc.Networks[network.Name()]
-	if scNetwork.BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())
-	}
-	bootstrapValidators := scNetwork.BootstrapValidators
+
+	bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
 	avaGoBootstrapValidators, err := blockchaincmd.ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return err
 	}
-	clusterName := scNetwork.ClusterName
+
+	clusterName := sc.Networks[network.Name()].ClusterName
+
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogLevel,
 		initValidatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
@@ -159,30 +216,20 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return err
-	}
-	blockchainID, err := contract.GetBlockchainID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return err
-	}
-	ownerAddress := common.HexToAddress(sc.ProxyContractOwner)
+
 	subnetSDK := blockchainSDK.Subnet{
-		SubnetID:            subnetID,
-		BlockchainID:        blockchainID,
-		BootstrapValidators: avaGoBootstrapValidators,
-		OwnerAddress:        &ownerAddress,
-		RPC:                 initValidatorManagerFlags.RPC,
+		Network:                            network.SDKNetwork(),
+		SubnetID:                           subnetID,
+		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
+		ValidatorManagerSubnetID:           validatorManagerSubnetID,
+		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,
+		ValidatorManagerAddress:            &validatorManagerAddress,
+		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
+		ValidatorManagerOwnerAddress:       &validatorManagerOwnerAddress,
+		ValidatorManagerOwnerPrivateKey:    validatorManagerOwnerPrivateKey,
+		BootstrapValidators:                avaGoBootstrapValidators,
 	}
+
 	var signatureAggregatorEndpoint string
 	if initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint == "" {
 		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
@@ -200,16 +247,15 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	} else {
 		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
+
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			app.Log,
 			subnetSDK,
-			network,
 			privateKey,
 			aggregatorLogger,
-			managerAddress,
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
@@ -217,72 +263,28 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(initValidatorManagerFlags.RPC)
-		if err != nil {
-			return err
-		}
-		if !deployed {
-			// it is not in genesis
-			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-			proxyOwnerPrivateKey, err := blockchaincmd.GetProxyOwnerPrivateKey(
-				app,
+		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			// we assume it is fully CLI managed
+			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
+				duallogger.NewDualLogger(true, app),
 				network,
+				blockchainName,
+				validatorManagerRPCEndpoint,
 				sc.ProxyContractOwner,
-				ux.Logger.PrintToUser,
-			)
-			if err != nil {
+				sc.PoS(),
+				sc.UseACP99,
+			); err != nil {
 				return err
 			}
-			if sc.UseACP99 {
-				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					initValidatorManagerFlags.RPC,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				)
-				if err != nil {
-					return err
-				}
-				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					initValidatorManagerFlags.RPC,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				)
-				if err != nil {
-					return err
-				}
-			} else {
-				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					initValidatorManagerFlags.RPC,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				); err != nil {
-					return err
-				}
-			}
 		}
+
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
 			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
 		}
-		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
-			app,
-			network,
-			ownerAddress,
-			true,
-		)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return fmt.Errorf("could not find validator manager owner private key")
-		}
 		if err := validatormanager.SetupPoS(
 			app.Log,
 			subnetSDK,
-			network,
 			privateKey,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
@@ -295,27 +297,30 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			managerAddress,
-			validatormanagerSDK.SpecializationProxyContractAddress,
-			managerOwnerPrivateKey,
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
-			return err
-		}
-		sidecar, err := app.LoadSidecar(blockchainName)
-		if err != nil {
-			return err
-		}
-		networkInfo := sidecar.Networks[network.Name()]
-		networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
-		sidecar.Networks[network.Name()] = networkInfo
-		if err := app.UpdateSidecar(&sidecar); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	default: // unsupported
 		return fmt.Errorf("only PoA and PoS supported")
 	}
+
+	sidecar, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	sidecar.UpdateValidatorManagerAddress(
+		network.Name(),
+		validatorManagerRPCEndpoint,
+		validatorManagerBlockchainID,
+		validatorManagerAddress.String(),
+		specializedValidatorManagerAddress.String(),
+	)
+	if err := app.UpdateSidecar(&sidecar); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -175,8 +175,17 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			localEndpoint = endpoint
 		}
 		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
+		if data.ValidatorManagerBlockchainID != ids.Empty {
+			t.AppendRow(table.Row{net, "Manager Blockchain ID", data.ValidatorManagerBlockchainID.String()})
+		}
+		if data.ValidatorManagerRPCEndpoint != "" {
+			t.AppendRow(table.Row{net, "Manager RPC", data.ValidatorManagerRPCEndpoint})
+		}
 		if data.ValidatorManagerAddress != "" {
-			t.AppendRow(table.Row{net, "Manager", data.ValidatorManagerAddress})
+			t.AppendRow(table.Row{net, "Manager Address", data.ValidatorManagerAddress})
+		}
+		if data.SpecializedValidatorManagerAddress != "" {
+			t.AppendRow(table.Row{net, "Specialized Manager Address", data.SpecializedValidatorManagerAddress})
 		}
 	}
 	ux.Logger.PrintToUser(t.Render())

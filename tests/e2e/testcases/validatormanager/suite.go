@@ -205,20 +205,21 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		avaGoBootstrapValidators, err := getBootstrapValidator(uris[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		ownerAddress := common.HexToAddress(ewoqEVMAddress)
+		proxyAddress := common.HexToAddress(ProxyContractAddress)
 		subnetSDK := blockchainSDK.Subnet{
-			SubnetID:            subnetID,
-			BlockchainID:        blockchainID,
-			OwnerAddress:        &ownerAddress,
-			RPC:                 rpcURL,
-			BootstrapValidators: avaGoBootstrapValidators,
+			Network:                      network.SDKNetwork(),
+			SubnetID:                     subnetID,
+			ValidatorManagerRPC:          rpcURL,
+			ValidatorManagerBlockchainID: blockchainID,
+			ValidatorManagerAddress:      &proxyAddress,
+			ValidatorManagerOwnerAddress: &ownerAddress,
+			BootstrapValidators:          avaGoBootstrapValidators,
 		}
 
 		err = subnetSDK.InitializeProofOfAuthority(
 			logging.NoLog{},
-			network.SDKNetwork(),
 			k.PrivKeyHex(),
 			logging.NoLog{},
-			ProxyContractAddress,
 			true,
 			"",
 		)

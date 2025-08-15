@@ -1303,3 +1303,45 @@ func ParseICMContractAddressesFromOutput(subnet, output string) (string, string,
 
 	return messengerAddress, registryAddress, nil
 }
+
+func ParseValidatorManagerAddressesFromOutput(output string) (string, string, string, error) {
+	var validatorManagerAddress string
+	var proxyAddress string
+	var proxyAdminAddress string
+
+	// split output by newline
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		if strings.Contains(line, "Validator Manager Address: ") {
+			startIndex := strings.Index(line, ":")
+			if startIndex == -1 {
+				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			endIndex := len(line)
+			validatorManagerAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+		if strings.Contains(line, "Proxy Address: ") {
+			startIndex := strings.Index(line, ":")
+			if startIndex == -1 {
+				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			endIndex := len(line)
+			proxyAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+		if strings.Contains(line, "Proxy Admin Address: ") {
+			startIndex := strings.Index(line, ":")
+			if startIndex == -1 {
+				return "", "", "", fmt.Errorf("invalid format for contract address line: %s", line)
+			}
+			endIndex := len(line)
+			proxyAdminAddress = strings.TrimSpace(line[startIndex+1 : endIndex])
+		}
+	}
+
+	if validatorManagerAddress == "" {
+		return "", "", "", fmt.Errorf("messenger address not found in output")
+	}
+
+	return validatorManagerAddress, proxyAddress, proxyAdminAddress, nil
+}

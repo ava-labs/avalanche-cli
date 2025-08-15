@@ -6,19 +6,24 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type NetworkData struct {
-	SubnetID                   ids.ID
-	BlockchainID               ids.ID
-	RPCVersion                 int
-	TeleporterMessengerAddress string
-	TeleporterRegistryAddress  string
-	RPCEndpoints               []string
-	WSEndpoints                []string
-	BootstrapValidators        []SubnetValidator
-	ClusterName                string
-	ValidatorManagerAddress    string
+	SubnetID                           ids.ID
+	BlockchainID                       ids.ID
+	RPCVersion                         int
+	TeleporterMessengerAddress         string
+	TeleporterRegistryAddress          string
+	RPCEndpoints                       []string
+	WSEndpoints                        []string
+	BootstrapValidators                []SubnetValidator
+	ClusterName                        string
+	ValidatorManagerAddress            string
+	ValidatorManagerBlockchainID       ids.ID
+	ValidatorManagerRPCEndpoint        string
+	SpecializedValidatorManagerAddress string
 }
 
 type Sidecar struct {
@@ -82,8 +87,28 @@ func (sc Sidecar) PoS() bool {
 	return sc.ValidatorManagement == validatormanagertypes.ProofOfStake
 }
 
-func (sc Sidecar) UpdateValidatorManagerAddress(network string, managerAddr string) {
+func (sc *Sidecar) UpdateValidatorManagerAddress(
+	network string,
+	managerRPCEndpoint string,
+	managerBlockchainID ids.ID,
+	managerAddr string,
+	specializedManagerAddr string,
+) {
+	if sc.Networks == nil {
+		sc.Networks = make(map[string]NetworkData)
+	}
 	temp := sc.Networks[network]
-	temp.ValidatorManagerAddress = managerAddr
+	if managerRPCEndpoint != "" {
+		temp.ValidatorManagerRPCEndpoint = managerRPCEndpoint
+	}
+	if managerBlockchainID != ids.Empty {
+		temp.ValidatorManagerBlockchainID = managerBlockchainID
+	}
+	if managerAddr != "" {
+		temp.ValidatorManagerAddress = managerAddr
+	}
+	if specializedManagerAddr != "" && common.HexToAddress(specializedManagerAddr) != (common.Address{}) {
+		temp.SpecializedValidatorManagerAddress = specializedManagerAddr
+	}
 	sc.Networks[network] = temp
 }

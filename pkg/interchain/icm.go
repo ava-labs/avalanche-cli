@@ -329,7 +329,7 @@ func (t *ICMDeployer) DeployRegistry(
 			ProtocolAddress: messengerContractAddress,
 		},
 	}
-	registryAddress, err := contract.DeployContract(
+	registryAddress, _, _, err := contract.DeployContract(
 		rpcURL,
 		privateKey,
 		[]byte(t.registryBydecode),

@@ -277,6 +277,7 @@ func migrateCluster(
 		printFunc,
 		clusterName,
 		binPath,
+		nil,
 		pluginDir,
 		defaultFlags,
 		connectionSettings,

@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	contract "github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
@@ -18,7 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	contractsdk "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
@@ -218,38 +219,53 @@ func importBlockchain(
 	if !subnetInfo.IsPermissioned {
 		sc.Sovereign = true
 		sc.UseACP99 = true
-		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-		e := sc.Networks[network.Name()]
-		e.ValidatorManagerAddress = validatorManagerAddress
-		sc.Networks[network.Name()] = e
+		validatorManagerAddress := "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+		validatorManagerRPCEndpoint := ""
+		validatorManagerBlockchainID := subnetInfo.ManagerChainID
 		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
-		if rpcURL != "" {
-			sc.ValidatorManagement = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
-			if sc.ValidatorManagement == validatormanagertypes.UndefinedValidatorManagement {
-				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type")
+		printFunc("  Validator Manager BlockchainID: %s", subnetInfo.ManagerChainID)
+		if blockchainID == subnetInfo.ManagerChainID {
+			// manager lives at L1
+			validatorManagerRPCEndpoint = rpcURL
+		} else {
+			cChainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{CChain: true})
+			if err != nil {
+				return models.Sidecar{}, nil, fmt.Errorf("could not get C-Chain ID for %s: %w", network.Name(), err)
 			}
-			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
-				// a v2.0.0 validator manager can be identified as PoA for two cases:
-				// - it is PoA
-				// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
-				//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
-				//   owner of this main manager, interacts with the users
-				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+			if cChainID == subnetInfo.ManagerChainID {
+				// manager lives at C-Chain
+				validatorManagerRPCEndpoint = network.CChainEndpoint()
+			} else {
+				printFunc("The Validator Manager is not deployed on L1 or on C-Chain")
+				validatorManagerRPCEndpoint, err = app.Prompt.CaptureURL("What is the Validator Manager RPC endpoint?", false)
 				if err != nil {
 					return models.Sidecar{}, nil, err
 				}
-				// check if the owner is a specialized PoS validator manager
-				// if this is the case, GetValidatorManagerType will return the corresponding type
-				validatorManagement := validatorManagerSDK.GetValidatorManagerType(rpcURL, owner)
-				if validatorManagement != validatormanagertypes.UndefinedValidatorManagement {
-					printFunc("  Specialized Validator Manager Address: %s", owner)
-					e := sc.Networks[network.Name()]
-					e.ValidatorManagerAddress = owner.String()
-					sc.Networks[network.Name()] = e
-					sc.ValidatorManagement = validatorManagement
-				} else {
-					sc.ValidatorManagerOwner = owner.String()
-				}
+			}
+		}
+		printFunc("  Validator Manager RPC: %s", validatorManagerRPCEndpoint)
+		e := sc.Networks[network.Name()]
+		e.ValidatorManagerAddress = validatorManagerAddress
+		e.ValidatorManagerBlockchainID = validatorManagerBlockchainID
+		e.ValidatorManagerRPCEndpoint = validatorManagerRPCEndpoint
+		sc.Networks[network.Name()] = e
+		if validatorManagerRPCEndpoint != "" {
+			validatorManagement, ownerAddress, specializedValidatorManagerAddress, err := GetBaseValidatorManagerInfo(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(validatorManagerAddress),
+			)
+			if err != nil {
+				return models.Sidecar{}, nil, err
+			}
+			sc.ValidatorManagement = validatorManagement
+			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
+				sc.ValidatorManagerOwner = ownerAddress.String()
+			}
+			if specializedValidatorManagerAddress != (common.Address{}) {
+				printFunc("  Specialized Validator Manager Address: %s", specializedValidatorManagerAddress)
+				e := sc.Networks[network.Name()]
+				e.ValidatorManagerAddress = specializedValidatorManagerAddress.String()
+				sc.Networks[network.Name()] = e
 			}
 			printFunc("  Validation Kind: %s", sc.ValidatorManagement)
 			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
@@ -259,4 +275,35 @@ func importBlockchain(
 	}
 
 	return sc, genBytes, err
+}
+
+// returns validator manager type, owner if it is PoA, specialized address if it has specialization, error
+func GetBaseValidatorManagerInfo(
+	validatorManagerRPCEndpoint string,
+	validatorManagerAddress common.Address,
+) (validatormanagertypes.ValidatorManagementType, common.Address, common.Address, error) {
+	validatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, validatorManagerAddress)
+	if validatorManagement == validatormanagertypes.UndefinedValidatorManagement {
+		return validatorManagement, common.Address{}, common.Address{}, fmt.Errorf("could not infer validator manager type")
+	}
+	if validatorManagement == validatormanagertypes.ProofOfAuthority {
+		// a v2.0.0 validator manager can be identified as PoA for two cases:
+		// - it is PoA
+		// - it is a validator manager used by v2.0.0 PoS or another specialized validator manager,
+		//   in which case the main manager interacts with the P-Chain, and the specialized manager, which is the
+		//   owner of this main manager, interacts with the users
+		owner, err := contractsdk.GetContractOwner(validatorManagerRPCEndpoint, validatorManagerAddress)
+		if err != nil {
+			return validatorManagement, common.Address{}, common.Address{}, err
+		}
+		// check if the owner is a specialized PoS validator manager
+		// if this is the case, GetValidatorManagerType will return the corresponding type
+		specializedValidatorManagement := validatorManagerSDK.GetValidatorManagerType(validatorManagerRPCEndpoint, owner)
+		if specializedValidatorManagement != validatormanagertypes.UndefinedValidatorManagement {
+			return specializedValidatorManagement, common.Address{}, owner, nil
+		} else {
+			return validatorManagement, owner, common.Address{}, nil
+		}
+	}
+	return validatorManagement, common.Address{}, common.Address{}, nil
 }

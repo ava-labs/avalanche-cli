@@ -18,6 +18,7 @@ import (
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -254,6 +255,8 @@ func ParseSpec(
 		for i := range inputsMaps {
 			if sdkUtils.Belongs(indexedFields, i) {
 				inputsMaps[i]["indexed"] = true
+			} else {
+				inputsMaps[i]["indexed"] = false
 			}
 		}
 	}
@@ -614,10 +617,10 @@ func DeployContract(
 	binBytes []byte,
 	methodSpec string,
 	params ...interface{},
-) (common.Address, error) {
+) (common.Address, *types.Transaction, *types.Receipt, error) {
 	_, methodABI, err := ParseSpec(methodSpec, nil, true, false, false, false, params...)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	metadata := &bind.MetaData{
 		ABI: methodABI,
@@ -625,31 +628,32 @@ func DeployContract(
 	}
 	abi, err := metadata.GetAbi()
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	bin := common.FromHex(metadata.Bin)
 	if len(bin) == 0 {
-		return common.Address{}, fmt.Errorf("failure on given binary for smart contract: zero len")
+		return common.Address{}, nil, nil, fmt.Errorf("failure on given binary for smart contract: zero len")
 	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	defer client.Close()
 	txOpts, err := client.GetTxOptsWithSigner(privateKey)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
 	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client.EthClient, params...)
 	if err != nil {
-		return common.Address{}, err
+		return common.Address{}, nil, nil, err
 	}
-	if _, success, err := client.WaitForTransaction(tx); err != nil {
-		return common.Address{}, err
+	receipt, success, err := client.WaitForTransaction(tx)
+	if err != nil {
+		return common.Address{}, tx, receipt, err
 	} else if !success {
-		return common.Address{}, ErrFailedReceiptStatus
+		return common.Address{}, tx, receipt, ErrFailedReceiptStatus
 	}
-	return address, nil
+	return address, tx, receipt, nil
 }
 
 func UnpackLog(

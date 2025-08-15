@@ -26,7 +26,165 @@ var (
 	avagoVersion     string
 )
 
-var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
+var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
+	ginkgo.It("Create Etna Subnet Config", func() {
+		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
+			utils.BlockchainName,
+			ewoqEVMAddress,
+			commands.PoA,
+		)
+	})
+
+	ginkgo.It("Can create an Etna Local Network", func() {
+		output := commands.StartNetworkWithVersion(avagoVersion)
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can create a local node connected to Etna Local Network", func() {
+		output, err := commands.CreateLocalEtnaNode(
+			avagoVersion,
+			utils.TestLocalNodeName,
+			7,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+		localClusterUris, err = utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(7))
+	})
+
+	ginkgo.It("Deploy Etna Subnet", func() {
+		output, err := commands.DeployEtnaBlockchain(
+			utils.BlockchainName,
+			utils.TestLocalNodeName,
+			[]string{
+				localClusterUris[0],
+				localClusterUris[1],
+				localClusterUris[2],
+				localClusterUris[3],
+				localClusterUris[4],
+			},
+			ewoqPChainAddress,
+			true,  // convertOnly
+			false, // externalManager
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can make cluster track a subnet", func() {
+		output, err := commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.BlockchainName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+		// parse blockchainID from output
+		re := regexp.MustCompile(`Waiting for blockchain ([A-Za-z0-9]+) to be bootstrapped`)
+		// Find the first match
+		match := re.FindStringSubmatch(output)
+		gomega.Expect(match).ToNot(gomega.BeEmpty())
+		if len(match) > 1 {
+			// The first submatch will contain the chain ID
+			blockchainID = match[1]
+		}
+		gomega.Expect(blockchainID).Should(gomega.Not(gomega.BeEmpty()))
+		ginkgo.GinkgoWriter.Printf("Blockchain ID: %s\n", blockchainID)
+	})
+
+	ginkgo.It("Can initialize a PoA Manager contract", func() {
+		output, err := commands.InitValidatorManager(
+			utils.BlockchainName,
+			utils.TestLocalNodeName,
+			"",
+			blockchainID,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can add validator", func() {
+		output, err := commands.AddEtnaSubnetValidatorToCluster(
+			utils.TestLocalNodeName,
+			utils.BlockchainName,
+			localClusterUris[5],
+			ewoqPChainAddress,
+			1,
+			false, // use existing avago running
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can add second validator", func() {
+		output, err := commands.AddEtnaSubnetValidatorToCluster(
+			utils.TestLocalNodeName,
+			utils.BlockchainName,
+			localClusterUris[6],
+			ewoqPChainAddress,
+			1,
+			false, // use existing avago running
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can get status of the cluster", func() {
+		output, err := commands.GetLocalClusterStatus(utils.TestLocalNodeName, utils.BlockchainName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+		// make sure we can find string with "http://127.0.0.1:port" and "L1:Validating" string in the output
+		parsedURL, err := url.Parse(localClusterUris[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+		port := parsedURL.Port()
+		gomega.Expect(port).Should(gomega.Not(gomega.BeEmpty()))
+		regexp := fmt.Sprintf(`http://127\.0\.0\.1:%s.*Validating`, port)
+		gomega.Expect(output).To(gomega.MatchRegexp(regexp), fmt.Sprintf("expect to have L1 validated by port %s", port))
+		parsedURL, err = url.Parse(localClusterUris[2])
+		gomega.Expect(err).Should(gomega.BeNil())
+		port = parsedURL.Port()
+		gomega.Expect(port).Should(gomega.Not(gomega.BeEmpty()))
+		regexp = fmt.Sprintf(`http://127\.0\.0\.1:%s.*Validating`, port)
+		gomega.Expect(output).To(gomega.MatchRegexp(regexp), fmt.Sprintf("expect to have L1 validated by port %s", port))
+	})
+
+	ginkgo.It("Can remove bootstrap validator", func() {
+		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
+			utils.TestLocalNodeName,
+			utils.BlockchainName,
+			localClusterUris[2],
+			keyName,
+			0,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can remove non-bootstrap validator", func() {
+		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
+			utils.TestLocalNodeName,
+			utils.BlockchainName,
+			localClusterUris[5],
+			keyName,
+			0,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy local node", func() {
+		output, err := commands.DestroyLocalNode(utils.TestLocalNodeName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy Etna Local Network", func() {
+		commands.CleanNetwork()
+	})
+
+	ginkgo.It("Can remove Etna Subnet Config", func() {
+		commands.DeleteSubnetConfig(utils.BlockchainName)
+	})
+})
+
+var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.BlockchainName,
@@ -66,6 +224,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			},
 			ewoqPChainAddress,
 			true, // convertOnly
+			true, // externalManager
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -89,9 +248,10 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 	})
 
 	ginkgo.It("Can initialize a PoA Manager contract", func() {
-		output, err := commands.InitValidatorManager(utils.BlockchainName,
+		output, err := commands.InitValidatorManager(
+			utils.BlockchainName,
 			utils.TestLocalNodeName,
-			localClusterUris[0],
+			"",
 			blockchainID,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())

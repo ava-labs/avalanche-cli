@@ -149,8 +149,8 @@ func GetUptimeProofMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	subnetID ids.ID,
-	blockchainID ids.ID,
+	l1SubnetID ids.ID,
+	l1BlockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
 	signatureAggregatorEndpoint string,
@@ -165,7 +165,7 @@ func GetUptimeProofMessage(
 	}
 	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		blockchainID,
+		l1BlockchainID,
 		addressedCall.Bytes(),
 	)
 	if err != nil {
@@ -173,7 +173,14 @@ func GetUptimeProofMessage(
 	}
 
 	messageHexStr := hex.EncodeToString(uptimeProofUnsignedMessage.Bytes())
-	return interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, "", subnetID.String(), aggregatorQuorumPercentage)
+	return interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		"",
+		l1SubnetID.String(),
+		aggregatorQuorumPercentage,
+	)
 }
 
 func InitValidatorRemoval(
@@ -183,6 +190,7 @@ func InitValidatorRemoval(
 	network models.Network,
 	rpcURL string,
 	chainSpec contract.ChainSpec,
+	l1RPCURL string,
 	generateRawTxOnly bool,
 	ownerAddressStr string,
 	ownerPrivateKey string,
@@ -191,12 +199,13 @@ func InitValidatorRemoval(
 	isPoS bool,
 	uptimeSec uint64,
 	force bool,
-	validatorManagerAddressStr string,
+	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
+	l1SubnetID, err := contract.GetSubnetID(
 		app,
 		network,
 		chainSpec,
@@ -204,7 +213,8 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	blockchainID, err := contract.GetBlockchainID(
+
+	l1BlockchainID, err := contract.GetBlockchainID(
 		app,
 		network,
 		chainSpec,
@@ -212,8 +222,21 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, nil, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return nil, ids.Empty, nil, err
+	}
+
+	managerAddress := common.HexToAddress(managerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
+
 	validationID, err := validator.GetValidationID(
 		rpcURL,
 		managerAddress,
@@ -244,7 +267,7 @@ func InitValidatorRemoval(
 		signedUptimeProof := &warp.Message{}
 		if isPoS {
 			if uptimeSec == 0 {
-				uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
+				uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(l1RPCURL, nodeID)
 				if err != nil {
 					return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
 				}
@@ -254,8 +277,8 @@ func InitValidatorRemoval(
 				network,
 				aggregatorLogger,
 				0,
-				subnetID,
-				blockchainID,
+				l1SubnetID,
+				l1BlockchainID,
 				validationID,
 				uptimeSec,
 				signatureAggregatorEndpoint,
@@ -312,8 +335,8 @@ func InitValidatorRemoval(
 		network,
 		aggregatorLogger,
 		unsignedMessage,
-		subnetID,
-		blockchainID,
+		managerSubnetID,
+		managerBlockchainID,
 		managerAddress,
 		validationID,
 		nonce,
@@ -377,11 +400,12 @@ func FinishValidatorRemoval(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
+	managerBlockchainID ids.ID,
+	managerAddressStr string,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
 ) (*types.Transaction, error) {
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -390,6 +414,18 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: managerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
@@ -397,6 +433,7 @@ func FinishValidatorRemoval(
 		aggregatorLogger,
 		0,
 		subnetID,
+		managerSubnetID,
 		validationID,
 		false,
 		signatureAggregatorEndpoint,

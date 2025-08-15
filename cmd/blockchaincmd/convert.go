@@ -8,13 +8,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -26,12 +24,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -85,181 +81,84 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
-	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().StringVar(&validatorManagerRPCEndpoint, "validator-manager-rpc", "", "RPC to use to access to the validator manager")
+	cmd.Flags().StringVar(&validatorManagerBlockchainIDStr, "validator-manager-blockchain-id", "", "validator manager blockchain ID")
+	cmd.Flags().StringVar(&validatorManagerAddressStr, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().StringVar(&specializedValidatorManagerAddressStr, "specialized-validator-manager-address", "", "specialized validator manager address")
 	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, bootstrapValidatorGroup, localMachineGroup, posGroup, sigAggGroup}))
 	return cmd
 }
 
-func StartLocalMachine(
+func GetValidatorManagerSubnetID(
 	network models.Network,
-	sidecar models.Sidecar,
-	blockchainName string,
-	deployBalance,
-	availableBalance uint64,
-	localMachineFlags *flags.LocalMachineFlags,
-	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
-) (bool, error) {
-	var err error
-	if network.Kind == models.Local &&
-		!bootstrapValidatorFlags.GenerateNodeID &&
-		bootstrapValidatorFlags.BootstrapEndpoints == nil &&
-		bootstrapValidatorFlags.BootstrapValidatorsJSONFilePath == "" {
-		localMachineFlags.UseLocalMachine = true
-	}
-	clusterName := localnet.LocalClusterName(network, blockchainName)
-	if clusterNameFlagValue != "" {
-		clusterName = clusterNameFlagValue
-		if localnet.LocalClusterExists(app, clusterName) {
-			localMachineFlags.UseLocalMachine = true
-			if len(bootstrapValidatorFlags.BootstrapEndpoints) == 0 {
-				bootstrapValidatorFlags.BootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
-				if err != nil {
-					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-						"please create your local node again and call blockchain deploy command again", err)
-				}
-			}
-			network = models.ConvertClusterToNetwork(network)
-		}
-	}
-	// ask user if we want to use local machine if cluster is not provided
-	if !localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
-		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
-		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+	validatorManagerBlockchainID ids.ID,
+) (ids.ID, error) {
+	return contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+}
 
-		localMachineFlags.UseLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
-		if err != nil {
-			return false, err
-		}
-	}
-	// default number of local machine nodes to be 1
-	if localMachineFlags.UseLocalMachine && bootstrapValidatorFlags.NumBootstrapValidators == 0 {
-		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
-	}
-	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
-	if localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
-		if localnet.LocalClusterExists(app, clusterName) {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(
-				logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
-				blockchainName,
-				network.Name(),
-			)
-			yes, err := app.Prompt.CaptureNoYes(
-				fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
-			)
-			if err != nil {
-				return false, err
-			}
-			if !yes {
-				return true, nil
-			}
-			_ = localnet.LocalClusterRemove(app, clusterName)
-			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
-		}
-		requiredBalance := deployBalance * uint64(bootstrapValidatorFlags.NumBootstrapValidators)
-		if availableBalance < requiredBalance {
-			return false, fmt.Errorf(
-				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-				bootstrapValidatorFlags.NumBootstrapValidators,
-				requiredBalance,
-				availableBalance,
-			)
-		}
-		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
-		// setup (install if needed) avalanchego binary
-		avagoVersion := localMachineFlags.UserProvidedAvagoVersion
-		if localMachineFlags.UserProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && localMachineFlags.AvagoBinaryPath == "" {
-			// nothing given: get avago version from RPC compat using latest.json defined in
-			// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
-			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
-			if err != nil {
-				if err != dependencies.ErrNoAvagoVersion {
-					return false, err
-				}
-				avagoVersion = constants.LatestPreReleaseVersionTag
-			}
-		}
-		localMachineFlags.AvagoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avagoVersion, localMachineFlags.AvagoBinaryPath)
-		if err != nil {
-			return false, err
-		}
-		nodeConfig := map[string]interface{}{}
-		if partialSync {
-			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
-		}
-		if network.Kind == models.Fuji {
-			globalNetworkFlags.UseFuji = true
-		}
-		if network.Kind == models.Mainnet {
-			globalNetworkFlags.UseMainnet = true
-		}
-		nodeSettingsLen := max(len(localMachineFlags.StakingSignerKeyPaths), len(localMachineFlags.HTTPPorts), len(localMachineFlags.StakingPorts))
-		nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
-		for i := range nodeSettingsLen {
-			nodeSetting := localnet.NodeSetting{}
-			if i < len(localMachineFlags.StakingSignerKeyPaths) {
-				stakingSignerKey, err := os.ReadFile(localMachineFlags.StakingSignerKeyPaths[i])
-				if err != nil {
-					return false, fmt.Errorf("could not read staking signer key at %s: %w", localMachineFlags.StakingSignerKeyPaths[i], err)
-				}
-				stakingCertKey, err := os.ReadFile(localMachineFlags.StakingCertKeyPaths[i])
-				if err != nil {
-					return false, fmt.Errorf("could not read staking cert key at %s: %w", localMachineFlags.StakingCertKeyPaths[i], err)
-				}
-				stakingTLSKey, err := os.ReadFile(localMachineFlags.StakingTLSKeyPaths[i])
-				if err != nil {
-					return false, fmt.Errorf("could not read staking TLS key at %s: %w", localMachineFlags.StakingTLSKeyPaths[i], err)
-				}
-				nodeSetting.StakingSignerKey = stakingSignerKey
-				nodeSetting.StakingCertKey = stakingCertKey
-				nodeSetting.StakingTLSKey = stakingTLSKey
-			}
-			if i < len(localMachineFlags.HTTPPorts) {
-				nodeSetting.HTTPPort = uint64(localMachineFlags.HTTPPorts[i])
-			}
-			if i < len(localMachineFlags.StakingPorts) {
-				nodeSetting.StakingPort = uint64(localMachineFlags.StakingPorts[i])
-			}
-			nodeSettings[i] = nodeSetting
-		}
-		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-		if err = node.StartLocalNode(
+func GetValidatorManagerRPCEndpoint(
+	network models.Network,
+	blockchainName string,
+	blockchainID ids.ID,
+	validatorManagerBlockchainID ids.ID,
+) (string, error) {
+	var (
+		err                         error
+		validatorManagerRPCEndpoint string
+	)
+	if blockchainID == validatorManagerBlockchainID {
+		validatorManagerRPCEndpoint, _, err = contract.GetBlockchainEndpoints(
 			app,
-			clusterName,
-			localMachineFlags.AvagoBinaryPath,
-			uint32(bootstrapValidatorFlags.NumBootstrapValidators),
-			nodeConfig,
-			localnet.ConnectionSettings{},
-			nodeSettings,
-			avagoVersionSettings,
 			network,
-		); err != nil {
-			return false, err
+			contract.ChainSpec{
+				BlockchainName: blockchainName,
+				BlockchainID:   blockchainID.String(),
+			},
+			true,
+			false,
+		)
+		if err != nil {
+			return "", err
 		}
-		clusterNameFlagValue = clusterName
-		if len(bootstrapValidatorFlags.BootstrapEndpoints) == 0 {
-			bootstrapValidatorFlags.BootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
+	} else {
+		cChainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{CChain: true})
+		if err != nil {
+			return "", fmt.Errorf("could not get C-Chain ID for %s: %w", network.Name(), err)
+		}
+		if cChainID == validatorManagerBlockchainID {
+			// manager lives at C-Chain
+			validatorManagerRPCEndpoint = network.CChainEndpoint()
+		} else {
+			validatorManagerRPCEndpoint, err = app.Prompt.CaptureURL("What is the Validator Manager RPC endpoint?", false)
 			if err != nil {
-				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-					"please create your local node again and call blockchain deploy command again", err)
+				return "", err
 			}
 		}
 	}
-	return false, nil
+	return validatorManagerRPCEndpoint, nil
 }
 
 func InitializeValidatorManager(
-	blockchainName,
-	validatorManagerOwner string,
+	blockchainName string,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
 	pos bool,
-	managerAddress string,
-	proxyContractOwner string,
+	privateKey string,
+	validatorManagerRPCEndpoint string,
+	validatorManagerBlockchainID ids.ID,
+	validatorManagerAddressStr string,
+	validatorManagerOwnerAddressStr string,
+	specializedValidatorManagerAddressStr string,
+	proxyOwnerAddressStr string,
 	useACP99 bool,
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
@@ -297,29 +196,44 @@ func InitializeValidatorManager(
 
 	tracked := true
 
-	chainSpec := contract.ChainSpec{
-		BlockchainName: blockchainName,
-	}
-	_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return tracked, err
-	}
-	rpcURL, _, err := contract.GetBlockchainEndpoints(
-		app,
-		network,
-		chainSpec,
-		true,
-		false,
-	)
-	if err != nil {
-		return tracked, err
+	if validatorManagerRPCEndpoint == "" {
+		validatorManagerRPCEndpoint, err = GetValidatorManagerRPCEndpoint(
+			network,
+			blockchainName,
+			blockchainID,
+			validatorManagerBlockchainID,
+		)
+		if err != nil {
+			return tracked, err
+		}
 	}
 
-	client, err := evm.GetClient(rpcURL)
+	if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+		// we assume it is fully CLI managed
+		if err := CompleteValidatorManagerL1Deploy(
+			duallogger.NewDualLogger(true, app),
+			network,
+			blockchainName,
+			validatorManagerRPCEndpoint,
+			proxyOwnerAddressStr,
+			pos,
+			useACP99,
+		); err != nil {
+			return tracked, err
+		}
+	}
+
+	if specializedValidatorManagerAddressStr == "" {
+		if useACP99 && pos {
+			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
+			if err != nil {
+				return tracked, err
+			}
+			specializedValidatorManagerAddressStr = specializedValidatorManagerAddress.String()
+		}
+	}
+
+	client, err := evm.GetClient(validatorManagerRPCEndpoint)
 	if err != nil {
 		return tracked, err
 	}
@@ -327,64 +241,67 @@ func InitializeValidatorManager(
 		return tracked, err
 	}
 
-	ownerAddress := common.HexToAddress(validatorManagerOwner)
+	validatorManagerAddress := common.HexToAddress(validatorManagerAddressStr)
+	specializedValidatorManagerAddress := common.HexToAddress(specializedValidatorManagerAddressStr)
 
-	if pos {
-		deployed, err := validatormanager.ValidatorProxyHasImplementationSet(rpcURL)
+	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
+
+	// needed for ACP99 PoS (that flow will fail if missing)
+	_, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
+		app,
+		network,
+		validatorManagerOwnerAddress,
+		true,
+	)
+	if err != nil {
+		return tracked, err
+	}
+
+	if privateKey == "" {
+		// try to use prefunded key from genesis of validator manager blockchain
+		_, privateKey, err = contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainID: validatorManagerBlockchainID.String(),
+			},
+		)
 		if err != nil {
 			return tracked, err
 		}
-		if !deployed {
-			// it is not in genesis
-			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-			proxyOwnerPrivateKey, err := GetProxyOwnerPrivateKey(
-				app,
-				network,
-				proxyContractOwner,
-				ux.Logger.PrintToUser,
+		if privateKey == "" {
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				"",
 			)
 			if err != nil {
 				return tracked, err
 			}
-			if useACP99 {
-				_, err := validatormanager.DeployAndRegisterValidatorManagerV2_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					rpcURL,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				)
-				if err != nil {
-					return tracked, err
-				}
-				_, err = validatormanager.DeployAndRegisterPoSValidatorManagerV2_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					rpcURL,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				)
-				if err != nil {
-					return tracked, err
-				}
-			} else {
-				if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerV1_0_0Contract(
-					duallogger.NewDualLogger(true, app),
-					rpcURL,
-					genesisPrivateKey,
-					proxyOwnerPrivateKey,
-				); err != nil {
-					return tracked, err
-				}
-			}
 		}
 	}
 
-	subnetSDK := blockchainSDK.Subnet{
-		SubnetID:            subnetID,
-		BlockchainID:        blockchainID,
-		OwnerAddress:        &ownerAddress,
-		RPC:                 rpcURL,
-		BootstrapValidators: avaGoBootstrapValidators,
+	validatorManagerSubnetID, err := GetValidatorManagerSubnetID(network, validatorManagerBlockchainID)
+	if err != nil {
+		return tracked, err
 	}
+
+	subnetSDK := blockchainSDK.Subnet{
+		Network:                            network.SDKNetwork(),
+		SubnetID:                           subnetID,
+		ValidatorManagerRPC:                validatorManagerRPCEndpoint,
+		ValidatorManagerSubnetID:           validatorManagerSubnetID,
+		ValidatorManagerBlockchainID:       validatorManagerBlockchainID,
+		ValidatorManagerAddress:            &validatorManagerAddress,
+		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
+		ValidatorManagerOwnerAddress:       &validatorManagerOwnerAddress,
+		ValidatorManagerOwnerPrivateKey:    validatorManagerOwnerPrivateKey,
+		BootstrapValidators:                avaGoBootstrapValidators,
+	}
+
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		signatureAggregatorFlags.AggregatorLogLevel,
 		signatureAggregatorFlags.AggregatorLogToStdout,
@@ -414,22 +331,9 @@ func InitializeValidatorManager(
 	}
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-		found, _, _, managerOwnerPrivateKey, err := contract.SearchForManagedKey(
-			app,
-			network,
-			ownerAddress,
-			true,
-		)
-		if err != nil {
-			return tracked, err
-		}
-		if !found {
-			return tracked, fmt.Errorf("could not find validator manager owner private key")
-		}
 		if err := subnetSDK.InitializeProofOfStake(
 			app.Log,
-			network.SDKNetwork(),
-			genesisPrivateKey,
+			privateKey,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
@@ -441,9 +345,6 @@ func InitializeValidatorManager(
 				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			managerAddress,
-			validatormanagerSDK.SpecializationProxyContractAddress,
-			managerOwnerPrivateKey,
 			useACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
@@ -454,10 +355,8 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			app.Log,
-			network.SDKNetwork(),
-			genesisPrivateKey,
+			privateKey,
 			aggregatorLogger,
-			managerAddress,
 			useACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
@@ -465,19 +364,37 @@ func InitializeValidatorManager(
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	}
+
+	sidecar, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return tracked, err
+	}
+	sidecar.UpdateValidatorManagerAddress(
+		network.Name(),
+		validatorManagerRPCEndpoint,
+		validatorManagerBlockchainID,
+		validatorManagerAddress.String(),
+		specializedValidatorManagerAddress.String(),
+	)
+	if err := app.UpdateSidecar(&sidecar); err != nil {
+		return tracked, err
+	}
+
 	return tracked, nil
 }
 
 func convertSubnetToL1(
 	bootstrapValidators []models.SubnetValidator,
 	deployer *subnet.PublicDeployer,
-	subnetID, blockchainID ids.ID,
+	subnetID ids.ID,
+	blockchainID ids.ID,
 	network models.Network,
 	chain string,
 	sidecar models.Sidecar,
 	controlKeysList,
 	subnetAuthKeysList []string,
-	validatorManagerAddressStr string,
+	validatorManagerBlockchainID ids.ID,
+	validatorManagerAddress string,
 	doStrongInputsCheck bool,
 ) ([]*txs.ConvertSubnetToL1Validator, bool, bool, error) {
 	if subnetID == ids.Empty {
@@ -486,20 +403,22 @@ func convertSubnetToL1(
 	if blockchainID == ids.Empty {
 		return nil, false, false, constants.ErrNoBlockchainID
 	}
-	if !common.IsHexAddress(validatorManagerAddressStr) {
+	if validatorManagerBlockchainID == ids.Empty {
+		return nil, false, false, constants.ErrNoBlockchainID
+	}
+	if !common.IsHexAddress(validatorManagerAddress) {
 		return nil, false, false, constants.ErrInvalidValidatorManagerAddress
 	}
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return avaGoBootstrapValidators, false, false, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 
 	if doStrongInputsCheck {
 		ux.Logger.PrintToUser("You are about to create a ConvertSubnetToL1Tx on %s with the following content:", network.Name())
 		ux.Logger.PrintToUser("  Subnet ID: %s", subnetID)
-		ux.Logger.PrintToUser("  Blockchain ID: %s", blockchainID)
-		ux.Logger.PrintToUser("  Manager Address: %s", managerAddress.Hex())
+		ux.Logger.PrintToUser("  Manager Blockchain ID: %s", validatorManagerBlockchainID)
+		ux.Logger.PrintToUser("  Manager Address: %s", validatorManagerAddress)
 		ux.Logger.PrintToUser("  Validators:")
 		for _, val := range bootstrapValidators {
 			ux.Logger.PrintToUser("    Node ID: %s", val.NodeID)
@@ -520,8 +439,8 @@ func convertSubnetToL1(
 		controlKeysList,
 		subnetAuthKeysList,
 		subnetID,
-		blockchainID,
-		managerAddress,
+		validatorManagerBlockchainID,
+		common.HexToAddress(validatorManagerAddress),
 		avaGoBootstrapValidators,
 	)
 	if err != nil {
@@ -566,7 +485,10 @@ func convertSubnetToL1(
 		"",
 		bootstrapValidators,
 		clusterNameFlagValue,
-		validatorManagerAddressStr,
+		"",
+		validatorManagerBlockchainID,
+		validatorManagerAddress,
+		"",
 	)
 }
 
@@ -639,7 +561,7 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if doStrongInputChecks && blockchainID != ids.Empty {
-		ux.Logger.PrintToUser("Blockchain ID to be used is %s", blockchainID)
+		ux.Logger.PrintToUser("L1 Blockchain ID to be used is %s", blockchainID)
 		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
 			return err
 		} else if !acceptValue {
@@ -647,18 +569,43 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if blockchainID == ids.Empty {
-		blockchainID, err = app.Prompt.CaptureID("What is the blockchain ID?")
+		blockchainID, err = app.Prompt.CaptureID("What is the L1 blockchain ID?")
 		if err != nil {
 			return err
 		}
 	}
 
-	if validatorManagerAddress == "" {
-		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+	var validatorManagerBlockchainID ids.ID
+	if validatorManagerBlockchainIDStr != "" {
+		validatorManagerBlockchainID, err = ids.FromString(validatorManagerBlockchainIDStr)
 		if err != nil {
 			return err
 		}
-		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+	} else {
+		// if not given, assume for the moment it is the same L1
+		validatorManagerBlockchainID = blockchainID
+	}
+	if doStrongInputChecks && validatorManagerBlockchainID != ids.Empty {
+		ux.Logger.PrintToUser("Validator Manager Blockchain ID to be used is %s", validatorManagerBlockchainID)
+		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
+			return err
+		} else if !acceptValue {
+			validatorManagerBlockchainID = ids.Empty
+		}
+	}
+	if validatorManagerBlockchainID == ids.Empty {
+		validatorManagerBlockchainID, err = app.Prompt.CaptureID("What is the Validator Manager blockchain ID?")
+		if err != nil {
+			return err
+		}
+	}
+
+	if validatorManagerAddressStr == "" {
+		validatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
+		}
+		validatorManagerAddressStr = validatorManagerAddress.String()
 	}
 
 	if !convertFlags.ConvertOnly {
@@ -668,7 +615,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
 			return err
 		}
-		sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerAddress)
 	}
 
 	sidecar.Sovereign = true
@@ -695,7 +641,17 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 
 	deployBalance := uint64(convertFlags.BootstrapValidatorFlags.DeployBalanceAVAX * float64(units.Avax))
 
-	err = prepareBootstrapValidators(&bootstrapValidators, network, sidecar, *kc, blockchainName, deployBalance, availableBalance, &convertFlags.LocalMachineFlags, &convertFlags.BootstrapValidatorFlags)
+	err = prepareBootstrapValidators(
+		&bootstrapValidators,
+		network,
+		sidecar,
+		*kc,
+		blockchainName,
+		deployBalance,
+		availableBalance,
+		&convertFlags.LocalMachineFlags,
+		&convertFlags.BootstrapValidatorFlags,
+	)
 	if err != nil {
 		return err
 	}
@@ -746,7 +702,8 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		sidecar,
 		controlKeys,
 		subnetAuthKeys,
-		validatorManagerAddress,
+		validatorManagerBlockchainID,
+		validatorManagerAddressStr,
 		doStrongInputChecks,
 	)
 	if err != nil {
@@ -763,13 +720,17 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	if !convertFlags.ConvertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
 		if _, err = InitializeValidatorManager(
 			blockchainName,
-			sidecar.ValidatorManagerOwner,
 			subnetID,
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
 			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
-			validatorManagerAddress,
+			"",
+			validatorManagerRPCEndpoint,
+			validatorManagerBlockchainID,
+			validatorManagerAddressStr,
+			sidecar.ValidatorManagerOwner,
+			specializedValidatorManagerAddressStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
 			convertFlags.LocalMachineFlags.UseLocalMachine,
@@ -777,18 +738,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			convertFlags.ProofOfStakeFlags,
 		); err != nil {
 			return err
-		}
-		if sidecar.UseACP99 && sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
-			sidecar, err := app.LoadSidecar(chain)
-			if err != nil {
-				return err
-			}
-			networkInfo := sidecar.Networks[network.Name()]
-			networkInfo.ValidatorManagerAddress = validatormanagerSDK.SpecializationProxyContractAddress
-			sidecar.Networks[network.Name()] = networkInfo
-			if err := app.UpdateSidecar(&sidecar); err != nil {
-				return err
-			}
 		}
 	} else {
 		printSuccessfulConvertOnlyOutput(blockchainName, subnetID.String(), convertFlags.BootstrapValidatorFlags.GenerateNodeID)

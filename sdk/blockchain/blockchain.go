@@ -35,11 +35,15 @@ import (
 )
 
 var (
-	errMissingSubnetID            = fmt.Errorf("missing Subnet ID")
-	errMissingBlockchainID        = fmt.Errorf("missing Blockchain ID")
-	errMissingRPC                 = fmt.Errorf("missing RPC URL")
-	errMissingBootstrapValidators = fmt.Errorf("missing bootstrap validators")
-	errMissingOwnerAddress        = fmt.Errorf("missing Owner Address")
+	errMissingNetwork                            = fmt.Errorf("missing Network")
+	errMissingSubnetID                           = fmt.Errorf("missing Subnet ID")
+	errMissingBootstrapValidators                = fmt.Errorf("missing bootstrap validators")
+	errMissingValidatorManagerBlockchainID       = fmt.Errorf("missing Validator Manager Blockchain ID")
+	errMissingValidatorManagerRPC                = fmt.Errorf("missing Validator Manager RPC URL")
+	errMissingValidatorManagerAddress            = fmt.Errorf("missing Validator Manager Address")
+	errMissingSpecializedValidatorManagerAddress = fmt.Errorf("missing Specialized Validator Manager Address")
+	errMissingValidatorManagerOwnerAddress       = fmt.Errorf("missing Validator Manager Owner Address")
+	errMissingValidatorManagerOwnerPrivateKey    = fmt.Errorf("missing Validator Manager Owner Private Key")
 )
 
 type SubnetParams struct {
@@ -112,12 +116,12 @@ type Subnet struct {
 	// For more information regarding Genesis, head to https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#genesis
 	Genesis []byte
 
+	// Network where the subnet was deployed
+	Network network.Network
+
 	// SubnetID is the transaction ID from an issued CreateSubnetTX and is used to identify
 	// the target Subnet for CreateChainTx and AddValidatorTx
 	SubnetID ids.ID
-
-	// BlockchainID is the transaction ID from an issued CreateChainTx
-	BlockchainID ids.ID
 
 	// VMID specifies the vm that the new chain will run when CreateChainTx is called
 	VMID ids.ID
@@ -125,11 +129,26 @@ type Subnet struct {
 	// DeployInfo contains all the necessary information for createSubnetTx
 	DeployInfo DeployParams
 
-	// RPC URL that Subnet can be reached at
-	RPC string
+	// SubnetID where the Validator Manager is deployed
+	ValidatorManagerSubnetID ids.ID
 
-	// OwnerAddress is address of the owner of the Validator Manager Contract
-	OwnerAddress *common.Address
+	// BlockchainID where the Validator Manager is deployed
+	ValidatorManagerBlockchainID ids.ID
+
+	// RPC URL the Validator Manager can be reached at
+	ValidatorManagerRPC string
+
+	// Address of the Validator Manager
+	ValidatorManagerAddress *common.Address
+
+	// Address of the Specialized Validator Manager
+	SpecializedValidatorManagerAddress *common.Address
+
+	// Address of the owner of the Validator Manager Contract
+	ValidatorManagerOwnerAddress *common.Address
+
+	// Private key of the owner of the Validator Manager Contract
+	ValidatorManagerOwnerPrivateKey string
 
 	// BootstrapValidators are bootstrap validators that are included in the ConvertSubnetToL1Tx call
 	// that made Subnet a sovereign L1
@@ -342,49 +361,50 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
 	log logging.Logger,
-	network network.Network,
 	privateKey string,
 	aggregatorLogger logging.Logger,
-	validatorManagerAddressStr string,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
 ) error {
+	if c.Network == network.UndefinedNetwork {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingNetwork)
+	}
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
 	}
-
-	if c.BlockchainID == ids.Empty {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBlockchainID)
+	if c.ValidatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingValidatorManagerBlockchainID)
 	}
-
-	if c.RPC == "" {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingRPC)
+	if c.ValidatorManagerRPC == "" {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingValidatorManagerRPC)
 	}
-
-	if c.OwnerAddress == nil {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingOwnerAddress)
+	if c.ValidatorManagerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingValidatorManagerAddress)
+	}
+	if c.ValidatorManagerOwnerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingValidatorManagerOwnerAddress)
 	}
 
 	if len(c.BootstrapValidators) == 0 {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
 	}
 
-	if client, err := evm.GetClient(c.RPC); err != nil {
-		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	if client, err := evm.GetClient(c.ValidatorManagerRPC); err != nil {
+		log.Error("failure connecting to Validator Manager RPC to setup proposer VM", zap.Error(err))
 	} else {
 		if err := client.SetupProposerVM(privateKey); err != nil {
-			log.Error("failure setting proposer VM on L1", zap.Error(err))
+			log.Error("failure setting proposer VM on Validator Manager's Blockchain", zap.Error(err))
 		}
 		client.Close()
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		log,
-		c.RPC,
-		managerAddress,
+		c.ValidatorManagerRPC,
+		*c.ValidatorManagerAddress,
 		privateKey,
 		c.SubnetID,
-		*c.OwnerAddress,
+		*c.ValidatorManagerOwnerAddress,
 		useACP99,
 	)
 	if err != nil {
@@ -395,30 +415,37 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
-		network,
+		c.Network,
 		c.SubnetID,
-		c.BlockchainID,
-		managerAddress,
+		c.ValidatorManagerBlockchainID,
+		*c.ValidatorManagerAddress,
 		c.BootstrapValidators,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+	justificationHexStr := hex.EncodeToString(c.SubnetID[:])
 
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
+	signedMessage, err := interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		justificationHexStr,
+		c.ValidatorManagerSubnetID.String(),
+		0,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		log,
-		c.RPC,
-		managerAddress,
+		c.ValidatorManagerRPC,
+		*c.ValidatorManagerAddress,
 		privateKey,
 		c.SubnetID,
-		c.BlockchainID,
+		c.ValidatorManagerBlockchainID,
 		c.BootstrapValidators,
 		signedMessage,
 	)
@@ -431,36 +458,54 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 func (c *Subnet) InitializeProofOfStake(
 	log logging.Logger,
-	network network.Network,
 	privateKey string,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
-	managerAddress string,
-	specializedManagerAddress string,
-	managerOwnerPrivateKey string,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
 ) error {
-	if client, err := evm.GetClient(c.RPC); err != nil {
-		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	if c.Network == network.UndefinedNetwork {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingNetwork)
+	}
+	if c.SubnetID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingSubnetID)
+	}
+	if c.ValidatorManagerBlockchainID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingValidatorManagerBlockchainID)
+	}
+	if c.ValidatorManagerRPC == "" {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingValidatorManagerRPC)
+	}
+	if !useACP99 {
+		c.SpecializedValidatorManagerAddress = &common.Address{}
+	} else if c.SpecializedValidatorManagerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingSpecializedValidatorManagerAddress)
+	}
+	if c.ValidatorManagerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingValidatorManagerAddress)
+	}
+	if c.ValidatorManagerOwnerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingValidatorManagerOwnerAddress)
+	}
+	if useACP99 && c.ValidatorManagerOwnerPrivateKey == "" {
+		return fmt.Errorf("unable to initialize Proof of Stake: %w", errMissingValidatorManagerOwnerPrivateKey)
+	}
+	if client, err := evm.GetClient(c.ValidatorManagerRPC); err != nil {
+		log.Error("failure connecting to Validator Manager RPC to setup proposer VM", zap.Error(err))
 	} else {
 		if err := client.SetupProposerVM(privateKey); err != nil {
-			log.Error("failure setting proposer VM on L1", zap.Error(err))
+			log.Error("failure setting proposer VM on Validator Manager's Blockchain", zap.Error(err))
 		}
 		client.Close()
 	}
 	if useACP99 {
-		managerOwnerAddress, err := evm.PrivateKeyToAddress(managerOwnerPrivateKey)
-		if err != nil {
-			return fmt.Errorf("could not generate manager owner address from manager owner private key: %w", err)
-		}
 		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 			log,
-			c.RPC,
-			common.HexToAddress(managerAddress),
+			c.ValidatorManagerRPC,
+			*c.ValidatorManagerAddress,
 			privateKey,
 			c.SubnetID,
-			managerOwnerAddress,
+			*c.ValidatorManagerOwnerAddress,
 			useACP99,
 		)
 		if err != nil {
@@ -472,10 +517,10 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		log,
-		c.RPC,
-		common.HexToAddress(managerAddress),
-		common.HexToAddress(specializedManagerAddress),
-		managerOwnerPrivateKey,
+		c.ValidatorManagerRPC,
+		*c.ValidatorManagerAddress,
+		*c.SpecializedValidatorManagerAddress,
+		c.ValidatorManagerOwnerPrivateKey,
 		privateKey,
 		c.SubnetID,
 		posParams,
@@ -488,31 +533,38 @@ func (c *Subnet) InitializeProofOfStake(
 		log.Info("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 	}
 	subnetConversionUnsignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionUnsignedMessage(
-		network,
+		c.Network,
 		c.SubnetID,
-		c.BlockchainID,
-		common.HexToAddress(managerAddress),
+		c.ValidatorManagerBlockchainID,
+		*c.ValidatorManagerAddress,
 		c.BootstrapValidators,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	chainIDHexStr := hex.EncodeToString(c.SubnetID[:])
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
+	justificationHexStr := hex.EncodeToString(c.SubnetID[:])
 
-	signedMessage, err := interchain.SignMessage(aggregatorLogger, signatureAggregatorEndpoint, messageHexStr, chainIDHexStr, c.SubnetID.String(), 0)
+	signedMessage, err := interchain.SignMessage(
+		aggregatorLogger,
+		signatureAggregatorEndpoint,
+		messageHexStr,
+		justificationHexStr,
+		c.ValidatorManagerSubnetID.String(),
+		0,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get signed message: %w", err)
 	}
 
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		log,
-		c.RPC,
-		common.HexToAddress(managerAddress),
+		c.ValidatorManagerRPC,
+		*c.ValidatorManagerAddress,
 		privateKey,
 		c.SubnetID,
-		c.BlockchainID,
+		c.ValidatorManagerBlockchainID,
 		c.BootstrapValidators,
 		signedMessage,
 	)
