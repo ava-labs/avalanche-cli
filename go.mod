@@ -34,7 +34,6 @@ require (
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
 	github.com/posthog/posthog-go v1.4.7
-	github.com/prometheus/client_golang v1.21.1
 	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.12.0
@@ -47,12 +46,11 @@ require (
 	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e
 	golang.org/x/mod v0.24.0
-	golang.org/x/net v0.37.0
 	golang.org/x/oauth2 v0.25.0
 	golang.org/x/sync v0.12.0
 	golang.org/x/text v0.23.0
 	google.golang.org/api v0.216.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.7
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -130,7 +128,6 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
-	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -189,6 +186,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/prometheus/client_golang v1.21.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
@@ -228,6 +226,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
