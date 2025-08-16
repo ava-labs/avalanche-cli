@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"os/user"
 	"regexp"
+	slices0 "slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -88,12 +89,7 @@ func GetRealFilePath(path string) string {
 }
 
 func Any[T any](input []T, f func(T) bool) bool {
-	for _, e := range input {
-		if f(e) {
-			return true
-		}
-	}
-	return false
+	return slices0.ContainsFunc(input, f)
 }
 
 func Find[T any](input []T, f func(T) bool) *T {
