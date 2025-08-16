@@ -246,7 +246,7 @@ func validateSubnetValidatorsJSON(generateNewNodeID bool, validatorJSONS []model
 	return nil
 }
 
-// promptProvideNodeID returns false if user doesn't have any Avalanche node set up yet to be
+// promptSetUpNodes returns false if user doesn't have any Avalanche node set up yet to be
 // bootstrap validators
 func promptSetUpNodes() (bool, error) {
 	ux.Logger.PrintToUser("If you have set up your own Avalanche Nodes, you can provide the Node ID and BLS Key from those nodes in the next step.")
