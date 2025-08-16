@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/sdk/constants"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
-
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -283,12 +283,12 @@ func (m *SoftKey) Save(p string) error {
 	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.UserOnlyWriteReadPerms)
 }
 
-func (m *SoftKey) P(networkHRP string) (string, error) {
-	return address.Format("P", networkHRP, m.privKey.PublicKey().Address().Bytes())
+func (m *SoftKey) P(network network.Network) (string, error) {
+	return address.Format("P", network.HRP(), m.privKey.PublicKey().Address().Bytes())
 }
 
-func (m *SoftKey) X(networkHRP string) (string, error) {
-	return address.Format("X", networkHRP, m.privKey.PublicKey().Address().Bytes())
+func (m *SoftKey) X(network network.Network) (string, error) {
+	return address.Format("X", network.HRP(), m.privKey.PublicKey().Address().Bytes())
 }
 
 func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (

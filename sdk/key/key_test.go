@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 )
@@ -25,7 +26,9 @@ func TestNewKeyEwoq(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pAddr, err := m.P("custom")
+	net := network.NewNetwork(network.Devnet, 0, "")
+
+	pAddr, err := m.P(net)
 	if err != nil {
 		t.Fatal(err)
 	}
