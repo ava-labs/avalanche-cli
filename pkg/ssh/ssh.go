@@ -590,9 +590,7 @@ func RunSSHRenderAvalancheNodeConfig(
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
 		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
-		if !ok {
-			fmt.Println("Key not found in remoteAvagoConf:", config.PartialSyncPrimaryNetworkKey)
-		} else {
+		if ok {
 			partialSync, _ := partialSyncI.(string)
 			if partialSync == "true" {
 				avagoConf.PartialSync = true
