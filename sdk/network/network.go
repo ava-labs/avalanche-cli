@@ -4,6 +4,8 @@
 package network
 
 import (
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/constants"
 )
 
@@ -53,4 +55,38 @@ func FujiNetwork() Network {
 
 func MainnetNetwork() Network {
 	return NewNetwork(Mainnet, constants.MainnetID, MainnetAPIEndpoint)
+}
+
+func EndpointToNetwork(endpoint string) (*Network, error) {
+	infoClient := info.NewClient(endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	networkID, err := infoClient.GetNetworkID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var kind NetworkKind
+	switch networkID {
+	case constants.MainnetID:
+		kind = Mainnet
+	case constants.FujiID:
+		kind = Fuji
+	default:
+		kind = Devnet
+	}
+	network := NewNetwork(kind, networkID, endpoint)
+	return &network, nil
+}
+
+func (n Network) HRP() string {
+	switch n.ID {
+	case constants.MainnetID:
+		return constants.MainnetHRP
+	case constants.FujiID:
+		return constants.FujiHRP
+	case constants.LocalID:
+		return constants.LocalHRP
+	default:
+		return constants.FallbackHRP
+	}
 }

@@ -13,9 +13,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
