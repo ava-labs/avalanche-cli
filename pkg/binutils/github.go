@@ -14,6 +14,8 @@ const (
 	darwin  = "darwin"
 	windows = "windows"
 
+	arch_arm64 = "arm64"
+
 	zipExtension = "zip"
 	tarExtension = "tar.gz"
 )
@@ -59,6 +61,10 @@ func (avalancheGoDownloader) GetDownloadURL(version string, installer Installer)
 		)
 		ext = tarExtension
 	case darwin:
+		if goarch != arch_arm64 {
+			// no pre-built package for MacOS x86_64
+			return "", "", fmt.Errorf("No pre-built avalanche package for MacOS %s, you may need to build it by yourself", goarch)
+		}
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/%s/%s/releases/download/%s/avalanchego-macos-%s.zip",
 			constants.AvaLabsOrg,
