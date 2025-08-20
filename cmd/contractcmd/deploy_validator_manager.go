@@ -13,8 +13,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ethereum/go-ethereum/common"

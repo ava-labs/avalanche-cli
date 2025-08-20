@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"

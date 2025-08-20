@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 )
 
 // SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.

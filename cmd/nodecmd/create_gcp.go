@@ -13,7 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 

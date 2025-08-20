@@ -16,8 +16,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	contractSDK "github.com/ava-labs/avalanche-cli/sdk/evm/contract"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	contractSDK "github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 

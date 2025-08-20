@@ -12,8 +12,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 

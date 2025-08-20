@@ -19,7 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"

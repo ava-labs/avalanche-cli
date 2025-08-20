@@ -12,7 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 )
 
 func getNodesWithDynamicIP(clusterNodes []string) ([]models.NodeConfig, error) {

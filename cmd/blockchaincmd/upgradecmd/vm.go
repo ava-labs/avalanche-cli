@@ -15,8 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 
 	"github.com/spf13/cobra"
 )

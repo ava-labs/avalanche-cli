@@ -8,9 +8,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/sdk/evm"
-	"github.com/ava-labs/avalanche-cli/sdk/evm/contract"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
+	validatorManagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core/types"
 

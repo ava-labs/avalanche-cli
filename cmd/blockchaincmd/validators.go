@@ -13,7 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
+	validatorsdk "github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/olekukonko/tablewriter"

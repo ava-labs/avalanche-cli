@@ -18,8 +18,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/network"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	avagoconfig "github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 

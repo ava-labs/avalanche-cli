@@ -6,7 +6,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/sdk/vm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/vm"
 	"github.com/ava-labs/subnet-evm/commontype"
 )
 
