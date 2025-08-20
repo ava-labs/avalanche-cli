@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/exp/slices"

@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/network"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/publicarchive"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"go.uber.org/zap"

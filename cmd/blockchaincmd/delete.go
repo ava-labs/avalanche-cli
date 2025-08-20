@@ -9,7 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/spf13/cobra"
 )
 

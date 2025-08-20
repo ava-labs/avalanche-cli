@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	sdkNetwork "github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkNetwork "github.com/ava-labs/avalanche-tooling-sdk-go/network"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/genesis"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"

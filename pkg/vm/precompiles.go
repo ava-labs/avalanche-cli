@@ -4,7 +4,7 @@
 package vm
 
 import (
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkUtils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"

@@ -4,7 +4,7 @@ package models
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ethereum/go-ethereum/common"
