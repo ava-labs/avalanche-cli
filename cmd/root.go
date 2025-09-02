@@ -5,6 +5,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/cubist"
 	"os"
 	"os/signal"
 	"os/user"
@@ -87,6 +88,7 @@ in with avalanche blockchain create myNewBlockchain.`,
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
+	rootCmd.AddCommand(cubist.NewCmd(app))
 
 	// add config command
 	rootCmd.AddCommand(configcmd.NewCmd(app))
