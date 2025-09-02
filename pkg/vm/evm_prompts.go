@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatorManagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"

@@ -18,7 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )

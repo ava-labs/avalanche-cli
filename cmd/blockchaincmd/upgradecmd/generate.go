@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	avalancheSDK "github.com/ava-labs/avalanche-cli/sdk/vm"
+	avalancheSDK "github.com/ava-labs/avalanche-tooling-sdk-go/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
