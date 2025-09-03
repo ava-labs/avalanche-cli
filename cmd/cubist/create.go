@@ -182,55 +182,6 @@ If you'd like to import an existing key instead of generating one from scratch, 
 	return cmd
 }
 
-// ExternalSigner implements the Signer interface but uses a pre-computed signature
-type ExternalSigner struct {
-	signature string // The hex signature string you provided
-}
-
-// NewExternalSigner creates a new external signer with the provided signature
-func NewExternalSigner(signature string) *ExternalSigner {
-	return &ExternalSigner{
-		signature: signature,
-	}
-}
-
-// Sign implements the Signer interface
-// This method adds the pre-computed signature to the transaction
-func (s *ExternalSigner) AddSignature(tx *txs.Tx) error {
-	// Remove "0x" prefix if present
-	sigStr := s.signature
-	if len(sigStr) > 2 && sigStr[:2] == "0x" {
-		sigStr = sigStr[2:]
-	}
-
-	// Decode hex signature to bytes
-	signatureBytes, err := hex.DecodeString(sigStr)
-	if err != nil {
-		return fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	// Verify signature length (should be 65 bytes for secp256k1)
-	if len(signatureBytes) != secp256k1.SignatureLen {
-		return fmt.Errorf("invalid signature length: expected %d bytes, got %d", secp256k1.SignatureLen, len(signatureBytes))
-	}
-
-	// Create the credential with the signature
-	cred := &secp256k1fx.Credential{
-		Sigs: make([][secp256k1.SignatureLen]byte, 1),
-	}
-	copy(cred.Sigs[0][:], signatureBytes)
-
-	// Set the credentials on the transaction
-	tx.Creds = []verify.Verifiable{cred}
-
-	// Initialize the transaction to set the TxID and bytes
-	if err := tx.Initialize(txs.Codec); err != nil {
-		return fmt.Errorf("failed to initialize transaction: %w", err)
-	}
-
-	return nil
-}
-
 // CreateSignedTransactionDirectly creates a signed transaction without using the Signer interface
 // This is the simplest approach for your use case
 func CreateSignedTransaction(unsignedTx txs.UnsignedTx, signature string) (*txs.Tx, error) {
@@ -271,20 +222,7 @@ func CreateSignedTransaction(unsignedTx txs.UnsignedTx, signature string) (*txs.
 	return signedTx, nil
 }
 
-// Example usage function showing how to integrate with your existing code
 func UseSignature(unsignedTx txs.UnsignedTx, signature string, newPWallet pwallet.Wallet) {
-	// Method 1: Using the ExternalSigner (implements the Signer interface)
-	signer := NewExternalSigner(signature)
-	tx := &txs.Tx{
-		Unsigned: unsignedTx, // Your unsigned transaction
-	}
-
-	if err := signer.AddSignature(tx); err != nil {
-		fmt.Printf("Failed to sign transaction: %v\n", err)
-		return
-	}
-
-	// Method 2: Direct creation (simpler, no interface needed)
 	signedTx, err := CreateSignedTransaction(unsignedTx, signature)
 	if err != nil {
 		fmt.Printf("Failed to create signed transaction: %v\n", err)
