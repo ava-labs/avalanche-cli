@@ -39,17 +39,14 @@ func callDemo(_ *cobra.Command, _ []string) error {
 	filePath := "/Users/raymondsukanto/Desktop/management-session.json"
 	manager, err := session.NewJsonSessionManager(&filePath)
 	if err != nil {
-		fmt.Printf("we have err here %s", err)
 		return err
 	}
-	fmt.Printf("manager path %s \n", manager.FilePath)
 	apiClient, err := client.NewApiClient(manager)
 	if err != nil {
-		fmt.Printf("we have err here 2 %s", err)
 		return err
 	}
 
-	sampleAddr := "P-fuji12x5rgv5a4t8tq0tnpxrgfwv8m0ql86vn2u368u"
+	sampleAddr := "P-fuji1u8933yvsmf5d6cqkm3qgewzlpr7sac3v3eufj9"
 	destinationAddr, err := address.ParseToID(sampleAddr)
 	if err != nil {
 		return err
@@ -87,7 +84,7 @@ func callDemo(_ *cobra.Command, _ []string) error {
 	avaRequest := models.AvaSerializedTxSignRequest{
 		Tx: txStr,
 	}
-	response, err := apiClient.AvaSerializedTxSign("P", "fuji12x5rgv5a4t8tq0tnpxrgfwv8m0ql86vn2u368u", avaRequest)
+	response, err := apiClient.AvaSerializedTxSign("P", "fuji1u8933yvsmf5d6cqkm3qgewzlpr7sac3v3eufj9", avaRequest)
 	if err != nil {
 		return fmt.Errorf("response err: %w", err)
 	}
