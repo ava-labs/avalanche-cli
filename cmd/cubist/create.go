@@ -4,13 +4,17 @@ package cubist
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/wallet/chain/p"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -31,21 +35,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	forceFlag = "force"
-)
-
-var (
-	forceCreate  bool
-	skipBalances bool
-	filename     string
-)
-
-func callDemo(_ *cobra.Command, args []string) error {
-	//manager, err := session.NewJsonSessionManager(nil)
-	//if err != nil {
-	//	return err
-	//}
+func callDemo(_ *cobra.Command, _ []string) error {
 	filePath := "/Users/raymondsukanto/Desktop/management-session.json"
 	manager, err := session.NewJsonSessionManager(&filePath)
 	if err != nil {
@@ -59,43 +49,6 @@ func callDemo(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//// Get user info
-	//userInfo, err := apiClient.AboutMe()
-	//if err != nil {
-	//	fmt.Printf("we have err here 3 %s", err)
-	//	return err
-	//}
-	//
-	//// each user has a globally unique ID
-	//userId := userInfo.UserId
-	//if err != nil {
-	//	return err
-	//}
-	//fmt.Printf("userId %s \n", userId)
-	//
-	//// Ids of all organizations this user is a member of
-	//allOrgs := userInfo.Orgs
-	//if err != nil {
-	//	return err
-	//}
-	//fmt.Printf("allOrgs %s \n", allOrgs)
-	//f
-
-	//createKeyRequest := models.CreateKeyRequest{KeyType: models.SecpAvaTestAddr, Count: 1}
-	//keysInfo, err := apiClient.CreateKey(createKeyRequest)
-	//if err != nil {
-	//	return err
-	//}
-
-	//// read response to get the key info
-	//secpKey := keysInfo.Keys[0]
-	//fmt.Printf("secpKey %s \n", secpKey.KeyId)
-	//fmt.Printf("secpKey %s \n", secpKey.MaterialId)
-
-	//eth1Request := models.Eth1SignRequest{
-	//	ChainId: int64(1),
-	//	Tx:      TxBody,
-	//}
 	sampleAddr := "P-fuji1u8933yvsmf5d6cqkm3qgewzlpr7sac3v3eufj9"
 	destinationAddr, err := address.ParseToID(sampleAddr)
 	if err != nil {
@@ -104,7 +57,7 @@ func callDemo(_ *cobra.Command, args []string) error {
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(destinationAddr)
 
-	newPWallet, builder, err := CreateReadOnlyWallet("https://api.avax-test.network", customAddrsSet, primary.WalletConfig{})
+	newPWallet, _, builder, err := CreateReadOnlyWallet("https://api.avax-test.network", customAddrsSet, primary.WalletConfig{})
 	if err != nil {
 		return err
 	}
@@ -119,14 +72,6 @@ func callDemo(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//// Create the transaction structure manually
-	//tx := &txs.CreateSubnetTx{
-	//	BaseTx: txs.BaseTx{BaseTx: avax.BaseTx{
-	//		NetworkID: networkID,
-	//		Ins:       inputs, // You'd need to build these
-	//	}},
-	//	Owner: owners,
-	//}
 	// Serialize the signed tx
 	txBytes, err := txs.Codec.Marshal(txs.CodecVersion, tx)
 	if err != nil {
@@ -146,20 +91,12 @@ func callDemo(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("response err: %w", err)
 	}
-	if response.ResponseData != nil {
-		fmt.Printf("no err response %s \n", *response.ResponseData)
-	} else {
-		fmt.Printf("no err response: ResponseData is nil\n")
-	}
-	fmt.Printf("no err response %s \n", response.MfaRequired)
 
 	// Extract the actual signed transaction string and use it
 	if response.ResponseData != nil {
 		b, err := json.MarshalIndent(response.ResponseData, "", " ")
 		if err != nil {
 			return fmt.Errorf("MarshalIndent err: %w", err)
-		} else {
-			fmt.Printf("obtained string %s \n", string(b))
 		}
 		var m map[string]interface{}
 		if err := json.Unmarshal(b, &m); err != nil {
@@ -167,24 +104,39 @@ func callDemo(_ *cobra.Command, args []string) error {
 		}
 		signedTxStr, _ := m["signature"].(string)
 		fmt.Printf("signature %s", signedTxStr)
-		// Parse the signed transaction
-		signedTx, err := getSignedTx(signedTxStr)
+
+		if signedTxStr[:2] == "0x" {
+			signedTxStr = signedTxStr[2:]
+		}
+		fmt.Printf("signedTxStr %s \n", signedTxStr)
+		// Decode hex to bytes
+		txBytes, err := hex.DecodeString(signedTxStr)
 		if err != nil {
-			return fmt.Errorf("failed to parse signed transaction: %w", err)
+			log.Fatalf("Failed to decode hex: %v", err)
 		}
 
-		// Now you can use the signedTx
-		fmt.Printf("Successfully parsed signed transaction with ID: %s\n", signedTx.ID())
+		// 3. Create the credential with your signature
+		cred := &secp256k1fx.Credential{
+			Sigs: make([][65]byte, 1),
+		}
+		copy(cred.Sigs[0][:], txBytes)
+
+		// 4. Create the complete signed transaction
+		signedTx := &txs.Tx{
+			Unsigned: tx, // ← You need this!
+			Creds:    []verify.Verifiable{cred},
+		}
+		// Initialize the transaction (this sets the transaction ID)
+		if err := signedTx.Initialize(txs.Codec); err != nil {
+			log.Fatalf("Failed to initialize transaction: %v", err)
+		}
+		fmt.Printf("Transaction ID: %s\n", signedTx.ID())
+
 		txID, err := issueTx(*newPWallet, signedTx)
 		if err != nil {
 			return fmt.Errorf("failed to issue tx: %w", err)
 		}
 		fmt.Printf("issued txid %s \n", txID.String())
-		// TODO: Use the signed transaction (e.g., submit to network)
-		// pWallet := pwallet.New(pClient, builder, nil)
-		// pWallet.IssueCreateSubnetTx()
-	} else {
-		return fmt.Errorf("ResponseData is nil - no signed transaction received")
 	}
 
 	return nil
@@ -219,79 +171,22 @@ func issueTx(newPWallet pwallet.Wallet, tx *txs.Tx) (ids.ID, error) {
 	return tx.ID(), issueTxErr
 }
 
-func getSignedTx(txEncoded string) (*txs.Tx, error) {
-	// Debug: Print the raw transaction string
-	fmt.Printf("Raw transaction string: %s\n", txEncoded)
-	fmt.Printf("Transaction string length: %d\n", len(txEncoded))
-
-	// Check if it starts with 0x and remove it if present
-	if len(txEncoded) > 2 && txEncoded[:2] == "0x" {
-		txEncoded = txEncoded[2:]
-		fmt.Printf("Removed 0x prefix, new string: %s\n", txEncoded)
-	}
-
-	// Try different decoding approaches
-	var txBytes []byte
-	var err error
-
-	// First try: CB58 encoding (Avalanche's preferred format)
-	txBytes, err = formatting.Decode(formatting.CB58, txEncoded)
-	if err != nil {
-		fmt.Printf("CB58 decode failed: %v\n", err)
-
-		// Second try: Standard hex decoding
-		txBytes, err = formatting.Decode(formatting.Hex, txEncoded)
-		if err != nil {
-			fmt.Printf("Standard hex decode failed: %v\n", err)
-
-			// Third try: Try with hex but with different checksum validation
-			// Sometimes the issue is with checksum validation
-			txBytes, err = formatting.Decode(formatting.HexC, txEncoded)
-			if err != nil {
-				fmt.Printf("HexC decode failed: %v\n", err)
-				return nil, fmt.Errorf("couldn't decode signed tx with CB58, hex, or hexC: %w", err)
-			}
-			fmt.Printf("Successfully decoded with hexC\n")
-		} else {
-			fmt.Printf("Successfully decoded with hex\n")
-		}
-	} else {
-		fmt.Printf("Successfully decoded with CB58\n")
-	}
-
-	fmt.Printf("Decoded bytes length: %d\n", len(txBytes))
-
-	var tx txs.Tx
-	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
-		return nil, fmt.Errorf("error unmarshaling signed tx: %w", err)
-	}
-	if err := tx.Initialize(txs.Codec); err != nil {
-		return nil, fmt.Errorf("error initializing signed tx: %w", err)
-	}
-	return &tx, nil
-}
 func CreateReadOnlyWallet(
 	uri string,
 	addresses set.Set[ids.ShortID],
 	config primary.WalletConfig,
-) (*pwallet.Wallet, pbuilder.Builder, error) {
+) (*pwallet.Wallet, *p.Client, pbuilder.Builder, error) {
 
 	ctx := context.Background()
 
 	avaxState, err := primary.FetchState(ctx, uri, addresses)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-
-	//ethAddrs := ethKeychain.EthAddresses()
-	//ethState, err := FetchEthState(ctx, uri, ethAddrs)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	owners, err := platformvm.GetOwners(avaxState.PClient, ctx, config.SubnetIDs, config.ValidationIDs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	pUTXOs := common.NewChainUTXOs(constants.PlatformChainID, avaxState.UTXOs)
@@ -300,7 +195,7 @@ func CreateReadOnlyWallet(
 	pBuilder := pbuilder.New(addresses, avaxState.PCTX, pBackend)
 	newPWallet := pwallet.New(pClient, pBuilder, nil)
 
-	return &newPWallet, pBuilder, nil
+	return &newPWallet, pClient, pBuilder, nil
 }
 
 func newCreateCmd() *cobra.Command {
