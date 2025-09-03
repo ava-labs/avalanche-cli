@@ -614,6 +614,10 @@ func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (*primary.Wallet, error
 	defer cancel()
 	// filter out ids.Empty txs
 	filteredTxs := utils.Filter(subnetIDs, func(e ids.ID) bool { return e != ids.Empty })
+	fmt.Printf("keychain load Wallet %s \n", d.kc.Keychain.Addresses())
+	fmt.Printf("keychain load Wallet %s \n", d.network.Endpoint)
+	fmt.Printf("keychain load Wallet %s \n", filteredTxs)
+
 	wallet, err := primary.MakeWallet(
 		ctx,
 		d.network.Endpoint,
@@ -651,6 +655,7 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []co
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(walletAddrs...)
 	customAddrsSet.Add(subnetAuthKeys...)
+	fmt.Printf("customAddrsSet %s \n", customAddrsSet)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	changeOwner := &secp256k1fx.OutputOwners{

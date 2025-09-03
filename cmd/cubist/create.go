@@ -7,8 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -19,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -53,7 +53,7 @@ func callDemo(_ *cobra.Command, _ []string) error {
 	}
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(destinationAddr)
-
+	fmt.Printf("customAddrsSet %s \n", customAddrsSet)
 	newPWallet, _, builder, err := CreateReadOnlyWallet("https://api.avax-test.network", customAddrsSet, primary.WalletConfig{})
 	if err != nil {
 		return err
@@ -64,22 +64,33 @@ func callDemo(_ *cobra.Command, _ []string) error {
 		Threshold: 1,
 		Locktime:  0,
 	}
-	tx, err := builder.NewCreateSubnetTx(owners)
+	oldTx, err := builder.NewCreateSubnetTx(owners)
 	if err != nil {
 		return err
 	}
+	tx := txs.Tx{Unsigned: oldTx}
+	// Serialize the unsigned tx
+	//txBytes, err := txs.Codec.Marshal(txs.CodecVersion, tx)
+	//if err != nil {
+	//	return fmt.Errorf("couldn't marshal signed tx: %w", err)
+	//}
+	//
+	//// Get the encoded (in hex + checksum) unsigned tx
+	//txStr, err := formatting.Encode(formatting.Hex, txBytes)
+	//if err != nil {
+	//	return fmt.Errorf("couldn't encode signed tx: %w", err)
+	//}
+	// Convert to hex with 0x prefix (equivalent to bufferToHex)
+	//txStr := "0x" + hex.EncodeToString(txBytes)
 
-	// Serialize the signed tx
-	txBytes, err := txs.Codec.Marshal(txs.CodecVersion, tx)
+	unsignedBytes, err := txs.Codec.Marshal(txs.CodecVersion, &tx.Unsigned)
 	if err != nil {
-		return fmt.Errorf("couldn't marshal signed tx: %w", err)
+		return fmt.Errorf("couldn't marshal unsigned tx: %w", err)
 	}
+	// Convert to hex string WITHOUT "0x" prefix
+	txStr := hex.EncodeToString(unsignedBytes)
+	txStr = "0x" + txStr
 
-	// Get the encoded (in hex + checksum) signed tx
-	txStr, err := formatting.Encode(formatting.Hex, txBytes)
-	if err != nil {
-		return fmt.Errorf("couldn't encode signed tx: %w", err)
-	}
 	fmt.Printf("txStr %s \n", txStr)
 	avaRequest := models.AvaSerializedTxSignRequest{
 		Tx: txStr,
@@ -99,39 +110,44 @@ func callDemo(_ *cobra.Command, _ []string) error {
 		if err := json.Unmarshal(b, &m); err != nil {
 			return fmt.Errorf("unmarshal err: %w", err)
 		}
-		signedTxStr, _ := m["signature"].(string)
-		fmt.Printf("signature %s", signedTxStr)
+		signatureStr, _ := m["signature"].(string)
+		fmt.Printf("signature %s \n", signatureStr)
 
-		if signedTxStr[:2] == "0x" {
-			signedTxStr = signedTxStr[2:]
-		}
-		fmt.Printf("signedTxStr %s \n", signedTxStr)
-		// Decode hex to bytes
-		txBytes, err := hex.DecodeString(signedTxStr)
-		if err != nil {
-			log.Fatalf("Failed to decode hex: %v", err)
-		}
+		UseSignature(oldTx, signatureStr, *newPWallet)
 
-		cred := &secp256k1fx.Credential{
-			Sigs: make([][65]byte, 1),
-		}
-		copy(cred.Sigs[0][:], txBytes)
-
-		signedTx := &txs.Tx{
-			Unsigned: tx,
-			Creds:    []verify.Verifiable{cred},
-		}
-		// Initialize the transaction (this sets the transaction ID)
-		if err := signedTx.Initialize(txs.Codec); err != nil {
-			log.Fatalf("Failed to initialize transaction: %v", err)
-		}
-		fmt.Printf("Transaction ID: %s\n", signedTx.ID())
-
-		txID, err := issueTx(*newPWallet, signedTx)
-		if err != nil {
-			return fmt.Errorf("failed to issue tx: %w", err)
-		}
-		fmt.Printf("issued txid %s \n", txID.String())
+		//getPublicKeyFromSignature(signatureStr, &tx)
+		//if signatureStr[:2] == "0x" {
+		//	signatureStr = signatureStr[2:]
+		//}
+		//fmt.Printf("signatureStr %s \n", signatureStr)
+		//// Decode hex to bytes
+		//signatureBytes, err := hex.DecodeString(signatureStr)
+		//if err != nil {
+		//	log.Fatalf("Failed to decode hex: %v", err)
+		//}
+		//// You might need to determine the correct credential index
+		//// For now, let's try putting it in the first credential
+		//cred := &secp256k1fx.Credential{
+		//	Sigs: make([][65]byte, 1), // Make sure this matches the number of signatures needed
+		//}
+		//copy(cred.Sigs[0][:], signatureBytes)
+		//
+		//signedTx := &txs.Tx{
+		//	Unsigned: oldTx,
+		//	Creds:    []verify.Verifiable{cred},
+		//}
+		//
+		//// Initialize the transaction
+		//if err := signedTx.Initialize(txs.Codec); err != nil {
+		//	log.Fatalf("Failed to initialize transaction: %v", err)
+		//}
+		//fmt.Printf("Transaction ID: %s\n", signedTx.ID())
+		//
+		//txID, err := issueTx(*newPWallet, signedTx)
+		//if err != nil {
+		//	return fmt.Errorf("failed to issue tx: %w", err)
+		//}
+		//fmt.Printf("issued txid %s \n", txID.String())
 	}
 
 	return nil
@@ -166,13 +182,93 @@ func issueTx(newPWallet pwallet.Wallet, tx *txs.Tx) (ids.ID, error) {
 	return tx.ID(), issueTxErr
 }
 
+//
+//func getPublicKeyFromSignature(signedTxStr string, tx *txs.Tx) {
+//	// After getting the signature, verify it's from the right address
+//	sigBytes, err := hex.DecodeString(signedTxStr[2:])
+//	if err != nil {
+//		log.Fatalf("Failed to decode hex: %v", err)
+//	}
+//
+//	// Recover the public key and address from the signature
+//	unsignedTxBytes, err := txs.Codec.Marshal(txs.CodecVersion, tx)
+//	if err != nil {
+//		log.Fatalf("Failed to marshal unsigned tx: %v", err)
+//	}
+//
+//	// Hash the unsigned transaction (this is what was signed)
+//	hash := sha256.Sum256(unsignedTxBytes)
+//
+//	// Recover the public key from the signature
+//	// Note: secp256k1 signatures are 65 bytes: [r(32) + s(32) + v(1)]
+//	if len(sigBytes) != 65 {
+//		log.Fatalf("Invalid signature length: expected 65 bytes, got %d", len(sigBytes))
+//	}
+//
+//	// Extract r, s, v from the signature
+//	r := sigBytes[:32]
+//	s := sigBytes[32:64]
+//	v := sigBytes[64]
+//
+//	// Recover the public key
+//	publicKeyBytes, err := secp256k1.RecoverPubkey(hash[:], append(r, append(s, v)...))
+//	if err != nil {
+//		log.Fatalf("Failed to recover public key: %v", err)
+//	}
+//
+//	// Convert raw public key bytes to ecdsa.PublicKey
+//	// secp256k1 public keys are 65 bytes: [0x04 + x(32) + y(32)]
+//	if len(publicKeyBytes) != 65 {
+//		log.Fatalf("Invalid public key length: expected 65 bytes, got %d", len(publicKeyBytes))
+//	}
+//
+//	// Skip the first byte (0x04) and extract x, y coordinates
+//	x := new(big.Int).SetBytes(publicKeyBytes[1:33])
+//	y := new(big.Int).SetBytes(publicKeyBytes[33:65])
+//
+//	// Create the ecdsa.PublicKey
+//	publicKey := &ecdsa.PublicKey{
+//		Curve: secp256k1.S256(), // or elliptic.P256() if you don't have secp256k1.S256()
+//		X:     x,
+//		Y:     y,
+//	}
+//
+//	// Convert public key to address
+//	ethAddress := crypto.PubkeyToAddress(*publicKey)
+//	fmt.Printf("Signature is from address: %s\n", ethAddress.Hex())
+//
+//	// Convert Ethereum address to Avalanche P-chain address
+//	// Remove 0x prefix from Ethereum address
+//	ethAddrStr := ethAddress.Hex()[2:] // Remove "0x"
+//
+//	// Decode hex to bytes
+//	ethAddrBytes, err := hex.DecodeString(ethAddrStr)
+//	if err != nil {
+//		log.Fatalf("Failed to decode eth address: %v", err)
+//	}
+//
+//	// Convert to Avalanche ShortID
+//	avaxAddr := ids.ShortID{}
+//	copy(avaxAddr[:], ethAddrBytes)
+//
+//	// Convert to P-chain address format
+//	pChainAddr, err := address.Format("P", "fuji", avaxAddr[:])
+//	if err != nil {
+//		log.Fatalf("Failed to format P-chain address: %v", err)
+//	}
+//
+//	fmt.Printf("P-chain address: %s\n", pChainAddr)
+//
+//}
+
 func CreateReadOnlyWallet(
 	uri string,
 	addresses set.Set[ids.ShortID],
 	config primary.WalletConfig,
 ) (*pwallet.Wallet, *p.Client, pbuilder.Builder, error) {
 
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetTimedContext(3 * time.Minute)
+	defer cancel()
 
 	avaxState, err := primary.FetchState(ctx, uri, addresses)
 	if err != nil {
@@ -211,4 +307,129 @@ If you'd like to import an existing key instead of generating one from scratch, 
 	}
 
 	return cmd
+}
+
+// ExternalSigner implements the Signer interface but uses a pre-computed signature
+type ExternalSigner struct {
+	signature string // The hex signature string you provided
+}
+
+// NewExternalSigner creates a new external signer with the provided signature
+func NewExternalSigner(signature string) *ExternalSigner {
+	return &ExternalSigner{
+		signature: signature,
+	}
+}
+
+// Sign implements the Signer interface
+// This method adds the pre-computed signature to the transaction
+func (s *ExternalSigner) Sign(ctx context.Context, tx *txs.Tx) error {
+	// Remove "0x" prefix if present
+	sigStr := s.signature
+	if len(sigStr) > 2 && sigStr[:2] == "0x" {
+		sigStr = sigStr[2:]
+	}
+
+	// Decode hex signature to bytes
+	signatureBytes, err := hex.DecodeString(sigStr)
+	if err != nil {
+		return fmt.Errorf("failed to decode signature: %w", err)
+	}
+
+	// Verify signature length (should be 65 bytes for secp256k1)
+	if len(signatureBytes) != secp256k1.SignatureLen {
+		return fmt.Errorf("invalid signature length: expected %d bytes, got %d", secp256k1.SignatureLen, len(signatureBytes))
+	}
+
+	// Create the credential with the signature
+	cred := &secp256k1fx.Credential{
+		Sigs: make([][secp256k1.SignatureLen]byte, 1),
+	}
+	copy(cred.Sigs[0][:], signatureBytes)
+
+	// Set the credentials on the transaction
+	tx.Creds = []verify.Verifiable{cred}
+
+	// Initialize the transaction to set the TxID and bytes
+	if err := tx.Initialize(txs.Codec); err != nil {
+		return fmt.Errorf("failed to initialize transaction: %w", err)
+	}
+
+	return nil
+}
+
+// CreateSignedTransactionDirectly creates a signed transaction without using the Signer interface
+// This is the simplest approach for your use case
+func CreateSignedTransactionDirectly(unsignedTx txs.UnsignedTx, signature string) (*txs.Tx, error) {
+	// Remove "0x" prefix if present
+	sigStr := signature
+	if len(sigStr) > 2 && sigStr[:2] == "0x" {
+		sigStr = sigStr[2:]
+	}
+
+	// Decode hex signature to bytes
+	signatureBytes, err := hex.DecodeString(sigStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode signature: %w", err)
+	}
+
+	// Verify signature length
+	if len(signatureBytes) != secp256k1.SignatureLen {
+		return nil, fmt.Errorf("invalid signature length: expected %d bytes, got %d", secp256k1.SignatureLen, len(signatureBytes))
+	}
+
+	// Create the credential with the signature
+	cred := &secp256k1fx.Credential{
+		Sigs: make([][secp256k1.SignatureLen]byte, 1),
+	}
+	copy(cred.Sigs[0][:], signatureBytes)
+
+	// Create the signed transaction
+	signedTx := &txs.Tx{
+		Unsigned: unsignedTx,
+		Creds:    []verify.Verifiable{cred},
+	}
+
+	// Initialize the transaction
+	if err := signedTx.Initialize(txs.Codec); err != nil {
+		return nil, fmt.Errorf("failed to initialize transaction: %w", err)
+	}
+
+	return signedTx, nil
+}
+
+// Example usage function showing how to integrate with your existing code
+func UseSignature(unsignedTx txs.UnsignedTx, signature string, newPWallet pwallet.Wallet) {
+	// Method 1: Using the ExternalSigner (implements the Signer interface)
+	signer := NewExternalSigner(signature)
+	tx := &txs.Tx{
+		Unsigned: unsignedTx, // Your unsigned transaction
+	}
+
+	if err := signer.Sign(context.Background(), tx); err != nil {
+		fmt.Printf("Failed to sign transaction: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Transaction ID: %s\n", tx.ID())
+
+	// Method 2: Direct creation (simpler, no interface needed)
+	signedTx, err := CreateSignedTransactionDirectly(unsignedTx, signature)
+	if err != nil {
+		fmt.Printf("Failed to create signed transaction: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Transaction ID: %s\n", signedTx.ID())
+
+	// Now you can issue the transaction
+	// txID, err := issueTx(*newPWallet, signedTx)
+	// if err != nil {
+	//     return fmt.Errorf("failed to issue tx: %w", err)
+	// }
+	txID, err := issueTx(newPWallet, signedTx)
+	if err != nil {
+		fmt.Printf("failed to issue tx: %w", err)
+	}
+	fmt.Printf("issued txid %s \n", txID.String())
 }
