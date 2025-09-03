@@ -49,7 +49,7 @@ func callDemo(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	sampleAddr := "P-fuji1u8933yvsmf5d6cqkm3qgewzlpr7sac3v3eufj9"
+	sampleAddr := "P-fuji12x5rgv5a4t8tq0tnpxrgfwv8m0ql86vn2u368u"
 	destinationAddr, err := address.ParseToID(sampleAddr)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func callDemo(_ *cobra.Command, _ []string) error {
 	avaRequest := models.AvaSerializedTxSignRequest{
 		Tx: txStr,
 	}
-	response, err := apiClient.AvaSerializedTxSign("P", "fuji1u8933yvsmf5d6cqkm3qgewzlpr7sac3v3eufj9", avaRequest)
+	response, err := apiClient.AvaSerializedTxSign("P", "fuji12x5rgv5a4t8tq0tnpxrgfwv8m0ql86vn2u368u", avaRequest)
 	if err != nil {
 		return fmt.Errorf("response err: %w", err)
 	}
@@ -115,15 +115,13 @@ func callDemo(_ *cobra.Command, _ []string) error {
 			log.Fatalf("Failed to decode hex: %v", err)
 		}
 
-		// 3. Create the credential with your signature
 		cred := &secp256k1fx.Credential{
 			Sigs: make([][65]byte, 1),
 		}
 		copy(cred.Sigs[0][:], txBytes)
 
-		// 4. Create the complete signed transaction
 		signedTx := &txs.Tx{
-			Unsigned: tx, // ← You need this!
+			Unsigned: tx,
 			Creds:    []verify.Verifiable{cred},
 		}
 		// Initialize the transaction (this sets the transaction ID)
