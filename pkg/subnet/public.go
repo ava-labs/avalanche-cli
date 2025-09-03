@@ -911,11 +911,9 @@ func (*PublicDeployer) signTx(
 
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet *primary.Wallet) (ids.ID, error) {
 	addrs, err := address.ParseToIDs(controlKeys)
-	fmt.Printf("createSubnetTx addr controlKeys %s \n", controlKeys)
 	if err != nil {
 		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
 	}
-	fmt.Printf("createSubnetTx addr %s \n", addrs)
 	owners := &secp256k1fx.OutputOwners{
 		Addrs:     addrs,
 		Threshold: threshold,

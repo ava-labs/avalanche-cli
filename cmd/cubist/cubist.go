@@ -27,7 +27,6 @@ To get started, use the key create command.`,
 
 	// avalanche key create
 	cmd.AddCommand(newCreateCmd())
-	cmd.AddCommand(newTestCmd())
 
 	return cmd
 }
