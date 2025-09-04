@@ -149,13 +149,15 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	if err != nil {
 		return 0, err
 	}
-
+	fmt.Printf("we are starting StartSignatureAggregator\n")
 	// Stop any existing signature aggregator process
 	if err := stopSignatureAggregator(app, network); err != nil {
+		fmt.Printf("error stopSignatureAggregator %s\n", err)
 		logger.Warn("Failed to stop existing signature aggregator",
 			zap.Error(err),
 		)
 	}
+	fmt.Printf("successfully stopSignatureAggregator \n")
 
 	if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
 		return 0, err
@@ -405,7 +407,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, network model
 			return fmt.Errorf("failed to generate api and metrics ports: %w", err)
 		}
 	}
-
+	fmt.Printf("ports %s %s \n", apiPort, metricsPort)
 	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort))
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
@@ -486,8 +488,11 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 		return fmt.Errorf("failed to get process details: %w", err)
 	}
 
+	fmt.Printf("runFile %s \n", runFile)
+
 	// Kill existing process if running
 	if runFile.Pid > 0 {
+		fmt.Printf("we are killing process %s \n", runFile.Pid)
 		process, err := os.FindProcess(runFile.Pid)
 		if err == nil {
 			if err := process.Kill(); err != nil {
@@ -528,5 +533,6 @@ func SignatureAggregatorCleanup(
 	if err := os.RemoveAll(signatureAggregatorDir); err != nil {
 		return fmt.Errorf("failed removing signature aggregator directory %s: %w", signatureAggregatorDir, err)
 	}
+	fmt.Printf("successfullly cleaned up signature aggreaggor \n")
 	return nil
 }
