@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"net"
 	"net/http"
 	"os"
@@ -149,15 +150,12 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	if err != nil {
 		return 0, err
 	}
-	fmt.Printf("we are starting StartSignatureAggregator\n")
 	// Stop any existing signature aggregator process
 	if err := stopSignatureAggregator(app, network); err != nil {
-		fmt.Printf("error stopSignatureAggregator %s\n", err)
 		logger.Warn("Failed to stop existing signature aggregator",
 			zap.Error(err),
 		)
 	}
-	fmt.Printf("successfully stopSignatureAggregator \n")
 
 	if err := os.MkdirAll(filepath.Dir(logFile), 0o755); err != nil {
 		return 0, err
@@ -269,9 +267,9 @@ func readExistingConfig(configPath string) (*signatureAggregatorConfig.Config, e
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
+func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16, logLevel string) *signatureAggregatorConfig.Config {
 	config := &signatureAggregatorConfig.Config{
-		LogLevel:             "debug",
+		LogLevel:             logLevel,
 		PChainAPI:            &basecfg.APIConfig{BaseURL: networkEndpoint},
 		InfoAPI:              &basecfg.APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
@@ -385,7 +383,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 	}
 }
 
-func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, version string) error {
+func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, sigAggFlags flags.SignatureAggregatorFlags) error {
 	// Create config file for signature aggregator
 	var apiPort, metricsPort int
 	var err error
@@ -407,20 +405,19 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, network model
 			return fmt.Errorf("failed to generate api and metrics ports: %w", err)
 		}
 	}
-	fmt.Printf("ports %s %s \n", apiPort, metricsPort)
-	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort))
+	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort), sigAggFlags.AggregatorLogLevel)
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
-	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
+	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, sigAggFlags.SignatureAggregatorVersion, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
 
-	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort, version)
+	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort, sigAggFlags.SignatureAggregatorVersion)
 }
 
 func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.Network) (string, error) {
@@ -488,11 +485,8 @@ func stopSignatureAggregator(app *application.Avalanche, network models.Network)
 		return fmt.Errorf("failed to get process details: %w", err)
 	}
 
-	fmt.Printf("runFile %s \n", runFile)
-
 	// Kill existing process if running
 	if runFile.Pid > 0 {
-		fmt.Printf("we are killing process %s \n", runFile.Pid)
 		process, err := os.FindProcess(runFile.Pid)
 		if err == nil {
 			if err := process.Kill(); err != nil {
@@ -533,6 +527,5 @@ func SignatureAggregatorCleanup(
 	if err := os.RemoveAll(signatureAggregatorDir); err != nil {
 		return fmt.Errorf("failed removing signature aggregator directory %s: %w", signatureAggregatorDir, err)
 	}
-	fmt.Printf("successfullly cleaned up signature aggreaggor \n")
 	return nil
 }
