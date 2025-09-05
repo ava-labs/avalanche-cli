@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
+
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -149,7 +151,6 @@ func StartSignatureAggregator(app *application.Avalanche, network models.Network
 	if err != nil {
 		return 0, err
 	}
-
 	// Stop any existing signature aggregator process
 	if err := stopSignatureAggregator(app, network); err != nil {
 		logger.Warn("Failed to stop existing signature aggregator",
@@ -267,9 +268,9 @@ func readExistingConfig(configPath string) (*signatureAggregatorConfig.Config, e
 	return &config, nil
 }
 
-func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16) *signatureAggregatorConfig.Config {
+func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPort uint16, logLevel string) *signatureAggregatorConfig.Config {
 	config := &signatureAggregatorConfig.Config{
-		LogLevel:             "debug",
+		LogLevel:             logLevel,
 		PChainAPI:            &basecfg.APIConfig{BaseURL: networkEndpoint},
 		InfoAPI:              &basecfg.APIConfig{BaseURL: networkEndpoint},
 		SignatureCacheSize:   1048576,
@@ -383,7 +384,7 @@ func generateAPIMetricsPorts() (int, int, error) {
 	}
 }
 
-func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, version string) error {
+func CreateSignatureAggregatorInstance(app *application.Avalanche, network models.Network, aggregatorLogger logging.Logger, sigAggFlags flags.SignatureAggregatorFlags) error {
 	// Create config file for signature aggregator
 	var apiPort, metricsPort int
 	var err error
@@ -405,20 +406,19 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, network model
 			return fmt.Errorf("failed to generate api and metrics ports: %w", err)
 		}
 	}
-
-	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort))
+	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort), sigAggFlags.AggregatorLogLevel)
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
 	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
 	signatureAggregatorEndpoint := fmt.Sprintf("http://localhost:%d/aggregate-signatures", apiPort)
-	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, version, signatureAggregatorEndpoint)
+	pid, err := StartSignatureAggregator(app, network, configPath, logPath, aggregatorLogger, sigAggFlags.SignatureAggregatorVersion, signatureAggregatorEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to start signature aggregator: %w", err)
 	}
 
-	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort, version)
+	return saveSignatureAggregatorFile(runFilePath, pid, apiPort, metricsPort, sigAggFlags.SignatureAggregatorVersion)
 }
 
 func GetSignatureAggregatorEndpoint(app *application.Avalanche, network models.Network) (string, error) {
