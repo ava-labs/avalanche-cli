@@ -1,6 +1,6 @@
 # https://golangci-lint.run/usage/configuration/
 run:
-  go: "1.23.7"
+  go: "1.24.7"
   timeout: 10m
 
 issues:

@@ -35,6 +35,6 @@ func printVMID(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("VM ID : %s", vmID.String()))
+	ux.Logger.PrintToUser(fmt.Sprintf("VM ID : %s", vmID.String())) //nolint:govet
 	return nil
 }

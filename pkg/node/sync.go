@@ -52,7 +52,7 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 		return err
 	}
 	ux.Logger.PrintToUser("Node(s) successfully started syncing with blockchain!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName)) //nolint:govet
 	return nil
 }
 

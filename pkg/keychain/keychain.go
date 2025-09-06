@@ -162,7 +162,7 @@ func GetKeychainFromCmdLineFlags(
 			useLedger = true
 		} else {
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(logging.Red.Wrap("WARNING: Storing keys locally in plain text is insecure. A hardware wallet is recommended for Mainnet."))
+			ux.Logger.PrintToUser(logging.Red.Wrap("WARNING: Storing keys locally in plain text is insecure. A hardware wallet is recommended for Mainnet.")) //nolint:govet
 			ux.Logger.PrintToUser("")
 		}
 	}
@@ -320,9 +320,9 @@ func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, l
 		}
 		addrStrs = append(addrStrs, addrStr)
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: ")) //nolint:govet
 	for _, addrStr := range addrStrs {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr))) //nolint:govet
 	}
 	return nil
 }

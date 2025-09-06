@@ -142,7 +142,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
+		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput) //nolint:govet
 		return err
 	}
 
@@ -152,7 +152,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
+			ux.Logger.PrintToUser(ErrNetworkNotStartedOutput) //nolint:govet
 			return err
 		}
 		return err
@@ -371,7 +371,7 @@ func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skip
 }
 
 func subnetNotYetDeployed() error {
-	ux.Logger.PrintToUser(ErrSubnetNotDeployedOutput)
+	ux.Logger.PrintToUser(ErrSubnetNotDeployedOutput) //nolint:govet
 	ux.Logger.PrintToUser("Please deploy this network first.")
 	return errSubnetNotYetDeployed
 }

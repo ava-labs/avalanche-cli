@@ -354,7 +354,7 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error())) //nolint:govet
 		if errors.Is(err, ErrNoInstanceState) {
 			return nil
 		}
@@ -363,7 +363,7 @@ func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName stri
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName)) //nolint:govet
 	return c.DestroyInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 

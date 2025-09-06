@@ -35,7 +35,7 @@ func NewDualLogger(cliOutputOnly bool, app *application.Avalanche) *DualLogger {
 }
 
 func (h *DualLogger) Info(msg string, _ ...zap.Field) {
-	ux.Logger.PrintToUser(msg)
+	ux.Logger.PrintToUser(msg) //nolint:govet
 	if !h.CliOutputOnly {
 		h.appLogger.Info(msg)
 	}
@@ -49,14 +49,14 @@ func (h *DualLogger) Error(msg string, _ ...zap.Field) {
 }
 
 func (h *DualLogger) Debug(msg string, _ ...zap.Field) {
-	ux.Logger.PrintToUser(msg)
+	ux.Logger.PrintToUser(msg) //nolint:govet
 	if !h.CliOutputOnly {
 		h.appLogger.Debug(msg)
 	}
 }
 
 func (h *DualLogger) Warn(msg string, _ ...zap.Field) {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap(msg))
+	ux.Logger.PrintToUser(logging.Yellow.Wrap(msg)) //nolint:govet
 	if !h.CliOutputOnly {
 		h.appLogger.Warn(msg)
 	}
@@ -70,7 +70,7 @@ func (h *DualLogger) Fatal(msg string, _ ...zap.Field) {
 }
 
 func (h *DualLogger) Verbo(msg string, _ ...zap.Field) {
-	ux.Logger.PrintToUser(msg)
+	ux.Logger.PrintToUser(msg) //nolint:govet
 	if !h.CliOutputOnly {
 		h.appLogger.Verbo(msg)
 	}
@@ -101,7 +101,7 @@ func (h *DualLogger) StopOnPanic() {
 }
 
 func (h *DualLogger) Trace(msg string, _ ...zap.Field) {
-	ux.Logger.PrintToUser(logging.Blue.Wrap(msg))
+	ux.Logger.PrintToUser(logging.Blue.Wrap(msg)) //nolint:govet
 	h.appLogger.Trace(msg)
 }
 

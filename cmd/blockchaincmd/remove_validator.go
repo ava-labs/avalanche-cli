@@ -297,7 +297,7 @@ func removeValidatorSOV(
 			return err
 		}
 		if privateKey == "" {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to authorize the removal. Should be the one that provided the original staking funds"))
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to authorize the removal. Should be the one that provided the original staking funds")) //nolint:govet
 			privateKey, err = prompts.PromptPrivateKey(
 				app.Prompt,
 				"authorize the removal",
@@ -335,9 +335,9 @@ func removeValidatorSOV(
 	}
 
 	if sc.UseACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2")) //nolint:govet
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0")) //nolint:govet
 	}
 
 	if !sc.PoS() {
@@ -461,7 +461,7 @@ func removeValidatorSOV(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Initializing Validator Removal", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump)
+			ux.Logger.PrintToUser(dump) //nolint:govet
 		}
 		return err
 	}
@@ -472,7 +472,7 @@ func removeValidatorSOV(
 		if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step")) //nolint:govet
 	} else {
 		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 		if err := blockchain.UpdatePChainHeight(
@@ -506,7 +506,7 @@ func removeValidatorSOV(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Finish Validator Removal", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump)
+			ux.Logger.PrintToUser(dump) //nolint:govet
 		}
 		return err
 	}

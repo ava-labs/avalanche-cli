@@ -81,7 +81,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 				nodeResults.AddResult(host.IP, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Setup Node"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Setup Node")) //nolint:govet
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath()); err != nil {
 				nodeResults.AddResult(host.IP, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -93,7 +93,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 				return
 			}
 			ux.SpinComplete(spinner)
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.IP, "Setup AvalancheGo"))
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.IP, "Setup AvalancheGo")) //nolint:govet
 			// check if host is a API host
 			if err := docker.ComposeSSHSetupNode(host,
 				network,
@@ -123,7 +123,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")) //nolint:govet
 	}
 	return nil
 }

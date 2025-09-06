@@ -94,10 +94,10 @@ func StartLocalNode(
 
 		switch {
 		case network.Kind == models.Fuji:
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes")) //nolint:govet
 			connectionSettings.NetworkID = network.ID
 		case network.Kind == models.Mainnet:
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours")) //nolint:govet
 			connectionSettings.NetworkID = network.ID
 		case network.Kind == models.Local:
 			connectionSettings, err = localnet.GetLocalNetworkConnectionInfo(app)
@@ -183,7 +183,7 @@ func LocalStatus(
 	if clusterName != "" {
 		ux.Logger.PrintToUser("%s %s", logging.Blue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
 	} else if len(localClusters) > 0 {
-		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
+		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:")) //nolint:govet
 	}
 	for _, clusterName := range localClusters {
 		currenlyRunning := ""
@@ -256,7 +256,7 @@ func LocalStatus(
 		}
 		networkDir := localnet.GetLocalClusterDir(app, clusterName)
 		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, networkDir, networkKind, currenlyRunning, healthStatus)
-		ux.Logger.PrintToUser(avagoURIOuput)
+		ux.Logger.PrintToUser(avagoURIOuput) //nolint:govet
 	}
 
 	return nil
