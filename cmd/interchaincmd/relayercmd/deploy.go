@@ -512,7 +512,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if err != nil {
 			if bs, err := os.ReadFile(logPath); err == nil {
 				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser(string(bs))
+				ux.Logger.PrintToUser(string(bs)) //nolint:govet
 			}
 			return err
 		}

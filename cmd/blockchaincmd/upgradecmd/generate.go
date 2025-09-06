@@ -65,16 +65,16 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		return nil
 	}
 	// print some warning/info message
-	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Yellow.Wrap(
+	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Yellow.Wrap( //nolint:govet
 		"Performing a network upgrade requires coordinating the upgrade network-wide.")))
-	ux.Logger.PrintToUser(logging.White.Wrap(logging.Reset.Wrap(
+	ux.Logger.PrintToUser(logging.White.Wrap(logging.Reset.Wrap( //nolint:govet
 		"A network upgrade changes the rule set used to process and verify blocks, " +
 			"such that any node that upgrades incorrectly or fails to upgrade by the time " +
 			"that upgrade goes into effect may become out of sync with the rest of the network.\n")))
-	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Red.Wrap(
+	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Red.Wrap( //nolint:govet
 		"Any mistakes in configuring network upgrades or coordinating them on validators " +
 			"may cause the network to halt and recovering may be difficult.")))
-	ux.Logger.PrintToUser(logging.Reset.Wrap(
+	ux.Logger.PrintToUser(logging.Reset.Wrap( //nolint:govet
 		"Please consult " + logging.Cyan.Wrap(
 			"https://docs.avax.network/avalanche-l1s/upgrade/customize-avalanche-l1#network-upgrades-enabledisable-precompiles ") +
 			logging.Reset.Wrap("for more information")))
@@ -98,7 +98,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	ux.Logger.PrintToUser(logging.Yellow.Wrap(
+	ux.Logger.PrintToUser(logging.Yellow.Wrap( //nolint:govet
 		"Avalanchego and this tool support configuring multiple precompiles. " +
 			"However, we suggest to only configure one per upgrade."))
 	fmt.Println()

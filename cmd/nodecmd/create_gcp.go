@@ -352,13 +352,13 @@ func createGCPInstance(
 					failedNodes[instanceID] = destroyErr
 					continue
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone))
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone)) //nolint:govet
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err)) //nolint:govet
 			}
 			ux.Logger.PrintToUser("Destroy the above instance(s) on GCP console to prevent charges")
 			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)

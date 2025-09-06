@@ -562,9 +562,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2")) //nolint:govet
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0")) //nolint:govet
 	}
 
 	for _, node := range net.Nodes {
@@ -697,7 +697,7 @@ func addAsValidator(
 		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step")) //nolint:govet
 	} else {
 		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
 		if err := blockchain.UpdatePChainHeight(

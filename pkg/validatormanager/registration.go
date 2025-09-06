@@ -512,7 +512,7 @@ func InitValidatorRegistration(
 			} else {
 				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
+			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18))) //nolint:govet
 		} else {
 			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(

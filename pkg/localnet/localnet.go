@@ -121,7 +121,7 @@ func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string
 	// version is in format avalanche/x.y.z, need to turn to semantic
 	splitVersion := strings.Split(versionResponse.Version, "/")
 	if len(splitVersion) != 2 {
-		return true, "", 0, fmt.Errorf("unable to parse avalanchego version " + versionResponse.Version)
+		return true, "", 0, fmt.Errorf("unable to parse avalanchego version " + versionResponse.Version) //nolint:govet
 	}
 	// index 0 should be avalanche, index 1 will be version
 	parsedVersion := "v" + splitVersion[1]

@@ -46,13 +46,13 @@ func (m *migrationRunner) run(app *application.Avalanche) error {
 		err := m.migrations[i](app, m)
 		if err != nil {
 			if m.running {
-				ux.Logger.PrintToUser(failedEndMessage)
+				ux.Logger.PrintToUser(failedEndMessage) //nolint:govet
 			}
 			return fmt.Errorf("migration #%d failed: %w", i, err)
 		}
 	}
 	if m.running {
-		ux.Logger.PrintToUser(endMessage)
+		ux.Logger.PrintToUser(endMessage) //nolint:govet
 		m.running = false
 	}
 	return nil
@@ -62,7 +62,7 @@ func (m *migrationRunner) run(app *application.Avalanche) error {
 // If yes, should run this function to print a message only once
 func (m *migrationRunner) printMigrationMessage() {
 	if m.showMsg {
-		ux.Logger.PrintToUser(runMessage)
+		ux.Logger.PrintToUser(runMessage) //nolint:govet
 	}
 	m.showMsg = false
 	m.running = true

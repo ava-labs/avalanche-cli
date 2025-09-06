@@ -211,7 +211,7 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			if err == nil {
 				break
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
+			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet)) //nolint:govet
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
 	}

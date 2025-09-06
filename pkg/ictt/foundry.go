@@ -60,28 +60,28 @@ func InstallFoundry() error {
 	}
 	if err := downloadCmd.Run(); err != nil {
 		if downloadOutbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(downloadOutbuf.String(), "\n"))
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadOutbuf.String(), "\n")) //nolint:govet
 		}
 		if downloadErrbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(downloadErrbuf.String(), "\n"))
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadErrbuf.String(), "\n")) //nolint:govet
 		}
 		return err
 	}
 	if err := installCmd.Wait(); err != nil {
 		if installOutbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
+			ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n")) //nolint:govet
 		}
 		if installErrbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(installErrbuf.String(), "\n"))
+			ux.Logger.PrintToUser(strings.TrimSuffix(installErrbuf.String(), "\n")) //nolint:govet
 		}
 		ux.Logger.PrintToUser("installation failed: %s", err.Error())
 		return err
 	}
-	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
+	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n")) //nolint:govet
 	foundryupCmd := exec.Command(foundryupPath, "-v", foundryVersion)
 	foundryupCmd.Env = cmdsEnv
 	out, err := foundryupCmd.CombinedOutput()
-	ux.Logger.PrintToUser(string(out))
+	ux.Logger.PrintToUser(string(out)) //nolint:govet
 	if err != nil {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Foundry toolset is not available and couldn't automatically be installed. It is a necessary dependency for CLI to compile smart contracts.")
