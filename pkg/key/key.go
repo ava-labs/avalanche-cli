@@ -7,6 +7,9 @@ package key
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"sort"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -127,4 +130,13 @@ func (ins *innerSortTransferableInputsWithSigners) Swap(i, j int) {
 // This is based off of (generics?): https://github.com/ava-labs/avalanchego/blob/224c9fd23d41839201dd0275ac864a845de6e93e/vms/components/avax/transferables.go#L202
 func SortTransferableInputsWithSigners(ins []*avax.TransferableInput, signers [][]ids.ShortID) {
 	sort.Sort(&innerSortTransferableInputsWithSigners{ins: ins, signers: signers})
+}
+
+func (m *SoftKey) GetNetworkChainAddress(network models.Network, chain string) (string, error) {
+	if chain != "P" && chain != "X" {
+		return "", fmt.Errorf("only P or X is accepted as a chain option")
+	}
+	// Parse HRP to create valid address
+	hrp := GetHRP(network.ID)
+	return address.Format(chain, hrp, m.privKey.PublicKey().Address().Bytes())
 }
