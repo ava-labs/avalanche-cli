@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -39,9 +38,6 @@ type SoftKey struct {
 	privKey        *secp256k1.PrivateKey
 	privKeyRaw     []byte
 	privKeyEncoded string
-
-	pAddr string
-	xAddr string
 
 	keyChain *secp256k1fx.Keychain
 }
@@ -131,17 +127,6 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 		privKeyEncoded: privKeyEncoded,
 
 		keyChain: keyChain,
-	}
-
-	// Parse HRP to create valid address
-	hrp := GetHRP(networkID)
-	m.pAddr, err = address.Format("P", hrp, m.privKey.PublicKey().Address().Bytes())
-	if err != nil {
-		return nil, err
-	}
-	m.xAddr, err = address.Format("X", hrp, m.privKey.PublicKey().Address().Bytes())
-	if err != nil {
-		return nil, err
 	}
 
 	return m, nil
@@ -300,14 +285,6 @@ func (m *SoftKey) PrivKeyHex() string {
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
 	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.WriteReadUserOnlyPerms)
-}
-
-func (m *SoftKey) P() []string {
-	return []string{m.pAddr}
-}
-
-func (m *SoftKey) X() []string {
-	return []string{m.xAddr}
 }
 
 func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (

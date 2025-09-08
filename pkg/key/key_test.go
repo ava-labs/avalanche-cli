@@ -6,6 +6,7 @@ package key
 import (
 	"bytes"
 	"errors"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"path/filepath"
 	"testing"
 
@@ -28,9 +29,13 @@ func TestNewKeyEwoq(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if m.P()[0] != ewoqPChainAddr {
-		t.Fatalf("unexpected P-Chain address %q, expected %q", m.P(), ewoqPChainAddr)
+	network := models.NewNetwork(0, fallbackNetworkID, "", "")
+	pChainAddrStr, err := m.GetNetworkChainAddress(network, "P")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pChainAddrStr[0] != ewoqPChainAddr {
+		t.Fatalf("unexpected P-Chain address %q, expected %q", pChainAddrStr, ewoqPChainAddr)
 	}
 
 	keyPath := filepath.Join(t.TempDir(), "key.pk")

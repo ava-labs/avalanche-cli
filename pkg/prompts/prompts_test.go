@@ -1169,8 +1169,10 @@ func TestCaptureKeyAddress(t *testing.T) {
 		require.NotEmpty(address)
 		require.True(len(address) > 0)
 		// Verify it's a P-Chain address format
-		require.True(len(realKey.P()) > 0)
-		require.Equal(realKey.P()[0], address)
+		pChainAddrStr, err := realKey.GetNetworkChainAddress(network, "P")
+		require.NoError(err)
+		require.True(len(pChainAddrStr) > 0)
+		require.Equal(pChainAddrStr[0], address)
 		mockPrompt.AssertExpectations(t)
 	})
 
@@ -1201,8 +1203,10 @@ func TestCaptureKeyAddress(t *testing.T) {
 		require.NotEmpty(address)
 		require.True(len(address) > 0)
 		// Verify it's an X-Chain address format
-		require.True(len(realKey.X()) > 0)
-		require.Equal(realKey.X()[0], address)
+		xAddrStr, err := realKey.GetNetworkChainAddress(network, "X")
+		require.NoError(err)
+		require.True(len(xAddrStr) > 0)
+		require.Equal(xAddrStr[0], address)
 		mockPrompt.AssertExpectations(t)
 	})
 
@@ -1265,8 +1269,10 @@ func TestCaptureKeyAddress(t *testing.T) {
 		address, err := CaptureKeyAddress(mockPrompt, goal, keyDir, getKey, network, PChainFormat)
 		require.NoError(err)
 		require.NotEmpty(address)
-		require.True(len(realKey.P()) > 0)
-		require.Equal(realKey.P()[0], address)
+		pChainAddrStr, err := realKey.GetNetworkChainAddress(network, "P")
+		require.NoError(err)
+		require.True(len(pChainAddrStr) > 0)
+		require.Equal(pChainAddrStr[0], address)
 		mockPrompt.AssertExpectations(t)
 	})
 

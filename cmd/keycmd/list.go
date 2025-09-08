@@ -407,7 +407,10 @@ func getStoredKeyInfo(
 			addrInfos = append(addrInfos, addrInfo...)
 		}
 		if _, ok := clients.p[network]; ok {
-			pChainAddrs := sk.P()
+			pChainAddrs, err := sk.GetNetworkChainAddress(network, "P")
+			if err != nil {
+				return nil, err
+			}
 			for _, pChainAddr := range pChainAddrs {
 				addrInfo, err := getPChainAddrInfo(clients.p, network, pChainAddr, "stored", keyName)
 				if err != nil {
@@ -417,7 +420,10 @@ func getStoredKeyInfo(
 			}
 		}
 		if _, ok := clients.x[network]; ok {
-			xChainAddrs := sk.X()
+			xChainAddrs, err := sk.GetNetworkChainAddress(network, "X")
+			if err != nil {
+				return nil, err
+			}
 			for _, xChainAddr := range xChainAddrs {
 				addrInfo, err := getXChainAddrInfo(clients.x, network, xChainAddr, "stored", keyName)
 				if err != nil {

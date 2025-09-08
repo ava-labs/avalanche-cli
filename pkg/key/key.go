@@ -26,10 +26,6 @@ var (
 
 // Key defines methods for key manager interface.
 type Key interface {
-	// P returns all formatted P-Chain addresses.
-	P() []string
-	// C returns the C-Chain address in Ethereum format
-	C() string
 	// Addresses returns the all raw ids.ShortID address.
 	Addresses() []ids.ShortID
 	// Match attempts to match a list of addresses up to the provided threshold.
@@ -132,11 +128,12 @@ func SortTransferableInputsWithSigners(ins []*avax.TransferableInput, signers []
 	sort.Sort(&innerSortTransferableInputsWithSigners{ins: ins, signers: signers})
 }
 
-func (m *SoftKey) GetNetworkChainAddress(network models.Network, chain string) (string, error) {
+func (m *SoftKey) GetNetworkChainAddress(network models.Network, chain string) ([]string, error) {
 	if chain != "P" && chain != "X" {
-		return "", fmt.Errorf("only P or X is accepted as a chain option")
+		return nil, fmt.Errorf("only P or X is accepted as a chain option")
 	}
 	// Parse HRP to create valid address
 	hrp := GetHRP(network.ID)
-	return address.Format(chain, hrp, m.privKey.PublicKey().Address().Bytes())
+	addressStr, error := address.Format(chain, hrp, m.privKey.PublicKey().Address().Bytes())
+	return []string{addressStr}, error
 }

@@ -421,9 +421,17 @@ func CaptureKeyAddress(
 	}
 	switch format {
 	case PChainFormat:
-		return k.P()[0], nil
+		pChainAddrStr, err := k.GetNetworkChainAddress(network, "P")
+		if err != nil {
+			return "", err
+		}
+		return pChainAddrStr[0], nil
 	case XChainFormat:
-		return k.X()[0], nil
+		xChainAddrStr, err := k.GetNetworkChainAddress(network, "X")
+		if err != nil {
+			return "", err
+		}
+		return xChainAddrStr[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}

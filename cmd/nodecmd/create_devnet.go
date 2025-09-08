@@ -208,15 +208,21 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	if err != nil {
 		return err
 	}
-	stakingAddrStr := k.X()[0]
-
+	stakingAddrStrs, err := k.GetNetworkChainAddress(network, "X")
+	if err != nil {
+		return err
+	}
+	stakingAddrStr := stakingAddrStrs[0]
 	// get ewoq key as funded key for devnet genesis
 	k, err = key.LoadEwoq(network.ID)
 	if err != nil {
 		return err
 	}
-	walletAddrStr := k.X()[0]
-
+	walletAddrStrs, err := k.GetNetworkChainAddress(network, "X")
+	if err != nil {
+		return err
+	}
+	walletAddrStr := walletAddrStrs[0]
 	// exclude API nodes from genesis file generation as they will have no stake
 	hostsAPI := utils.Filter(hosts, func(h *models.Host) bool {
 		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
