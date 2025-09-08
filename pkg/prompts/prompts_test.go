@@ -907,12 +907,11 @@ func TestPromptPrivateKey(t *testing.T) {
 		err := os.WriteFile(keyFile, []byte("dummy"), 0o600)
 		require.NoError(err)
 
-		network := models.NewLocalNetwork()
 		customOpt := Custom
 		expectedOptions := []string{cliKeyOpt, customOpt}
 
 		// Create a real SoftKey for testing
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -1151,7 +1150,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		network := models.NewLocalNetwork()
 
 		// Create a real SoftKey for testing
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -1186,7 +1185,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		network := models.NewLocalNetwork()
 
 		// Create a real SoftKey for testing
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -1220,7 +1219,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		network := models.NewLocalNetwork()
 
 		// Create a real SoftKey for testing
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -1253,7 +1252,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		network := models.NewFujiNetwork()
 
 		// Create a real SoftKey for testing with Fuji network ID
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(keyName string, network models.Network, loadStakingSignerKey bool) (*key.SoftKey, error) {
@@ -1327,7 +1326,7 @@ func TestCaptureKeyAddress(t *testing.T) {
 		network := models.NewLocalNetwork()
 
 		// Create a real SoftKey for testing
-		realKey, err := key.NewSoft(network.ID)
+		realKey, err := key.NewSoft()
 		require.NoError(err)
 
 		getKey := func(string, models.Network, bool) (*key.SoftKey, error) {

@@ -36,7 +36,7 @@ func createKey(_ *cobra.Command, args []string) error {
 	if filename == "" {
 		// Create key from scratch
 		ux.Logger.PrintToUser("Generating new key...")
-		k, err := key.NewSoft(0)
+		k, err := key.NewSoft()
 		if err != nil {
 			return err
 		}

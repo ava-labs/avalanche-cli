@@ -23,7 +23,6 @@ func TestNewKeyEwoq(t *testing.T) {
 	t.Parallel()
 
 	m, err := NewSoft(
-		fallbackNetworkID,
 		WithPrivateKeyEncoded(EwoqPrivateKey),
 	)
 	if err != nil {
@@ -112,7 +111,7 @@ func TestNewKey(t *testing.T) {
 		},
 	}
 	for i, tv := range tt {
-		_, err := NewSoft(fallbackNetworkID, tv.opts...)
+		_, err := NewSoft(tv.opts...)
 		if !errors.Is(err, tv.expErr) {
 			t.Fatalf("#%d(%s): unexpected error %v, expected %v", i, tv.name, err, tv.expErr)
 		}

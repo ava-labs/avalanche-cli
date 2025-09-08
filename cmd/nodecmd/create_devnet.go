@@ -204,7 +204,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	network = models.NewNetworkFromCluster(network, clusterName)
 
 	// get random staking key for devnet genesis
-	k, err := key.NewSoft(network.ID)
+	k, err := key.NewSoft()
 	if err != nil {
 		return err
 	}

@@ -53,7 +53,7 @@ func GetDefaultRelayerKeyInfo(app *application.Avalanche) (string, string, strin
 			return "", "", "", err
 		}
 	} else {
-		k, err = key.NewSoft(0)
+		k, err = key.NewSoft()
 		if err != nil {
 			return "", "", "", err
 		}

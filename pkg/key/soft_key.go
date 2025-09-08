@@ -79,7 +79,7 @@ func WithPrivateKeyEncoded(privKey string) SOpOption {
 	}
 }
 
-func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
+func NewSoft(opts ...SOpOption) (*SoftKey, error) {
 	ret := &SOp{}
 	ret.applyOpts(opts)
 
@@ -125,8 +125,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 		privKey:        privKey,
 		privKeyRaw:     privKey.Bytes(),
 		privKeyEncoded: privKeyEncoded,
-
-		keyChain: keyChain,
+		keyChain:       keyChain,
 	}
 
 	return m, nil
@@ -145,7 +144,7 @@ func LoadSoftOrCreate(networkID uint32, keyPath string) (*SoftKey, error) {
 	if utils.FileExists(keyPath) {
 		return LoadSoft(networkID, keyPath)
 	} else {
-		k, err := NewSoft(networkID)
+		k, err := NewSoft()
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +162,7 @@ func LoadEwoq(networkID uint32) (*SoftKey, error) {
 // LoadSoftFromBytes loads the private key from bytes and creates the corresponding SoftKey.
 func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 	// in case, it's already encoded
-	k, err := NewSoft(networkID, WithPrivateKeyEncoded(string(kb)))
+	k, err := NewSoft(WithPrivateKeyEncoded(string(kb)))
 	if err == nil {
 		return k, nil
 	}
@@ -190,7 +189,7 @@ func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 		return nil, err
 	}
 
-	return NewSoft(networkID, WithPrivateKey(privKey))
+	return NewSoft(WithPrivateKey(privKey))
 }
 
 // readASCII reads into 'buf', stopping when the buffer is full or
