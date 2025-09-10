@@ -24,7 +24,7 @@ func installBinaryWithVersion(
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, error) {
-	ux.Logger.PrintToUser("Installing " + binPrefix + version + "...") //nolint:govet
+	ux.Logger.PrintToUser("%s", "Installing "+binPrefix+version+"...")
 
 	installURL, ext, err := downloader.GetDownloadURL(version, installer)
 	if err != nil {
@@ -48,7 +48,7 @@ func installBinaryWithVersion(
 			return "", err
 		}
 	}
-	ux.Logger.PrintToUser(binPrefix + version + " installation successful") //nolint:govet
+	ux.Logger.PrintToUser("%s", binPrefix+version+" installation successful")
 
 	if !strings.Contains(binDir, version) {
 		return filepath.Join(binDir, binPrefix+version), nil

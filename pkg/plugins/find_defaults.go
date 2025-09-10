@@ -62,7 +62,7 @@ func getScanConfigDirs() ([]string, error) {
 }
 
 func FindPluginDir() (string, error) {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for the plugin directory...")) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Scanning your system for the plugin directory..."))
 	scanConfigDirs, err := getScanConfigDirs()
 	if err != nil {
 		return "", err
@@ -71,12 +71,12 @@ func FindPluginDir() (string, error) {
 	if dir != "" {
 		return dir, nil
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No plugin directory found on your system")) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("No plugin directory found on your system"))
 	return "", nil
 }
 
 func FindAvagoConfigPath() (string, error) {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for existing files...")) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Scanning your system for existing files..."))
 	var path string
 	// Attempt 1: Try the admin API
 	if path = findByRunningProcesses(constants.AvalancheGoRepoName, config.ConfigFileKey); path != "" {
@@ -90,7 +90,7 @@ func FindAvagoConfigPath() (string, error) {
 	if path = findByCommonDirs(defaultConfigFileName, scanConfigDirs); path != "" {
 		return path, nil
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No config file has been found on your system")) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("No config file has been found on your system"))
 	return "", nil
 }
 

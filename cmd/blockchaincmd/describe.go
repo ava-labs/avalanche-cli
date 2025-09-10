@@ -70,7 +70,7 @@ func printGenesis(blockchainName string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(string(gen)) //nolint:govet
+	ux.Logger.PrintToUser("%s", string(gen))
 	return nil
 }
 
@@ -189,7 +189,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			t.AppendRow(table.Row{net, "Specialized Manager Address", data.SpecializedValidatorManagerAddress})
 		}
 	}
-	ux.Logger.PrintToUser(t.Render()) //nolint:govet
+	ux.Logger.PrintToUser("%s", t.Render())
 
 	// ICM
 	t = ux.DefaultTable("ICM", nil)
@@ -219,7 +219,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 	if hasICMInfo {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(t.Render()) //nolint:govet //nolint:govet
+		ux.Logger.PrintToUser("%s", t.Render())
 	}
 
 	// Token
@@ -227,7 +227,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t = ux.DefaultTable("Token", nil)
 	t.AppendRow(table.Row{"Token Name", sc.TokenName})
 	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
-	ux.Logger.PrintToUser(t.Render()) //nolint:govet
+	ux.Logger.PrintToUser("%s", t.Render())
 
 	if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 		genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
@@ -269,7 +269,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
 		t.AppendRow(table.Row{"Token Name", sc.TokenName})
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(t.Render()) //nolint:govet //nolint:govet
+		ux.Logger.PrintToUser("%s", t.Render())
 	}
 
 	return nil
@@ -333,7 +333,7 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 			}
 			t.AppendRow(table.Row{description, address.Hex() + "\n" + privKey, formattedAmount.String(), amount.String()})
 		}
-		ux.Logger.PrintToUser(t.Render()) //nolint:govet //nolint:govet
+		ux.Logger.PrintToUser("%s", t.Render())
 	}
 	return nil
 }
@@ -383,7 +383,7 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}
-	ux.Logger.PrintToUser(t.Render()) //nolint:govet
+	ux.Logger.PrintToUser("%s", t.Render())
 }
 
 func printPrecompiles(genesis core.Genesis) {
@@ -436,10 +436,10 @@ func printPrecompiles(genesis core.Genesis) {
 		allowListSet = true
 	}
 	if warpSet || allowListSet {
-		ux.Logger.PrintToUser(t.Render()) //nolint:govet //nolint:govet
+		ux.Logger.PrintToUser("%s", t.Render())
 		if allowListSet {
 			note := logging.Orange.Wrap("The allowlist is taken from the genesis and is not being updated if you make adjustments\nvia the precompile. Use readAllowList(address) instead.")
-			ux.Logger.PrintToUser(note) //nolint:govet
+			ux.Logger.PrintToUser("%s", note)
 		}
 	}
 }

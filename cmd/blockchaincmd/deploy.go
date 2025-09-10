@@ -756,7 +756,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.Blue.Wrap( //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
 		var isPermissioned bool
@@ -825,7 +825,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			chainGenesis,
 		)
 		if err != nil {
-			ux.Logger.PrintToUser(logging.Red.Wrap( //nolint:govet
+			ux.Logger.PrintToUser("%s", logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
 			return err
@@ -1087,7 +1087,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign && tracked {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions.")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
 
 	var icmErr, relayerErr error
@@ -1369,7 +1369,7 @@ func PrintReadyToSignMsg(
 	if blockchainName == "" {
 		cmdLine = fmt.Sprintf("  avalanche transaction commit --input-tx-filepath %s", outputTxPath)
 	}
-	ux.Logger.PrintToUser(cmdLine) //nolint:govet
+	ux.Logger.PrintToUser("%s", cmdLine)
 }
 
 func PrintRemainingToSignMsg(
@@ -1391,7 +1391,7 @@ func PrintRemainingToSignMsg(
 	if blockchainName == "" {
 		cmdline = fmt.Sprintf("  avalanche transaction sign --input-tx-filepath %s", outputTxPath)
 	}
-	ux.Logger.PrintToUser(cmdline) //nolint:govet
+	ux.Logger.PrintToUser("%s", cmdline)
 	ux.Logger.PrintToUser("")
 }
 
@@ -1415,7 +1415,7 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 		t.AppendRow(table.Row{"Blockchain ID", blockchainID.String()})
 		t.AppendRow(table.Row{"P-Chain TXID", blockchainID.String()})
 	}
-	ux.Logger.PrintToUser(t.Render()) //nolint:govet
+	ux.Logger.PrintToUser("%s", t.Render())
 	return nil
 }
 

@@ -89,7 +89,7 @@ func joinAsPrimaryNetworkValidator(
 	signingKeyPath string,
 	nodeCmd bool,
 ) error {
-	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String())) //nolint:govet
+	ux.Logger.PrintToUser("%s", fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	defer ux.Logger.PrintLineSeparator()
 	var (
 		start time.Time
@@ -144,7 +144,7 @@ func joinAsPrimaryNetworkValidator(
 	); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String())) //nolint:govet
+	ux.Logger.PrintToUser("%s", fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
 	return nil
 }
 
@@ -369,7 +369,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("node(s) %s failed to validate the Primary Network", maps.Keys(nodeErrors))
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!", clusterName)) //nolint:govet
+		ux.Logger.PrintToUser("%s", fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!", clusterName))
 	}
 	return nil
 }

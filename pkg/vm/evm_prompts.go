@@ -277,10 +277,10 @@ func promptGasTokenKind(
 			case explainOption:
 				ux.Logger.PrintToUser("Every blockchain uses a token to manage access to its limited resources. For example, ETH is the native token of Ethereum, and AVAX is the native token of the Avalanche C-Chain. Users pay transaction fees with these tokens. If demand exceeds capacity, transaction fees increase, requiring users to pay more tokens for their transactions.")
 				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser(logging.Bold.Wrap("The blockchain's native token")) //nolint:govet
+				ux.Logger.PrintToUser("%s", logging.Bold.Wrap("The blockchain's native token"))
 				ux.Logger.PrintToUser("Each blockchain on Avalanche has its own transaction fee token. To issue transactions users don't need to acquire ETH or AVAX and therefore the transaction fees are completely isolated.")
 				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain")) //nolint:govet
+				ux.Logger.PrintToUser("%s", logging.Bold.Wrap("A token from another blockchain"))
 				ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
 				ux.Logger.PrintToUser("")
 				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol ICM will be activated automatically. For more info on ICM, visit: https://github.com/ava-labs/icm-contracts/tree/main/contracts/teleporter")

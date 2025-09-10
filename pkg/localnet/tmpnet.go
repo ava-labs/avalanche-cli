@@ -93,17 +93,13 @@ func TmpNetCreate(
 		DefaultFlags: defaultFlagsStr,
 		Genesis:      genesis,
 		NetworkID:    networkID,
-	}
-	if avalancheGoBinPath != "" {
-		for i := range network.Nodes {
-			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
-				Process: &tmpnet.ProcessRuntimeConfig{
-					ReuseDynamicPorts: true,
-					AvalancheGoPath:   avalancheGoBinPath,
-					PluginDir:         pluginDir,
-				},
-			}
-		}
+		DefaultRuntimeConfig: tmpnet.NodeRuntimeConfig{
+			Process: &tmpnet.ProcessRuntimeConfig{
+				ReuseDynamicPorts: true,
+				AvalancheGoPath:   avalancheGoBinPath,
+				PluginDir:         pluginDir,
+			},
+		},
 	}
 	if err := network.EnsureDefaultConfig(log); err != nil {
 		return nil, err

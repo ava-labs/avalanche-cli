@@ -216,7 +216,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	for _, host := range clusterHosts {
-		ux.Logger.PrintToUser(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath)) //nolint:govet
+		ux.Logger.PrintToUser("%s", utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath))
 	}
 	ux.Logger.PrintToUser("")
 	return nil

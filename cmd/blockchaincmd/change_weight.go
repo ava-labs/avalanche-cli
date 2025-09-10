@@ -247,7 +247,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(kc, network)
 
 	if sc.UseACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 		return changeWeightACP99(
 			deployer,
 			network,
@@ -258,7 +258,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			initiateTxHash,
 		)
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(validatorInfo.PublicKey))
@@ -435,7 +435,7 @@ func changeWeightACP99(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Initializing Validator Weight Change", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump) //nolint:govet
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}
@@ -448,7 +448,7 @@ func changeWeightACP99(
 			return err
 		}
 		if validatorInfo.Weight == newWeight {
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The new Weight was already set on the P-Chain. Proceeding to the next step")) //nolint:govet
+			ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The new Weight was already set on the P-Chain. Proceeding to the next step"))
 			skipPChain = true
 		}
 	}
@@ -458,7 +458,7 @@ func changeWeightACP99(
 			if newWeight != 0 || !strings.Contains(err.Error(), "could not load L1 validator: not found") {
 				return err
 			}
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step")) //nolint:govet
+			ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step"))
 		} else {
 			ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 			if err := blockchain.UpdatePChainHeight(
@@ -494,7 +494,7 @@ func changeWeightACP99(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Finish Validator Weight Change", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump) //nolint:govet
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}

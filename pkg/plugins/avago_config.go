@@ -28,7 +28,7 @@ func EditConfigFile(
 	if !forceWrite {
 		warn := "This will edit your existing config file. This edit is nondestructive,\n" +
 			"but it's always good to have a backup."
-		ux.Logger.PrintToUser(warn) //nolint:govet
+		ux.Logger.PrintToUser("%s", warn)
 		yes, err := app.Prompt.CaptureYesNo("Proceed?")
 		if err != nil {
 			return err

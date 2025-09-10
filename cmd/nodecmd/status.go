@@ -256,8 +256,8 @@ func printOutput(
 	}
 	ux.Logger.PrintToUser("")
 	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", logging.LightBlue.Wrap(clusterName))
-	ux.Logger.PrintToUser(tit)                                         //nolint:govet
-	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit)))) //nolint:govet
+	ux.Logger.PrintToUser("%s", tit)
+	ux.Logger.PrintToUser("%s", strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")
 	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Role", "Avago Version", "Primary Network", "Healthy"}
 	if blockchainName != "" {

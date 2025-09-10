@@ -475,7 +475,7 @@ func CallAddValidator(
 			return err
 		}
 		if privateKey == "" {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to provide the staking funds and pay the validator manager fees")) //nolint:govet
+			ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("A key is needed to provide the staking funds and pay the validator manager fees"))
 			ux.Logger.PrintToUser("Staking funds: %s tokens", utils.FormatAmount(stakeAmount, 18))
 			privateKey, err = prompts.PromptPrivateKey(
 				app.Prompt,
@@ -539,9 +539,9 @@ func CallAddValidator(
 	}
 
 	if sc.UseACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	if !pos {
@@ -663,7 +663,7 @@ func CallAddValidator(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Initializing Validator Registration", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump) //nolint:govet
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}
@@ -674,7 +674,7 @@ func CallAddValidator(
 		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
 		if err := blockchain.UpdatePChainHeight(
@@ -708,7 +708,7 @@ func CallAddValidator(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Finish Validator Registration", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump) //nolint:govet
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}

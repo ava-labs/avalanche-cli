@@ -793,7 +793,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
-		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	sendNodeCreateMetrics(cloudService, network.Name(), numNodesMetricsMap)
 	return nil
@@ -1137,7 +1137,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.LightBlue.Wrap(region))
 			for _, apiNode := range cloudConfig.APIInstanceIDs {
-				ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode]))) //nolint:govet
+				ux.Logger.PrintToUser("%s", logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
 			}
 			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("")
@@ -1174,7 +1174,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort))) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
@@ -1348,7 +1348,7 @@ func getRegionsNodeNum(cloudName string) (
 				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
 			})
 		}
-		ux.Logger.PrintToUser("Current selection: " + strings.Join(currentInput, " ")) //nolint:govet
+		ux.Logger.PrintToUser("%s", "Current selection: "+strings.Join(currentInput, " "))
 		yes, err := app.Prompt.CaptureNoYes(additionalRegionPrompt)
 		if err != nil {
 			return nil, err

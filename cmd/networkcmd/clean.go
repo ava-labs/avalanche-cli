@@ -39,7 +39,7 @@ func clean(*cobra.Command, []string) error {
 	} else if err == nil {
 		ux.Logger.PrintToUser("Process terminated.")
 	} else {
-		ux.Logger.PrintToUser(logging.Red.Wrap("No network is running.")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Red.Wrap("No network is running."))
 	}
 
 	if err := relayer.RelayerCleanup(

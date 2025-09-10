@@ -86,7 +86,7 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 		txt := "No new version found upstream; skipping update"
 		app.Log.Debug(txt)
 		if isUserCalled {
-			ux.Logger.PrintToUser(txt) //nolint:govet
+			ux.Logger.PrintToUser("%s", txt)
 		}
 		return nil
 	}
@@ -150,20 +150,20 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 	ux.Logger.PrintToUser("Downloading install script...")
 	if err := downloadCmd.Run(); err != nil {
 		if downloadOutbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(downloadOutbuf.String(), "\n")) //nolint:govet
+			ux.Logger.PrintToUser("%s", strings.TrimSuffix(downloadOutbuf.String(), "\n"))
 		}
 		if downloadErrbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(downloadErrbuf.String(), "\n")) //nolint:govet
+			ux.Logger.PrintToUser("%s", strings.TrimSuffix(downloadErrbuf.String(), "\n"))
 		}
 		return err
 	}
 	ux.Logger.PrintToUser("Installing new release...")
 	if err := installCmd.Wait(); err != nil {
 		if installOutbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n")) //nolint:govet
+			ux.Logger.PrintToUser("%s", strings.TrimSuffix(installOutbuf.String(), "\n"))
 		}
 		if installErrbuf.String() != "" {
-			ux.Logger.PrintToUser(strings.TrimSuffix(installErrbuf.String(), "\n")) //nolint:govet
+			ux.Logger.PrintToUser("%s", strings.TrimSuffix(installErrbuf.String(), "\n"))
 		}
 		ux.Logger.PrintToUser("installation failed: %s", err.Error())
 		return err

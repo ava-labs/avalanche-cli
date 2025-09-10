@@ -165,9 +165,9 @@ func InitializeValidatorManager(
 	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0")) //nolint:govet
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	var err error
@@ -754,7 +754,7 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions.")) //nolint:govet
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	ux.Logger.PrintToUser("")
 	ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted to sovereign L1")
 
