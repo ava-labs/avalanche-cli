@@ -5,7 +5,8 @@ package vm
 
 import (
 	sdkUtils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
@@ -14,8 +15,6 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/precompile/precompileconfig"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func configureContractDeployerAllowList(
@@ -109,7 +108,7 @@ func configureWarp(timestamp *uint64) warp.Config {
 }
 
 func addICMAddressesToAllowLists(
-	precompile *params.Precompiles,
+	precompile *extras.Precompiles,
 	icmAddress string,
 	icmMessengerDeployerAddress string,
 	relayerAddress string,
@@ -182,8 +181,8 @@ func addAddressToAllowed(
 func getPrecompiles(
 	subnetEVMGenesisParams SubnetEVMGenesisParams,
 	genesisTimestamp *uint64,
-) params.Precompiles {
-	precompiles := make(params.Precompiles)
+) extras.Precompiles {
+	precompiles := make(extras.Precompiles)
 	if subnetEVMGenesisParams.enableWarpPrecompile {
 		warpConfig := configureWarp(genesisTimestamp)
 		precompiles[warp.ConfigKey] = &warpConfig

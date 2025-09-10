@@ -24,6 +24,7 @@ import (
 	validatorManagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -32,7 +33,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
-	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
@@ -399,37 +400,38 @@ func printPrecompiles(genesis core.Genesis) {
 	warpSet := false
 	allowListSet := false
 	// Warp
-	if genesis.Config.GenesisPrecompiles[warp.ConfigKey] != nil {
+	extra := params.GetExtra(genesis.Config)
+	if extra.GenesisPrecompiles[warp.ConfigKey] != nil {
 		t.AppendRow(table.Row{"Warp", "n/a", "n/a", "n/a"})
 		warpSet = true
 	}
 	// Native Minting
-	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		cfg := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+	if extra.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		cfg := extra.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		addPrecompileAllowListToTable(t, "Native Minter", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
 		allowListSet = true
 	}
 	// Contract allow list
-	if genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
-		cfg := genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
+	if extra.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
+		cfg := extra.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
 		addPrecompileAllowListToTable(t, "Contract Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
 		allowListSet = true
 	}
 	// TX allow list
-	if genesis.Config.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
-		cfg := genesis.Config.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
+	if extra.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
+		cfg := extra.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
 		addPrecompileAllowListToTable(t, "Tx Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
 		allowListSet = true
 	}
 	// Fee config allow list
-	if genesis.Config.GenesisPrecompiles[feemanager.ConfigKey] != nil {
-		cfg := genesis.Config.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
+	if extra.GenesisPrecompiles[feemanager.ConfigKey] != nil {
+		cfg := extra.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
 		addPrecompileAllowListToTable(t, "Fee Config Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
 		allowListSet = true
 	}
 	// Reward config allow list
-	if genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
-		cfg := genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
+	if extra.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
+		cfg := extra.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
 		addPrecompileAllowListToTable(t, "Reward Manager Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
 		allowListSet = true
 	}

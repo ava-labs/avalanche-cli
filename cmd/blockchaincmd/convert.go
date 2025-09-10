@@ -32,8 +32,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/libevm/common"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 

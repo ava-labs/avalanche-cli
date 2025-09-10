@@ -158,7 +158,6 @@ func AddNodeToLocalCluster(
 	defer cancel()
 	if err = TmpNetAddNode(
 		ctx,
-		app.Log,
 		network,
 		newNode,
 		httpPort,
@@ -208,7 +207,7 @@ func GetLocalCluster(
 	clusterName string,
 ) (*tmpnet.Network, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	return GetTmpNetNetwork(networkDir)
+	return GetTmpNetNetworkWithLog(app.Log, networkDir)
 }
 
 // Indicates if the local cluster exists and has valid data on its directory

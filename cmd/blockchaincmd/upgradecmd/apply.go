@@ -24,8 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/server"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -317,7 +318,7 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 	return nil
 }
 
-func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
+func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]extras.PrecompileUpgrade, string, error) {
 	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
 	if sc.NetworkDataIsEmpty(networkKey) {
 		return nil, "", subnetNotYetDeployed()
@@ -376,11 +377,11 @@ func subnetNotYetDeployed() error {
 	return errSubnetNotYetDeployed
 }
 
-func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName string) {
+func writeLockFile(precmpUpgrades []extras.PrecompileUpgrade, blockchainName string) {
 	// it seems all went well this far, now we try to write/update the lock file
 	// if this fails, we probably don't want to cause an error to the user?
 	// so we are silently failing, just write a log entry
-	wrapper := params.UpgradeConfig{
+	wrapper := extras.UpgradeConfig{
 		PrecompileUpgrades: precmpUpgrades,
 	}
 	jsonBytes, err := json.Marshal(wrapper)
@@ -392,7 +393,7 @@ func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName str
 	}
 }
 
-func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.PrecompileUpgrade, error) {
+func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]extras.PrecompileUpgrade, error) {
 	upgrades, err := getAllUpgrades(file)
 	if err != nil {
 		return nil, err
@@ -447,7 +448,7 @@ func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.P
 	return upgrades, nil
 }
 
-func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
+func getAllTimestamps(upgrades []extras.PrecompileUpgrade) ([]int64, error) {
 	allTimestamps := []int64{}
 
 	if len(upgrades) == 0 {
@@ -477,7 +478,7 @@ func validateTimestamp(ts *uint64) (int64, error) {
 	return int64(val), nil
 }
 
-func getEarliestUpcomingTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
+func getEarliestUpcomingTimestamp(upgrades []extras.PrecompileUpgrade) (int64, error) {
 	allTimestamps, err := getAllTimestamps(upgrades)
 	if err != nil {
 		return 0, err
@@ -503,8 +504,8 @@ func getEarliestUpcomingTimestamp(upgrades []params.PrecompileUpgrade) (int64, e
 	return earliest, nil
 }
 
-func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
-	var precompiles params.UpgradeConfig
+func getAllUpgrades(file []byte) ([]extras.PrecompileUpgrade, error) {
+	var precompiles extras.UpgradeConfig
 
 	if err := json.Unmarshal(file, &precompiles); err != nil {
 		cause := fmt.Errorf("failed parsing JSON: %w", err)

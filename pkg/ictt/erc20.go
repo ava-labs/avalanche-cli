@@ -3,45 +3,73 @@
 package ictt
 
 import (
-	_ "embed"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/liyue201/erc20-go/erc20"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
+	"github.com/ava-labs/libevm/common"
 )
 
-func GetTokenParams(endpoint string, tokenAddress common.Address) (string, string, uint8, error) {
-	client, err := ethclient.Dial(endpoint)
+func GetTokenParams(
+	rpcURL string,
+	address common.Address,
+) (string, string, uint8, error) {
+	tokenName, err := GetTokenName(rpcURL, address)
 	if err != nil {
 		return "", "", 0, err
 	}
-	token, err := erc20.NewGGToken(tokenAddress, client)
+	tokenSymbol, err := GetTokenSymbol(rpcURL, address)
 	if err != nil {
 		return "", "", 0, err
 	}
-	tokenName, err := token.Name(nil)
-	if err != nil {
-		return "", "", 0, err
-	}
-	tokenSymbol, err := token.Symbol(nil)
-	if err != nil {
-		return "", "", 0, err
-	}
-	tokenDecimals, err := token.Decimals(nil)
+	tokenDecimals, err := GetTokenDecimals(rpcURL, address)
 	if err != nil {
 		return "", "", 0, err
 	}
 	return tokenSymbol, tokenName, tokenDecimals, nil
 }
 
-func GetTokenDecimals(endpoint string, tokenAddress common.Address) (uint8, error) {
-	client, err := ethclient.Dial(endpoint)
+func GetTokenDecimals(
+	rpcURL string,
+	address common.Address,
+) (uint8, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"decimals()->(uint8)",
+		nil,
+	)
 	if err != nil {
 		return 0, err
 	}
-	token, err := erc20.NewGGToken(tokenAddress, client)
+	return contract.GetSmartContractCallResult[uint8]("decimals", out)
+}
+
+func GetTokenName(
+	rpcURL string,
+	address common.Address,
+) (string, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"name()->(string)",
+		nil,
+	)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
-	return token.Decimals(nil)
+	return contract.GetSmartContractCallResult[string]("name", out)
+}
+
+func GetTokenSymbol(
+	rpcURL string,
+	address common.Address,
+) (string, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"symbol()->(string)",
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
+	return contract.GetSmartContractCallResult[string]("symbol", out)
 }

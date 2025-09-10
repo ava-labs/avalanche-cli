@@ -80,19 +80,38 @@ func TmpNetCreate(
 	if len(upgradeBytes) > 0 {
 		defaultFlags[config.UpgradeFileContentKey] = base64.StdEncoding.EncodeToString(upgradeBytes)
 	}
+	defaultFlagsStr := map[string]string{}
+	for k, v := range defaultFlags {
+		sv, ok := v.(string)
+		if ok {
+			defaultFlagsStr[k] = sv
+		}
+	}
 	network := &tmpnet.Network{
 		Nodes:        nodes,
 		Dir:          networkDir,
-		DefaultFlags: defaultFlags,
+		DefaultFlags: defaultFlagsStr,
 		Genesis:      genesis,
 		NetworkID:    networkID,
 	}
-	if err := network.EnsureDefaultConfig(log, avalancheGoBinPath, pluginDir); err != nil {
+	if avalancheGoBinPath != "" {
+		for i := range network.Nodes {
+			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
+				Process: &tmpnet.ProcessRuntimeConfig{
+					ReuseDynamicPorts: true,
+					AvalancheGoPath:   avalancheGoBinPath,
+					PluginDir:         pluginDir,
+				},
+			}
+		}
+	}
+	if err := network.EnsureDefaultConfig(log); err != nil {
 		return nil, err
 	}
 	if len(bootstrapIPs) > 0 {
 		for _, node := range network.Nodes {
-			node.SetNetworkingConfig(bootstrapIDs, bootstrapIPs)
+			node.Flags.SetDefault(config.BootstrapIDsKey, strings.Join(bootstrapIDs, ","))
+			node.Flags.SetDefault(config.BootstrapIPsKey, strings.Join(bootstrapIPs, ","))
 		}
 	}
 	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
@@ -162,8 +181,20 @@ func TmpNetMove(
 }
 
 // Reads in a tmpnet
-func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+func GetTmpNetNetwork(
+	networkDir string,
+) (*tmpnet.Network, error) {
+	return GetTmpNetNetworkWithLog(logging.NoLog{}, networkDir)
+}
+
+// Reads in a tmpnet
+func GetTmpNetNetworkWithLog(
+	log logging.Logger,
+	networkDir string,
+) (*tmpnet.Network, error) {
+	ctx, cancel := sdkutils.GetTimedContext(10 * time.Second)
+	defer cancel()
+	network, err := tmpnet.ReadNetwork(ctx, log, networkDir)
 	if err != nil {
 		return network, err
 	}
@@ -215,7 +246,10 @@ func TmpNetLoad(
 	if avalancheGoBinPath != "" {
 		for i := range network.Nodes {
 			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
-				AvalancheGoPath: avalancheGoBinPath,
+				Process: &tmpnet.ProcessRuntimeConfig{
+					ReuseDynamicPorts: true,
+					AvalancheGoPath:   avalancheGoBinPath,
+				},
 			}
 		}
 	}
@@ -391,10 +425,7 @@ func GetTmpNetTrackedSubnets(
 ) ([]ids.ID, error) {
 	trackedSubnets := []ids.ID{}
 	for _, node := range nodes {
-		subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
-		if err != nil {
-			return nil, fmt.Errorf("failure obtaining tracked subnets flag of node %s: %w", node.NodeID, err)
-		}
+		subnets := node.Flags[config.TrackSubnetsKey]
 		subnets = strings.TrimSpace(subnets)
 		if subnets != "" {
 			for _, subnetStr := range strings.Split(subnets, ",") {
@@ -484,10 +515,7 @@ func TmpNetInstallVM(
 	binaryPath string,
 	vmID ids.ID,
 ) error {
-	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
-	if err != nil {
-		return err
-	}
+	pluginDir := network.DefaultFlags[config.PluginDirKey]
 	pluginPath := filepath.Join(pluginDir, vmID.String())
 	return utils.SetupExecFile(log, binaryPath, pluginPath)
 }
@@ -530,10 +558,7 @@ func TmpNetSetNodeBlockchainConfig(
 		if node.NodeID != nodeID {
 			continue
 		}
-		blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
-		if err != nil {
-			return err
-		}
+		blockchainsConfigDir := node.Flags[config.ChainConfigDirKey]
 		configPath = filepath.Join(
 			blockchainsConfigDir,
 			blockchainID,
@@ -618,7 +643,6 @@ func TmpNetSetSubnetConfig(
 // If [subnetIDs] are given, configure the nodes to track the subnets
 func TmpNetRestartNodes(
 	ctx context.Context,
-	log logging.Logger,
 	printFunc func(msg string, args ...interface{}),
 	network *tmpnet.Network,
 	nodes []*tmpnet.Node,
@@ -627,10 +651,7 @@ func TmpNetRestartNodes(
 	for _, node := range nodes {
 		if len(subnetIDs) > 0 {
 			printFunc("Restarting node %s to track newly deployed subnet/s", node.NodeID)
-			subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
-			if err != nil {
-				return err
-			}
+			subnets := node.Flags[config.TrackSubnetsKey]
 			subnetsSet := set.Set[string]{}
 			subnets = strings.TrimSpace(subnets)
 			if subnets != "" {
@@ -642,7 +663,7 @@ func TmpNetRestartNodes(
 			subnets = strings.Join(subnetsSet.List(), ",")
 			node.Flags[config.TrackSubnetsKey] = subnets
 		}
-		if err := TmpNetRestartNode(ctx, log, network, node); err != nil {
+		if err := TmpNetRestartNode(ctx, network, node); err != nil {
 			return err
 		}
 	}
@@ -688,10 +709,7 @@ func GetTmpNetUpgrade(
 	if err != nil {
 		return nil, err
 	}
-	encodedUpgrade, err := network.DefaultFlags.GetStringVal(config.UpgradeFileContentKey)
-	if err != nil {
-		return nil, err
-	}
+	encodedUpgrade := network.DefaultFlags[config.UpgradeFileContentKey]
 	return base64.StdEncoding.DecodeString(encodedUpgrade)
 }
 
@@ -708,14 +726,13 @@ func TmpNetTrackSubnet(
 	subnetID ids.ID,
 	wallet *primary.Wallet,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetworkWithLog(log, networkDir)
 	if err != nil {
 		return err
 	}
 	// Restart nodes
 	if err := TmpNetRestartNodes(
 		ctx,
-		log,
 		printFunc,
 		network,
 		network.Nodes,
@@ -762,7 +779,10 @@ func TmpNetUpdateBlockchainConfig(
 	// blockchain specific avalanchego flags
 	for i := range network.Nodes {
 		for k, v := range nodeConfig {
-			network.Nodes[i].Flags[k] = v
+			sv, ok := v.(string)
+			if ok {
+				network.Nodes[i].Flags[k] = sv
+			}
 		}
 	}
 	// VM Binary setup
@@ -904,7 +924,7 @@ func GetNewTmpNetNodes(
 	}
 	nodes := []*tmpnet.Node{}
 	for i := range numNodes {
-		node := tmpnet.NewNode("")
+		node := tmpnet.NewNode()
 		if int(i) < len(nodeSettings) {
 			if len(nodeSettings[i].StakingCertKey) > 0 {
 				node.Flags[config.StakingCertContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingCertKey)
@@ -915,11 +935,11 @@ func GetNewTmpNetNodes(
 			if len(nodeSettings[i].StakingSignerKey) > 0 {
 				node.Flags[config.StakingSignerKeyContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingSignerKey)
 			}
-			node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
-			node.Flags[config.StakingPortKey] = nodeSettings[i].StakingPort
+			node.Flags[config.HTTPPortKey] = fmt.Sprint(nodeSettings[i].HTTPPort)
+			node.Flags[config.StakingPortKey] = fmt.Sprint(nodeSettings[i].StakingPort)
 		} else {
-			node.Flags[config.HTTPPortKey] = 0
-			node.Flags[config.StakingPortKey] = 0
+			node.Flags[config.HTTPPortKey] = "0"
+			node.Flags[config.StakingPortKey] = "0"
 		}
 		if len(trackedSubnets) > 0 {
 			trackedSubnetsStr := sdkutils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
@@ -969,12 +989,12 @@ func TmpNetBootstrap(
 	log logging.Logger,
 	networkDir string,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetworkWithLog(log, networkDir)
 	if err != nil {
 		return err
 	}
 	for _, node := range network.Nodes {
-		if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+		if err := TmpNetStartNode(ctx, network, node); err != nil {
 			return err
 		}
 	}
@@ -988,14 +1008,13 @@ func TmpNetBootstrap(
 // Waits for P-Chain to be bootstrapped, and persists ports for the node
 func TmpNetAddNode(
 	ctx context.Context,
-	log logging.Logger,
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 	httpPort uint32,
 	stakingPort uint32,
 ) error {
-	node.Flags[config.HTTPPortKey] = httpPort
-	node.Flags[config.StakingPortKey] = stakingPort
+	node.Flags[config.HTTPPortKey] = fmt.Sprint(httpPort)
+	node.Flags[config.StakingPortKey] = fmt.Sprint(stakingPort)
 	network.Nodes = append(network.Nodes, node)
 	if err := network.EnsureNodeConfig(node); err != nil {
 		return err
@@ -1006,7 +1025,7 @@ func TmpNetAddNode(
 	if err := network.Write(); err != nil {
 		return err
 	}
-	if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+	if err := TmpNetStartNode(ctx, network, node); err != nil {
 		return err
 	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
@@ -1026,9 +1045,9 @@ func TmpNetEnableSybilProtection(
 	if err != nil {
 		return err
 	}
-	network.DefaultFlags[config.SybilProtectionEnabledKey] = true
+	network.DefaultFlags[config.SybilProtectionEnabledKey] = "true"
 	for i := range network.Nodes {
-		network.Nodes[i].Flags[config.SybilProtectionEnabledKey] = true
+		network.Nodes[i].Flags[config.SybilProtectionEnabledKey] = "true"
 	}
 	return network.Write()
 }
@@ -1042,8 +1061,8 @@ func TmpNetPersistPorts(
 		if err != nil {
 			return fmt.Errorf("couldn't parse node URI %s: %w", network.Nodes[i].URI, err)
 		}
-		network.Nodes[i].Flags[config.HTTPPortKey] = ipPort.Port()
-		network.Nodes[i].Flags[config.StakingPortKey] = network.Nodes[i].StakingAddress.Port()
+		network.Nodes[i].Flags[config.HTTPPortKey] = fmt.Sprint(ipPort.Port())
+		network.Nodes[i].Flags[config.StakingPortKey] = fmt.Sprint(network.Nodes[i].StakingAddress.Port())
 	}
 	return network.Write()
 }
@@ -1051,14 +1070,13 @@ func TmpNetPersistPorts(
 // Restart given [node] of [network]
 func TmpNetRestartNode(
 	ctx context.Context,
-	log logging.Logger,
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
 	if err := node.Stop(ctx); err != nil {
 		return fmt.Errorf("failed to stop node %s: %w", node.NodeID, err)
 	}
-	if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+	if err := TmpNetStartNode(ctx, network, node); err != nil {
 		return fmt.Errorf("failed to start node %s: %w", node.NodeID, err)
 	}
 	return nil
@@ -1067,7 +1085,6 @@ func TmpNetRestartNode(
 // Starts given [node] of [network]
 func TmpNetStartNode(
 	ctx context.Context,
-	log logging.Logger,
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
@@ -1083,12 +1100,13 @@ func TmpNetStartNode(
 		if err != nil {
 			return err
 		}
-		node.SetNetworkingConfig(bootstrapIDs, bootstrapIPs)
+		node.Flags.SetDefault(config.BootstrapIDsKey, strings.Join(bootstrapIDs, ","))
+		node.Flags.SetDefault(config.BootstrapIPsKey, strings.Join(bootstrapIPs, ","))
 	}
 	if err := node.Write(); err != nil {
 		return err
 	}
-	if err := node.Start(log); err != nil {
+	if err := node.Start(ctx); err != nil {
 		// Attempt to stop an unhealthy node to provide some assurance to the caller
 		// that an error condition will not result in a lingering process.
 		return errors.Join(err, node.Stop(ctx))
@@ -1115,10 +1133,7 @@ func GetTmpNetNetworkID(network *tmpnet.Network) (uint32, error) {
 
 // Returns Network ID of a [node]
 func GetTmpNetNodeNetworkID(node *tmpnet.Node) (uint32, error) {
-	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
-	if err != nil {
-		return 0, err
-	}
+	networkIDStr := node.Flags[config.NetworkNameKey]
 	networkID, err := strconv.ParseUint(networkIDStr, 10, 32)
 	if err != nil {
 		return 0, err
@@ -1132,7 +1147,7 @@ func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return network.DefaultRuntimeConfig.AvalancheGoPath, nil
+	return network.DefaultRuntimeConfig.Process.AvalancheGoPath, nil
 }
 
 // when host is public, we avoid [::] but use public IP
@@ -1147,10 +1162,7 @@ func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
 		return network, err
 	}
 	for _, node := range network.Nodes {
-		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
-		if err != nil {
-			return network, err
-		}
+		nodeIP := node.Flags[config.PublicIPKey]
 		node.URI = fixURI(node.URI, nodeIP)
 	}
 	return network, nil
@@ -1164,7 +1176,16 @@ func GetTmpNetNodeURIsWithFix(
 	if err != nil {
 		return nil, err
 	}
-	return sdkutils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
+	ctx, cancel := sdkutils.GetTimedContext(10 * time.Second)
+	defer cancel()
+	uris, err := network.GetNodeURIs(
+		ctx,
+		func(_ func()) {},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return sdkutils.Map(uris, func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
 // Get paths for most important avalanchego logs that are present on the network nodes

@@ -30,7 +30,9 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	coreth_params "github.com/ava-labs/coreth/params"
+	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/params/extras"
+	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -49,8 +51,8 @@ const (
 var upgradeBytes []byte
 
 func generateCustomCchainGenesis() ([]byte, error) {
-	chainConfig := &coreth_params.ChainConfig{
-		ChainID:             coreth_params.AvalancheLocalChainID,
+	chainConfig := &params.ChainConfig{
+		ChainID:             big.NewInt(43112),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        big.NewInt(0),
 		DAOForkSupport:      true,
@@ -62,7 +64,14 @@ func generateCustomCchainGenesis() ([]byte, error) {
 		PetersburgBlock:     big.NewInt(0),
 		IstanbulBlock:       big.NewInt(0),
 		MuirGlacierBlock:    big.NewInt(0),
-		NetworkUpgrades:     coreth_params.GetNetworkUpgrades(avago_upgrade.GetConfig(avago_constants.LocalID)),
+	}
+	agoUpgrade := avago_upgrade.GetConfig(avago_constants.LocalID)
+	params.GetExtra(chainConfig).NetworkUpgrades = extras.NetworkUpgrades{
+		SubnetEVMTimestamp: subnetevmutils.NewUint64(0),
+		DurangoTimestamp:   subnetevmutils.TimeToNewUint64(agoUpgrade.DurangoTime),
+		EtnaTimestamp:      subnetevmutils.TimeToNewUint64(agoUpgrade.EtnaTime),
+		FortunaTimestamp:   nil, // Fortuna is optional and has no effect on Subnet-EVM
+		GraniteTimestamp:   nil, // Granite is optional and has no effect on Subnet-EVM
 	}
 	cChainGenesisMap := map[string]interface{}{}
 	cChainGenesisMap["config"] = chainConfig

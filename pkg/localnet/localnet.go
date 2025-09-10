@@ -77,7 +77,7 @@ func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
 	if err != nil {
 		return nil, err
 	}
-	return GetTmpNetNetwork(networkDir)
+	return GetTmpNetNetworkWithLog(app.Log, networkDir)
 }
 
 // Returns the endpoint associated to the local network
@@ -301,7 +301,10 @@ func LoadLocalNetwork(
 	}
 	for i := range network.Nodes {
 		for k, v := range nodeConfig {
-			network.Nodes[i].Flags[k] = v
+			sv, ok := v.(string)
+			if ok {
+				network.Nodes[i].Flags[k] = sv
+			}
 		}
 	}
 	if err := network.Write(); err != nil {

@@ -707,7 +707,6 @@ func RestartNodes() error {
 	defer cancel()
 	if err := localnet.TmpNetRestartNodes(
 		ctx,
-		logging.NoLog{},
 		func(string, ...interface{}) {},
 		network,
 		network.Nodes,
@@ -793,10 +792,7 @@ func GetLocalClusterNodesInfo() (map[string]NodeInfo, error) {
 }
 
 func getNodesInfo(network *tmpnet.Network) (map[string]NodeInfo, error) {
-	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
-	if err != nil {
-		return nil, err
-	}
+	pluginDir := network.DefaultFlags[config.PluginDirKey]
 	nodesInfo := map[string]NodeInfo{}
 	for _, node := range network.Nodes {
 		nodeID := node.NodeID.String()

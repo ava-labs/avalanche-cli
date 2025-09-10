@@ -12,8 +12,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/spf13/pflag"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -25,9 +23,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/subnet-evm/params"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ava-labs/libevm/common"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
 )
 
@@ -512,7 +512,7 @@ func sendMetrics(repoName, blockchainName string) error {
 	if err != nil {
 		return err
 	}
-	conf := genesis.Config.GenesisPrecompiles
+	conf := params.GetExtra(genesis.Config).GenesisPrecompiles
 	precompiles := make([]string, 0, 6)
 	for precompileName := range conf {
 		precompileTag := "precompile-" + precompileName

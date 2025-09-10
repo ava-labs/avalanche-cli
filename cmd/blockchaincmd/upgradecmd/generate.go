@@ -18,16 +18,18 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	avalancheSDK "github.com/ava-labs/avalanche-tooling-sdk-go/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/libevm/common"
+	libevmmath "github.com/ava-labs/libevm/common/math"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
-	"github.com/ethereum/go-ethereum/common"
-	goethereummath "github.com/ethereum/go-ethereum/common/math"
+
 	"github.com/spf13/cobra"
 )
 
@@ -104,8 +106,8 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	fmt.Println()
 
 	// use the correct data types from subnet-evm right away
-	precompiles := params.UpgradeConfig{
-		PrecompileUpgrades: make([]params.PrecompileUpgrade, 0),
+	precompiles := extras.UpgradeConfig{
+		PrecompileUpgrades: make([]extras.PrecompileUpgrade, 0),
 	}
 
 	for {
@@ -220,7 +222,7 @@ func queryActivationTimestamp() (time.Time, error) {
 	return date, nil
 }
 
-func promptParams(blockchainName string, precomp string, precompiles *[]params.PrecompileUpgrade) (bool, error) {
+func promptParams(blockchainName string, precomp string, precompiles *[]extras.PrecompileUpgrade) (bool, error) {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return false, err
@@ -247,10 +249,10 @@ func promptParams(blockchainName string, precomp string, precompiles *[]params.P
 
 func promptNativeMintParams(
 	sc *models.Sidecar,
-	precompiles *[]params.PrecompileUpgrade,
+	precompiles *[]extras.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
-	initialMint := map[common.Address]*goethereummath.HexOrDecimal256{}
+	initialMint := map[common.Address]*libevmmath.HexOrDecimal256{}
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "mint native tokens")
 	if cancelled || err != nil {
 		return cancelled, err
@@ -276,7 +278,7 @@ func promptNativeMintParams(
 				if amount > math.MaxInt64 {
 					return "", fmt.Errorf("amount %d exceeds maximum allowed value of %d", amount, math.MaxInt64)
 				}
-				initialMint[addr] = goethereummath.NewHexOrDecimal256(int64(amount))
+				initialMint[addr] = libevmmath.NewHexOrDecimal256(int64(amount))
 				return fmt.Sprintf("%s-%d", addr.Hex(), amount), nil
 			},
 			"Add an address to amount pair",
@@ -298,7 +300,7 @@ func promptNativeMintParams(
 		managerAddrs,
 		initialMint,
 	)
-	upgrade := params.PrecompileUpgrade{
+	upgrade := extras.PrecompileUpgrade{
 		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
@@ -307,7 +309,7 @@ func promptNativeMintParams(
 
 func promptRewardManagerParams(
 	sc *models.Sidecar,
-	precompiles *[]params.PrecompileUpgrade,
+	precompiles *[]extras.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "customize fee distribution")
@@ -325,7 +327,7 @@ func promptRewardManagerParams(
 		managerAddrs,
 		initialConfig,
 	)
-	upgrade := params.PrecompileUpgrade{
+	upgrade := extras.PrecompileUpgrade{
 		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
@@ -370,7 +372,7 @@ func ConfigureInitialRewardConfig() (*rewardmanager.InitialRewardConfig, error) 
 
 func promptFeeManagerParams(
 	sc *models.Sidecar,
-	precompiles *[]params.PrecompileUpgrade,
+	precompiles *[]extras.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "adjust the gas fees")
@@ -388,7 +390,7 @@ func promptFeeManagerParams(
 		if err != nil {
 			return false, err
 		}
-		feeConfig = &chainConfig.FeeConfig
+		feeConfig = &params.GetExtra(&chainConfig).FeeConfig
 	}
 	config := feemanager.NewConfig(
 		subnetevmutils.NewUint64(uint64(date.Unix())),
@@ -397,7 +399,7 @@ func promptFeeManagerParams(
 		managerAddrs,
 		feeConfig,
 	)
-	upgrade := params.PrecompileUpgrade{
+	upgrade := extras.PrecompileUpgrade{
 		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
@@ -424,11 +426,13 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 		setGasStep                  = "Set block gas cost step"
 	)
 
-	config.FeeConfig = avalancheSDK.StarterFeeConfig
+	extra := params.GetExtra(&config)
+
+	extra.FeeConfig = avalancheSDK.StarterFeeConfig
 
 	if useDefault {
-		config.FeeConfig.GasLimit = vm.LowGasLimit
-		config.FeeConfig.TargetGas = config.FeeConfig.TargetGas.Mul(config.FeeConfig.GasLimit, vm.NoDynamicFeesGasLimitToTargetGasFactor)
+		extra.FeeConfig.GasLimit = vm.LowGasLimit
+		extra.FeeConfig.TargetGas = extra.FeeConfig.TargetGas.Mul(extra.FeeConfig.GasLimit, vm.NoDynamicFeesGasLimitToTargetGasFactor)
 		return config, nil
 	}
 
@@ -452,13 +456,13 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 
 	switch feeDefault {
 	case lowOption:
-		vm.SetStandardGas(&config.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
+		vm.SetStandardGas(&extra.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
 		return config, nil
 	case mediumOption:
-		vm.SetStandardGas(&config.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
+		vm.SetStandardGas(&extra.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
 		return config, err
 	case highOption:
-		vm.SetStandardGas(&config.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
+		vm.SetStandardGas(&extra.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
 		return config, err
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
@@ -515,14 +519,14 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 		BlockGasCostStep:         gasStep,
 	}
 
-	config.FeeConfig = feeConf
+	extra.FeeConfig = feeConf
 
 	return config, nil
 }
 
 func promptContractAllowListParams(
 	sc *models.Sidecar,
-	precompiles *[]params.PrecompileUpgrade,
+	precompiles *[]extras.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "deploy smart contracts")
@@ -535,7 +539,7 @@ func promptContractAllowListParams(
 		enabledAddrs,
 		managerAddrs,
 	)
-	upgrade := params.PrecompileUpgrade{
+	upgrade := extras.PrecompileUpgrade{
 		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
@@ -544,7 +548,7 @@ func promptContractAllowListParams(
 
 func promptTxAllowListParams(
 	sc *models.Sidecar,
-	precompiles *[]params.PrecompileUpgrade,
+	precompiles *[]extras.PrecompileUpgrade,
 	date time.Time,
 ) (bool, error) {
 	adminAddrs, managerAddrs, enabledAddrs, cancelled, err := promptAdminManagerAndEnabledAddresses(sc, "issue transactions")
@@ -557,7 +561,7 @@ func promptTxAllowListParams(
 		enabledAddrs,
 		managerAddrs,
 	)
-	upgrade := params.PrecompileUpgrade{
+	upgrade := extras.PrecompileUpgrade{
 		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)

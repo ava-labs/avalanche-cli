@@ -6,8 +6,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ava-labs/libevm/common"
 )
 
 type NetworkData struct {
