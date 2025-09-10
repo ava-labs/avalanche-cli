@@ -690,7 +690,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					nodeResults.AddResult(monitoringHost.IP, nil, err)
 					return
 				}
-				spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.IP, "Setup Monitoring")) //nolint:govet
+				spinner := spinSession.SpinToUser("%s", utils.ScriptLog(monitoringHost.IP, "Setup Monitoring"))
 				if err = app.SetupMonitoringEnv(); err != nil {
 					nodeResults.AddResult(monitoringHost.IP, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -751,7 +751,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Add Monitoring")) //nolint:govet
+				spinner := spinSession.SpinToUser("%s", utils.ScriptLog(host.IP, "Add Monitoring"))
 				if addMonitoring {
 					cloudID := host.GetCloudID()
 					nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
@@ -1201,7 +1201,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Waiting for instance response")) //nolint:govet
+			spinner := spinSession.SpinToUser("%s", utils.ScriptLog(host.IP, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.IP, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
