@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -395,6 +396,11 @@ func migrateNetworkConfig(configPath string) error {
 		return err
 	}
 
+	// Migrate NetworkID
+	if err := migrateNetworkID(configData, filepath.Dir(configPath), &modified); err != nil {
+		return err
+	}
+
 	// Write back to file only if we made changes
 	if modified {
 		if err := utils.WriteJSON(configPath, configData); err != nil {
@@ -490,6 +496,65 @@ func migrateNetworkDefaultRuntimeConfig(configData map[string]interface{}, modif
 	*modified = true
 
 	return nil
+}
+
+// migrateNetworkID checks the network ID using old logic and sets NetworkID
+func migrateNetworkID(configData map[string]interface{}, networkDir string, modified *bool) error {
+	// Skip if NetworkID is already set
+	if _, exists := configData["networkID"]; exists {
+		return nil
+	}
+
+	// Try to get network ID using old logic
+	networkID, err := getOldTmpNetNetworkID(networkDir)
+	if err != nil {
+		// If we can't determine the network ID, don't set it
+		return nil
+	}
+
+	// Always set NetworkID
+	configData["networkID"] = networkID
+	*modified = true
+
+	return nil
+}
+
+// getOldTmpNetNetworkID implements the old network ID retrieval logic for migration purposes
+func getOldTmpNetNetworkID(networkDir string) (uint32, error) {
+	// Find the first node directory
+	entries, err := os.ReadDir(networkDir)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// Try to read the node's flags
+		flagsPath := filepath.Join(networkDir, entry.Name(), "flags.json")
+		if !utils.FileExists(flagsPath) {
+			continue
+		}
+
+		flagsData, err := utils.ReadJSON(flagsPath)
+		if err != nil {
+			continue
+		}
+
+		// Get network-name flag (this was config.NetworkNameKey in the old logic)
+		if networkNameInterface, exists := flagsData[avagoconfig.NetworkNameKey]; exists {
+			if networkNameStr, ok := networkNameInterface.(string); ok {
+				networkID, err := strconv.ParseUint(networkNameStr, 10, 32)
+				if err == nil {
+					return uint32(networkID), nil
+				}
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("could not determine network ID from old format")
 }
 
 // migrateNodeConfig migrates individual node config.json from old to new format
