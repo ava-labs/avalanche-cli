@@ -52,10 +52,7 @@ func GetDefaultNetworkConf(numNodes uint32) (
 		node := tmpnet.NewNode()
 		if int(i) < len(networkConf.NodeConfigs) {
 			for k, v := range networkConf.NodeConfigs[i].Flags {
-				sv, ok := v.(string)
-				if ok {
-					node.Flags[k] = sv
-				}
+				node.Flags[k] = fmt.Sprint(v)
 			}
 		}
 		if err := node.EnsureKeys(); err != nil {

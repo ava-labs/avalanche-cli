@@ -82,10 +82,7 @@ func TmpNetCreate(
 	}
 	defaultFlagsStr := map[string]string{}
 	for k, v := range defaultFlags {
-		sv, ok := v.(string)
-		if ok {
-			defaultFlagsStr[k] = sv
-		}
+		defaultFlagsStr[k] = fmt.Sprint(v)
 	}
 	network := &tmpnet.Network{
 		Nodes:        nodes,
@@ -103,6 +100,11 @@ func TmpNetCreate(
 	}
 	if err := network.EnsureDefaultConfig(log); err != nil {
 		return nil, err
+	}
+	for _, node := range network.Nodes {
+		if err := network.EnsureNodeConfig(node); err != nil {
+			return nil, err
+		}
 	}
 	if len(bootstrapIPs) > 0 {
 		for _, node := range network.Nodes {
@@ -188,6 +190,16 @@ func GetTmpNetNetworkWithLog(
 	log logging.Logger,
 	networkDir string,
 ) (*tmpnet.Network, error) {
+	// Check if this is an old tmpnet version that needs migration
+	if needsMigration, err := isOldTmpNetVersion(networkDir); err != nil {
+		return nil, fmt.Errorf("failed to check tmpnet version: %w", err)
+	} else if needsMigration {
+		// Migrate old tmpnet format to new format
+		if err := migrateTmpNetToNewFormat(networkDir); err != nil {
+			return nil, fmt.Errorf("failed to migrate tmpnet configuration: %w", err)
+		}
+	}
+
 	ctx, cancel := sdkutils.GetTimedContext(10 * time.Second)
 	defer cancel()
 	network, err := tmpnet.ReadNetwork(ctx, log, networkDir)
@@ -511,7 +523,13 @@ func TmpNetInstallVM(
 	binaryPath string,
 	vmID ids.ID,
 ) error {
-	pluginDir := network.DefaultFlags[config.PluginDirKey]
+	var pluginDir string
+	if network.DefaultRuntimeConfig.Process != nil && network.DefaultRuntimeConfig.Process.PluginDir != "" {
+		pluginDir = network.DefaultRuntimeConfig.Process.PluginDir
+	} else {
+		// Fallback to DefaultFlags for backward compatibility
+		pluginDir = network.DefaultFlags[config.PluginDirKey]
+	}
 	pluginPath := filepath.Join(pluginDir, vmID.String())
 	return utils.SetupExecFile(log, binaryPath, pluginPath)
 }
@@ -775,10 +793,7 @@ func TmpNetUpdateBlockchainConfig(
 	// blockchain specific avalanchego flags
 	for i := range network.Nodes {
 		for k, v := range nodeConfig {
-			sv, ok := v.(string)
-			if ok {
-				network.Nodes[i].Flags[k] = sv
-			}
+			network.Nodes[i].Flags[k] = fmt.Sprint(v)
 		}
 	}
 	// VM Binary setup
@@ -1084,7 +1099,7 @@ func TmpNetStartNode(
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
-	networkID, err := GetTmpNetNodeNetworkID(node)
+	networkID, err := GetTmpNetNetworkID(network)
 	if err != nil {
 		return err
 	}
@@ -1124,7 +1139,11 @@ func GetTmpNetNetworkID(network *tmpnet.Network) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return GetTmpNetNodeNetworkID(node)
+	networkID, err := GetTmpNetNodeNetworkID(node)
+	if err != nil {
+		networkID = network.GetNetworkID()
+	}
+	return networkID, nil
 }
 
 // Returns Network ID of a [node]

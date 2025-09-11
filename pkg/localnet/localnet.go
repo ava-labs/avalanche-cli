@@ -301,10 +301,7 @@ func LoadLocalNetwork(
 	}
 	for i := range network.Nodes {
 		for k, v := range nodeConfig {
-			sv, ok := v.(string)
-			if ok {
-				network.Nodes[i].Flags[k] = sv
-			}
+			network.Nodes[i].Flags[k] = fmt.Sprint(v)
 		}
 	}
 	if err := network.Write(); err != nil {
