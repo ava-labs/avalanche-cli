@@ -252,14 +252,12 @@ func TmpNetLoad(
 		return nil, err
 	}
 	if avalancheGoBinPath != "" {
-		for i := range network.Nodes {
-			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
-				Process: &tmpnet.ProcessRuntimeConfig{
-					ReuseDynamicPorts: true,
-					AvalancheGoPath:   avalancheGoBinPath,
-				},
-			}
+		// Only modify the network's default runtime config
+		// Handle case where DefaultRuntimeConfig might be nil (from migration or old networks)
+		if network.DefaultRuntimeConfig.Process == nil {
+			network.DefaultRuntimeConfig.Process = &tmpnet.ProcessRuntimeConfig{}
 		}
+		network.DefaultRuntimeConfig.Process.AvalancheGoPath = avalancheGoBinPath
 	}
 	if err := network.Write(); err != nil {
 		return nil, err
