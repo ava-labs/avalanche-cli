@@ -99,7 +99,7 @@ func CreateLocalCluster(
 		for _, node := range network.Nodes {
 			nodeIDs = append(nodeIDs, node.NodeID.String())
 		}
-		if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+		if err := DownloadAvalancheGoDB(app, networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 			app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 		}
 	}
@@ -150,7 +150,7 @@ func AddNodeToLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+	if err := DownloadAvalancheGoDB(app, networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 	}
 	printFunc("Waiting for node: %s to be bootstrapping P-Chain", newNode.NodeID)

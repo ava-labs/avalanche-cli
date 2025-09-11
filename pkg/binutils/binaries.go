@@ -51,8 +51,8 @@ func NewPluginBinaryDownloader(app *application.Avalanche) PluginBinaryDownloade
 	}
 }
 
-// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
-func sanitizeArchivePath(d, t string) (v string, err error) {
+// SanitizeArchivePath sanitizes archive file pathing from "G305: Zip Slip vulnerability"
+func SanitizeArchivePath(d, t string) (v string, err error) {
 	v = filepath.Join(d, t)
 	if strings.HasPrefix(v, filepath.Clean(d)) {
 		return v, nil
@@ -72,6 +72,31 @@ func InstallArchive(ext string, archive []byte, binDir string) error {
 		return installZipArchive(archive, binDir)
 	}
 	return installTarGzArchive(archive, binDir)
+}
+
+// ExtractTarGzFile extracts a tar.gz file from filePath to targetDir
+func ExtractTarGzFile(filePath, targetDir string) error {
+	// Read the tar.gz file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open tar.gz file: %w", err)
+	}
+	defer file.Close()
+
+	// Create gzip reader
+	uncompressedStream, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("failed creating gzip reader: %w", err)
+	}
+	defer uncompressedStream.Close()
+
+	// Create target directory
+	if err := os.MkdirAll(targetDir, constants.DefaultPerms755); err != nil {
+		return fmt.Errorf("failed to create target directory: %w", err)
+	}
+
+	// Use existing tar extraction logic
+	return extractTarReader(uncompressedStream, targetDir)
 }
 
 // installZipArchive expects a byte stream of a zip file
@@ -94,7 +119,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		}
 
 		// check for zip slip
-		path, err := sanitizeArchivePath(binDir, f.Name)
+		path, err := SanitizeArchivePath(binDir, f.Name)
 		if err != nil {
 			return err
 		}
@@ -144,7 +169,12 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		return fmt.Errorf("failed creating gzip reader from avalanchego binary stream: %w", err)
 	}
 
-	tarReader := tar.NewReader(uncompressedStream)
+	return extractTarReader(uncompressedStream, binDir)
+}
+
+// extractTarReader extracts tar content from a reader to targetDir
+func extractTarReader(gzipReader io.Reader, targetDir string) error {
+	tarReader := tar.NewReader(gzipReader)
 	for {
 		header, err := tarReader.Next()
 		switch {
@@ -160,7 +190,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 
 		// the target location where the dir/file should be created
 		// check for zip slip
-		target, err := sanitizeArchivePath(binDir, header.Name)
+		target, err := SanitizeArchivePath(targetDir, header.Name)
 		if err != nil {
 			return err
 		}
