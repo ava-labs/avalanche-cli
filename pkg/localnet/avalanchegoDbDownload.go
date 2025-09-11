@@ -39,7 +39,7 @@ func DownloadAvalancheGoDB(
 
 	// Check cache first
 	dbCacheDir := app.GetDBCacheDir()
-	cachedFilePath := filepath.Join(dbCacheDir, clusterNetwork.Name())
+	cachedFilePath := filepath.Join(dbCacheDir, clusterNetwork.Name()+".tar.gz")
 
 	var sourcePath string
 	useCache := false
