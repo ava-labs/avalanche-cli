@@ -11,7 +11,6 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1129,29 +1128,9 @@ func IsPublicNetwork(networkID uint32) bool {
 }
 
 // Returns Network ID of [network]
-// Using this instead of network.GetNetworkID
-// because latest one reads in an empty genesis
-// for public networks on some cases, returning an ID of 0
+// Uses network.GetNetworkID() which now properly returns the persisted NetworkID
 func GetTmpNetNetworkID(network *tmpnet.Network) (uint32, error) {
-	node, err := GetTmpNetFirstNode(network)
-	if err != nil {
-		return 0, err
-	}
-	networkID, err := GetTmpNetNodeNetworkID(node)
-	if err != nil {
-		networkID = network.GetNetworkID()
-	}
-	return networkID, nil
-}
-
-// Returns Network ID of a [node]
-func GetTmpNetNodeNetworkID(node *tmpnet.Node) (uint32, error) {
-	networkIDStr := node.Flags[config.NetworkNameKey]
-	networkID, err := strconv.ParseUint(networkIDStr, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint32(networkID), nil
+	return network.GetNetworkID(), nil
 }
 
 // Returns avalanchego path persisted at [networkDir]
