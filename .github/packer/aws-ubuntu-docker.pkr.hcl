@@ -22,13 +22,13 @@ packer {
 }
 
 source "googlecompute" "ubuntu_gcp" {
-  project_id      = "avalabs-experimental"
-  source_image_family = "ubuntu-2004-lts"
-  zone            = "us-central1-a"
-  ssh_username    = "ubuntu"
-  image_name     = "public-avalanchecli-ubuntu-focal-2004-docker"
-  image_family   = "avalanchecli-ubuntu-2004"
-  tags = ["public-avalanchecli","ubuntu-2004", "avaplatform"]
+  project_id          = "avalabs-experimental"
+  source_image_family = "ubuntu-2404-lts"
+  zone                = "us-central1-a"
+  ssh_username        = "ubuntu"
+  image_name          = "public-avalanchecli-ubuntu-noble-2404-docker"
+  image_family        = "avalanchecli-ubuntu-2404"
+  tags                = ["public-avalanchecli", "ubuntu-2404", "avaplatform"]
 }
 
 source "amazon-ebs" "ubuntu_amd64" {
