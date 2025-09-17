@@ -42,7 +42,6 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/addValidatorLocal"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/etna"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/local"
-	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/public"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade/non-sov"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade/sov"
 	ginkgo "github.com/onsi/ginkgo/v2"

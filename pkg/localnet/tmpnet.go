@@ -1144,7 +1144,8 @@ func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
 
 // when host is public, we avoid [::] but use public IP
 func fixURI(uri string, ip string) string {
-	return strings.Replace(uri, "[::]", ip, 1)
+	uri = strings.Replace(uri, "[::]", ip, 1)
+	return uri
 }
 
 // reads in tmpnet for external reference. preferred over tmpnet version due to URI transformation
@@ -1155,6 +1156,9 @@ func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
 	}
 	for _, node := range network.Nodes {
 		nodeIP := node.Flags[config.PublicIPKey]
+		if nodeIP == "" {
+			nodeIP = "127.0.0.1"
+		}
 		node.URI = fixURI(node.URI, nodeIP)
 	}
 	return network, nil

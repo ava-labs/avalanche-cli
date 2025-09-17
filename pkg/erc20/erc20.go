@@ -1,8 +1,10 @@
 // Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package ictt
+package erc20
 
 import (
+	"math/big"
+
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	"github.com/ava-labs/libevm/common"
 )
@@ -72,4 +74,22 @@ func GetTokenSymbol(
 		return "", err
 	}
 	return contract.GetSmartContractCallResult[string]("symbol", out)
+}
+
+func GetBalance(
+	rpcURL string,
+	contractAddress common.Address,
+	address common.Address,
+) (*big.Int, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		contractAddress,
+		"balanceOf(address)->(uint256)",
+		nil,
+		address,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return contract.GetSmartContractCallResult[*big.Int]("balanceOf", out)
 }

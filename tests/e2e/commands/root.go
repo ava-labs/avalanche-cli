@@ -4,9 +4,11 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
 
@@ -17,7 +19,12 @@ func GetVersion() string {
 		"--version",
 		"--"+constants.SkipUpdateFlag,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }

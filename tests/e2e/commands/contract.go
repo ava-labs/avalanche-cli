@@ -3,6 +3,7 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,6 +43,8 @@ func DeployERC20Contract(network, key, symbol, supply, receiver, blockchain stri
 	cmd := exec.Command(CLIBinary, erc20Args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())

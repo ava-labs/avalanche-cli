@@ -9,7 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/ictt"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -533,13 +533,13 @@ func getEvmBasedChainAddrInfo(
 	cClient ethclient.Client,
 	evmEndpoint string,
 	network models.Network,
-	cChainAddr string,
+	addr string,
 	kind string,
 	name string,
 ) ([]addressInfo, error) {
 	addressInfos := []addressInfo{}
 	if showNativeToken {
-		cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
+		cChainBalance, err := getCChainBalanceStr(cClient, addr)
 		if err != nil {
 			// just ignore local network errors
 			if network.Kind != models.Local {
@@ -555,7 +555,7 @@ func getEvmBasedChainAddrInfo(
 			name:    name,
 			chain:   chainName,
 			token:   taggedChainToken,
-			address: cChainAddr,
+			address: addr,
 			balance: cChainBalance,
 			network: network.Name(),
 		}
@@ -564,24 +564,19 @@ func getEvmBasedChainAddrInfo(
 	if evmEndpoint != "" {
 		for _, tokenAddress := range tokenAddresses {
 			// Ignore contract address access errors as those may depend on network
-			tokenSymbol, err := ictt.GetTokenSymbol(evmEndpoint, common.HexToAddress(tokenAddress))
+			tokenSymbol, err := erc20.GetTokenSymbol(evmEndpoint, common.HexToAddress(tokenAddress))
 			if err != nil {
 				continue
 			}
 
 			// Get the decimal count for the token to format the balance.
 			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
-			decimals, err := ictt.GetTokenDecimals(evmEndpoint, common.HexToAddress(tokenAddress))
+			decimals, err := erc20.GetTokenDecimals(evmEndpoint, common.HexToAddress(tokenAddress))
 			if err != nil {
 				return addressInfos, err
 			}
 
-			// Get the raw balance for the given token.
-			evmClient, err := evm.GetClient(evmEndpoint)
-			if err != nil {
-				return addressInfos, err
-			}
-			balance, err := evmClient.GetAddressBalance(cChainAddr)
+			balance, err := erc20.GetBalance(evmEndpoint, common.HexToAddress(tokenAddress), common.HexToAddress(addr))
 			if err != nil {
 				return addressInfos, err
 			}
@@ -599,7 +594,7 @@ func getEvmBasedChainAddrInfo(
 				name:    name,
 				chain:   chainName,
 				token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
-				address: cChainAddr,
+				address: addr,
 				balance: formattedBalance,
 				network: network.Name(),
 			}

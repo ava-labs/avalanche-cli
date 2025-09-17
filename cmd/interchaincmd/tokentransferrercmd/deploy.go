@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -520,7 +521,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.erc20Address != "" {
 		tokenHomeAddress := common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenHomeDecimals, err := ictt.GetTokenDecimals(
+		tokenHomeDecimals, err := erc20.GetTokenDecimals(
 			homeRPCEndpoint,
 			tokenHomeAddress,
 		)
@@ -614,7 +615,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	default:
 		return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
 	}
-	tokenHomeSymbol, tokenHomeName, _, err := ictt.GetTokenParams(
+	tokenHomeSymbol, tokenHomeName, _, err := erc20.GetTokenParams(
 		homeRPCEndpoint,
 		tokenHomeAddress,
 	)
