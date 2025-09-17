@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
-	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -25,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -228,9 +226,15 @@ func wiz(cmd *cobra.Command, args []string) error {
 
 	if !clusterAlreadyExists {
 		globalNetworkFlags.UseDevnet = true
-		if len(useCustomAvalanchegoVersion) == 0 && !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion {
-			useAvalanchegoVersionFromSubnet = subnetName
-		}
+		//if len(useCustomAvalanchegoVersion) == 0 && !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion {
+		//	useAvalanchegoVersionFromSubnet = subnetName
+		//}
+		// Hardcode version for devnet to avoid resolution issues
+		useCustomAvalanchegoVersion = "v1.13.5"
+		useLatestAvalanchegoReleaseVersion = false
+		useLatestAvalanchegoPreReleaseVersion = false
+		useAvalanchegoVersionFromSubnet = ""
+		ux.Logger.PrintToUser("=== WIZ DEBUG: Hardcoded AvalancheGo version to v1.13.5 for devnet ===")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
@@ -319,42 +323,42 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, _, err := app.HasSubnetEVMGenesis(subnetName)
-	if err != nil {
-		return err
-	}
-
-	var awmRelayerHost *models.Host
-	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
-		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err = node.GetICMRelayerHost(app, clusterName)
-		if err != nil {
-			return err
-		}
-		if awmRelayerHost == nil {
-			awmRelayerHost, err = chooseICMRelayerHost(clusterName)
-			if err != nil {
-				return err
-			}
-			// get awm-relayer latest version
-			relayerVersion, err := relayer.GetLatestRelayerReleaseVersion()
-			if err != nil {
-				return err
-			}
-			if err := setICMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
-				return err
-			}
-			if err := setICMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
-				return err
-			}
-		} else {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
-			if err := ssh.RunSSHStopICMRelayerService(awmRelayerHost); err != nil {
-				return err
-			}
-		}
-	}
+	//isEVMGenesis, _, err := app.HasSubnetEVMGenesis(subnetName)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//var awmRelayerHost *models.Host
+	//if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
+	//	// get or set AWM Relayer host and configure/stop service
+	//	awmRelayerHost, err = node.GetICMRelayerHost(app, clusterName)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if awmRelayerHost == nil {
+	//		awmRelayerHost, err = chooseICMRelayerHost(clusterName)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		// get awm-relayer latest version
+	//		relayerVersion, err := relayer.GetLatestRelayerReleaseVersion()
+	//		if err != nil {
+	//			return err
+	//		}
+	//		if err := setICMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
+	//			return err
+	//		}
+	//		if err := setICMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
+	//			return err
+	//		}
+	//	} else {
+	//		ux.Logger.PrintToUser("")
+	//		ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
+	//		if err := ssh.RunSSHStopICMRelayerService(awmRelayerHost); err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
@@ -392,43 +396,43 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up ICM on subnet"))
-		ux.Logger.PrintToUser("")
-		flags := messengercmd.DeployFlags{
-			ChainFlags: contract.ChainSpec{
-				BlockchainName: subnetName,
-			},
-			PrivateKeyFlags: contract.PrivateKeyFlags{
-				KeyName: constants.ICMKeyName,
-			},
-			Network: networkoptions.NetworkFlags{
-				ClusterName: clusterName,
-			},
-			DeployMessenger:              deployICMMessenger,
-			DeployRegistry:               deployICMRegistry,
-			ForceRegistryDeploy:          true,
-			Version:                      icmVersion,
-			MessengerContractAddressPath: icmMessengerContractAddressPath,
-			MessengerDeployerAddressPath: icmMessengerDeployerAddressPath,
-			MessengerDeployerTxPath:      icmMessengerDeployerTxPath,
-			RegistryBydecodePath:         icmRegistryBydecodePath,
-			IncludeCChain:                true,
-		}
-		if err := messengercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
-		ux.Logger.PrintToUser("")
-		if err := updateICMRelayerFunds(network, sc, blockchainID); err != nil {
-			return err
-		}
-		if err := updateICMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
-			return err
-		}
-	}
+	//if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
+	//	ux.Logger.PrintToUser("")
+	//	ux.Logger.PrintToUser(logging.Green.Wrap("Setting up ICM on subnet"))
+	//	ux.Logger.PrintToUser("")
+	//	flags := messengercmd.DeployFlags{
+	//		ChainFlags: contract.ChainSpec{
+	//			BlockchainName: subnetName,
+	//		},
+	//		PrivateKeyFlags: contract.PrivateKeyFlags{
+	//			KeyName: constants.ICMKeyName,
+	//		},
+	//		Network: networkoptions.NetworkFlags{
+	//			ClusterName: clusterName,
+	//		},
+	//		DeployMessenger:              deployICMMessenger,
+	//		DeployRegistry:               deployICMRegistry,
+	//		ForceRegistryDeploy:          true,
+	//		Version:                      icmVersion,
+	//		MessengerContractAddressPath: icmMessengerContractAddressPath,
+	//		MessengerDeployerAddressPath: icmMessengerDeployerAddressPath,
+	//		MessengerDeployerTxPath:      icmMessengerDeployerTxPath,
+	//		RegistryBydecodePath:         icmRegistryBydecodePath,
+	//		IncludeCChain:                true,
+	//	}
+	//	if err := messengercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
+	//		return err
+	//	}
+	//	ux.Logger.PrintToUser("")
+	//	ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
+	//	ux.Logger.PrintToUser("")
+	//	if err := updateICMRelayerFunds(network, sc, blockchainID); err != nil {
+	//		return err
+	//	}
+	//	if err := updateICMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
+	//		return err
+	//	}
+	//}
 
 	ux.Logger.PrintToUser("")
 	if clusterAlreadyExists {

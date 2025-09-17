@@ -860,7 +860,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	// needs to first stop relayer so non sovereign subnets successfully restart
-	if sidecar.TeleporterReady && !icmSpec.SkipICMDeploy && !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+	if sidecar.TeleporterReady && !icmSpec.SkipICMDeploy && !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet && network.Kind != models.Devnet {
 		_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
 	}
 

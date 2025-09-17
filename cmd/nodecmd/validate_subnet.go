@@ -107,6 +107,7 @@ func addNodeAsSubnetValidator(
 		nodeID,
 		defaultValidatorParams,
 		waitForTxAcceptance,
+		0,
 	); err != nil {
 		return err
 	}

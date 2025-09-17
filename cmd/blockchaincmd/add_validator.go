@@ -357,7 +357,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	deployer := subnet.NewPublicDeployer(kc, network)
 	if !sovereign {
-		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance, weight)
 	}
 	if err := CallAddValidator(
 		deployer,
@@ -738,6 +738,7 @@ func CallAddValidatorNonSOV(
 	nodeIDStr string,
 	defaultValidatorParamsSetting bool,
 	waitForTxAcceptanceSetting bool,
+	validatorWeight uint64,
 ) error {
 	var start time.Time
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
@@ -760,7 +761,7 @@ func CallAddValidatorNonSOV(
 	if useDefaultStartTime && startTimeStr != "" {
 		return errMutuallyExclusiveStartOptions
 	}
-	if useDefaultWeight && weight != 0 {
+	if useDefaultWeight && validatorWeight != 0 {
 		return errMutuallyExclusiveWeightOptions
 	}
 
@@ -811,7 +812,7 @@ func CallAddValidatorNonSOV(
 	}
 	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
-	selectedWeight, err := getWeight()
+	selectedWeight, err := getWeight(validatorWeight, useDefaultWeight)
 	if err != nil {
 		return err
 	}
@@ -990,10 +991,10 @@ func PromptNodeID(goal string) (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func getWeight() (uint64, error) {
+func getWeight(inputWeight uint64, usingDefaultWeight bool) (uint64, error) {
 	// this sets either the global var weight or useDefaultWeight to enable repeated execution with
 	// state keeping from node cmds
-	if weight == 0 && !useDefaultWeight {
+	if inputWeight == 0 && !usingDefaultWeight {
 		defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
 		txt := "What stake weight would you like to assign to the validator?"
 		weightOptions := []string{defaultWeight, "Custom"}
@@ -1003,16 +1004,16 @@ func getWeight() (uint64, error) {
 		}
 		switch weightOption {
 		case defaultWeight:
-			useDefaultWeight = true
+			usingDefaultWeight = true
 		default:
-			weight, err = app.Prompt.CaptureWeight(txt, func(uint64) error { return nil })
+			inputWeight, err = app.Prompt.CaptureWeight(txt, func(uint64) error { return nil })
 			if err != nil {
 				return 0, err
 			}
 		}
 	}
-	if useDefaultWeight {
+	if usingDefaultWeight {
 		return constants.DefaultStakeWeight, nil
 	}
-	return weight, nil
+	return inputWeight, nil
 }
