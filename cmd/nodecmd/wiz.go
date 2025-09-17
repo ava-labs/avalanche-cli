@@ -234,7 +234,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 		useLatestAvalanchegoReleaseVersion = false
 		useLatestAvalanchegoPreReleaseVersion = false
 		useAvalanchegoVersionFromSubnet = ""
-		ux.Logger.PrintToUser("=== WIZ DEBUG: Hardcoded AvalancheGo version to v1.13.5 for devnet ===")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
