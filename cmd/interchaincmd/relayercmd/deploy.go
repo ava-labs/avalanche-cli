@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -449,13 +450,23 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	metricsPort := constants.RemoteICMRelayerMetricsPort
 	if !deployToRemote {
+		var defaultPort int
 		switch network.Kind {
 		case models.Local:
-			metricsPort = constants.LocalNetworkLocalICMRelayerMetricsPort
+			defaultPort = constants.LocalNetworkLocalICMRelayerMetricsPort
 		case models.Devnet:
-			metricsPort = constants.DevnetLocalICMRelayerMetricsPort
+			defaultPort = constants.DevnetLocalICMRelayerMetricsPort
 		case models.Fuji:
-			metricsPort = constants.FujiLocalICMRelayerMetricsPort
+			defaultPort = constants.FujiLocalICMRelayerMetricsPort
+		default:
+			defaultPort = constants.RemoteICMRelayerMetricsPort
+		}
+
+		// Find an available port starting from the default port
+		if availablePort, err := utils.FindAvailablePort(defaultPort, 1, 30*time.Second); err != nil {
+			return fmt.Errorf("failed to find available metrics port starting from %d: %w", defaultPort, err)
+		} else {
+			metricsPort = availablePort
 		}
 	}
 
