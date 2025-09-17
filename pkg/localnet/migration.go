@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/network"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanchego/chains"
 	avagoconfig "github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -584,6 +585,11 @@ func migrateNodeConfig(nodeDir string) error {
 		return err
 	}
 
+	// Migrate blockchain configurations from files to content
+	if err := migrateNodeBlockchainConfigs(configData, &modified); err != nil {
+		return err
+	}
+
 	// Update the config if we made changes
 	if modified {
 		if err := utils.WriteJSON(configPath, configData); err != nil {
@@ -698,6 +704,100 @@ func migrateNodeRuntimeConfig(configData map[string]interface{}, modified *bool)
 		configData["runtimeConfig"] = nil
 	}
 	*modified = true
+
+	return nil
+}
+
+// migrateNodeBlockchainConfigs migrates blockchain configurations from files to ChainConfigContentKey
+func migrateNodeBlockchainConfigs(configData map[string]interface{}, modified *bool) error {
+	// Check if flags section exists
+	flagsInterface, flagsExist := configData["flags"]
+	if !flagsExist {
+		return nil // No flags section to work with
+	}
+
+	flagsMap, ok := flagsInterface.(map[string]interface{})
+	if !ok {
+		return nil // Flags is not a map
+	}
+
+	// Look for chain configuration files in the old structure
+	chainsDirI, hasDir := flagsMap[avagoconfig.ChainConfigDirKey]
+	if !hasDir {
+		return nil // No chain config directory configured
+	}
+	chainsDir, ok := chainsDirI.(string)
+	if !ok {
+		return fmt.Errorf("unexpected type for %s flag, expected string, found %I", avagoconfig.ChainConfigDirKey, chainsDirI)
+	}
+
+	// Read all blockchain configurations from the chains directory
+	blockchainConfigs := make(map[string]chains.ChainConfig)
+
+	entries, err := os.ReadDir(chainsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read chains directory %s: %w", chainsDir, err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		blockchainID := entry.Name()
+		blockchainDir := filepath.Join(chainsDir, blockchainID)
+
+		// Read config.json if it exists
+		configPath := filepath.Join(blockchainDir, "config.json")
+		var configData []byte
+		if utils.FileExists(configPath) {
+			configData, err = os.ReadFile(configPath)
+			if err != nil {
+				return fmt.Errorf("failed to read blockchain config %s: %w", configPath, err)
+			}
+		}
+
+		// Read upgrade.json if it exists
+		upgradePath := filepath.Join(blockchainDir, "upgrade.json")
+		var upgradeData []byte
+		if utils.FileExists(upgradePath) {
+			upgradeData, err = os.ReadFile(upgradePath)
+			if err != nil {
+				return fmt.Errorf("failed to read blockchain upgrade %s: %w", upgradePath, err)
+			}
+		}
+
+		blockchainConfig := chains.ChainConfig{}
+		if len(configData) > 0 {
+			blockchainConfig.Config = configData
+		}
+		if len(upgradeData) > 0 {
+			blockchainConfig.Upgrade = upgradeData
+		}
+		// Only add to configs if we have at least one file
+		if len(configData) > 0 || len(upgradeData) > 0 {
+			blockchainConfigs[blockchainID] = blockchainConfig
+		}
+	}
+
+	// If we found any blockchain configurations, migrate them
+	if len(blockchainConfigs) > 0 {
+		// Marshal the blockchain configurations
+		marshaledBlockchainConfigs, err := json.Marshal(blockchainConfigs)
+		if err != nil {
+			return fmt.Errorf("failed to marshal blockchain configs: %w", err)
+		}
+
+		// Encode as base64 and set in ChainConfigContentKey
+		flagsMap[avagoconfig.ChainConfigContentKey] = base64.StdEncoding.EncodeToString(marshaledBlockchainConfigs)
+
+		// Remove the old ChainConfigDirKey
+		delete(flagsMap, avagoconfig.ChainConfigDirKey)
+
+		// Update the config data
+		configData["flags"] = flagsMap
+		*modified = true
+	}
 
 	return nil
 }

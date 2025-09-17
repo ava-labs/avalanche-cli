@@ -19,6 +19,7 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/api/admin"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/chains"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/config/node"
 	"github.com/ava-labs/avalanchego/genesis"
@@ -111,9 +112,6 @@ func TmpNetCreate(
 			node.Flags.SetDefault(config.BootstrapIPsKey, strings.Join(bootstrapIPs, ","))
 		}
 	}
-	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
-		return nil, err
-	}
 	if cChainConfig != nil {
 		if err := TmpNetSetBlockchainConfig(
 			network,
@@ -159,10 +157,6 @@ func TmpNetMove(
 				return err
 			}
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
-			data[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
-			if err != nil {
-				return err
-			}
 			if _, ok := data[config.SubnetConfigDirKey]; ok {
 				data[config.SubnetConfigDirKey] = filepath.Join(newDir, "subnets")
 			}
@@ -539,9 +533,6 @@ func TmpNetSetBlockchainConfig(
 	blockchainConfig []byte,
 	blockchainUpgrades []byte,
 ) error {
-	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
-		return err
-	}
 	for _, node := range nodes {
 		if err := TmpNetSetNodeBlockchainConfig(
 			network,
@@ -564,64 +555,38 @@ func TmpNetSetNodeBlockchainConfig(
 	blockchainConfig []byte,
 	blockchainUpgrades []byte,
 ) error {
-	var configPath, upgradesPath string
+	found := false
 	for _, node := range network.Nodes {
 		if node.NodeID != nodeID {
 			continue
 		}
-		blockchainsConfigDir := node.Flags[config.ChainConfigDirKey]
-		configPath = filepath.Join(
-			blockchainsConfigDir,
-			blockchainID,
-			"config.json",
-		)
-		upgradesPath = filepath.Join(
-			blockchainsConfigDir,
-			blockchainID,
-			"upgrade.json",
-		)
-		configDir := filepath.Dir(configPath)
-		if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-			return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+		found = true
+		blockchainConfigs := map[string]chains.ChainConfig{}
+		if node.Flags[config.ChainConfigContentKey] != "" {
+			encodedBlockchainsConfigsContent := node.Flags[config.ChainConfigContentKey]
+			blockchainsConfigsContent, err := base64.StdEncoding.DecodeString(encodedBlockchainsConfigsContent)
+			if err != nil {
+				return fmt.Errorf("failed to decode chain configs: %w", err)
+			}
+			if err := json.Unmarshal(blockchainsConfigsContent, &blockchainConfigs); err != nil {
+				return fmt.Errorf("failed to unmarshal chain configs: %w", err)
+			}
 		}
-	}
-	if configPath == "" {
-		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
-	}
-	if blockchainConfig != nil {
-		if err := os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms); err != nil {
-			return err
+		blockchainConfigs[blockchainID] = chains.ChainConfig{
+			Config:  blockchainConfig,
+			Upgrade: blockchainUpgrades,
 		}
-	}
-	if blockchainUpgrades != nil {
-		if err := os.WriteFile(upgradesPath, blockchainUpgrades, constants.WriteReadReadPerms); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Return path to the blockchain configs dir for the given [networkDir] and [nodeID]. If the dir does not
-// exists, first creates it.
-func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string, error) {
-	nodeBlockchainConfigsDir := filepath.Join(networkDir, nodeID, "configs", "chains")
-	if err := os.MkdirAll(nodeBlockchainConfigsDir, constants.DefaultPerms755); err != nil {
-		return "", fmt.Errorf("could not create node blockchains config directory %s: %w", nodeBlockchainConfigsDir, err)
-	}
-	return nodeBlockchainConfigsDir, nil
-}
-
-// Set up the blockchain configs dir for all nodes in the [network]
-func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
-	for _, node := range network.Nodes {
-		nodeBlockchainConfigsDir, err := tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		marshaledBlockchainConfigs, err := json.Marshal(blockchainConfigs)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal chain configs: %w", err)
 		}
-		node.Flags[config.ChainConfigDirKey] = nodeBlockchainConfigsDir
+		node.Flags[config.ChainConfigContentKey] = base64.StdEncoding.EncodeToString(marshaledBlockchainConfigs)
 		if err := node.Write(); err != nil {
-			return err
+			return fmt.Errorf("failed to write node config: %w", err)
 		}
+	}
+	if !found {
+		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
 	}
 	return nil
 }
@@ -1025,9 +990,6 @@ func TmpNetAddNode(
 	node.Flags[config.StakingPortKey] = fmt.Sprint(stakingPort)
 	network.Nodes = append(network.Nodes, node)
 	if err := network.EnsureNodeConfig(node); err != nil {
-		return err
-	}
-	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
 		return err
 	}
 	if err := network.Write(); err != nil {
