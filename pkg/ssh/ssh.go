@@ -609,6 +609,23 @@ func RunSSHRenderAvalancheNodeConfig(
 	return host.UploadBytes(nodeConf, remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 }
 
+func RunSSHCopyBinaryFile(host *models.Host, sc models.Sidecar) error {
+	vmID, err := sc.GetVMID()
+	if err != nil {
+		return err
+	}
+	subnetVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
+	ux.Logger.Info("Building Custom VM for %s to %s", host.NodeID, subnetVMBinaryPath)
+	if err := host.Upload(
+		sc.CustomVMPath,
+		subnetVMBinaryPath,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RunSSHCreatePlugin runs script to create plugin
 func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 	vmID, err := sc.GetVMID()
