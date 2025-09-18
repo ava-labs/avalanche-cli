@@ -235,6 +235,7 @@ func CallDeploy(
 	useLedgerParam bool,
 	useEwoqParam bool,
 	sameControlKeyParam bool,
+	skipICMDeploy bool,
 ) error {
 	subnetOnly = subnetOnlyParam
 	globalNetworkFlags = networkFlags
@@ -242,6 +243,7 @@ func CallDeploy(
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
+	icmSpec.SkipICMDeploy = skipICMDeploy
 	return deployBlockchain(cmd, []string{blockchainName})
 }
 

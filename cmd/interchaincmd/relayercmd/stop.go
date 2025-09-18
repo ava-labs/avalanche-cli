@@ -67,10 +67,14 @@ func CallStop(_ []string, flags StopFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
-		if err := ssh.RunSSHStopICMRelayerService(host); err != nil {
-			return err
+		if host != nil {
+			if err := ssh.RunSSHStopICMRelayerService(host); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
+		} else {
+			ux.Logger.PrintToUser("No ICM relayer host found on cluster %s", network.ClusterName)
 		}
-		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
 	default:
 		b, _, _, err := relayer.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
