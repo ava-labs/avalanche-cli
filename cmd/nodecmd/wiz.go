@@ -78,6 +78,7 @@ var (
 	deployICMMessenger              bool
 	deployICMRegistry               bool
 	replaceKeyPair                  bool
+	copyBinaryFile                  string
 )
 
 func newWizCmd() *cobra.Command {
@@ -156,6 +157,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
+	cmd.Flags().StringVar(&copyBinaryFile, "copy-binary", "", "path to binary file to copy to all nodes in the devnet")
 	return cmd
 }
 
@@ -231,6 +233,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if len(useCustomAvalanchegoVersion) == 0 && !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion {
 			useAvalanchegoVersionFromSubnet = subnetName
 		}
+		useCustomAvalanchegoVersion = "v1.13.5"
+		useLatestAvalanchegoReleaseVersion = false
+		useLatestAvalanchegoPreReleaseVersion = false
+		useAvalanchegoVersionFromSubnet = ""
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
@@ -267,6 +273,16 @@ func wiz(cmd *cobra.Command, args []string) error {
 
 	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
+	}
+
+	// Copy binary file to all nodes if specified
+	if copyBinaryFile != "" {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Copying binary file to all nodes"))
+		ux.Logger.PrintToUser("")
+		if err := copyBinaryToAllNodes(clusterName, copyBinaryFile); err != nil {
+			return err
+		}
 	}
 
 	if subnetName == "" {
@@ -1057,5 +1073,61 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
+	return nil
+}
+
+func copyBinaryToAllNodes(clusterName, binaryFilePath string) error {
+	// Validate that the binary file exists
+	if _, err := os.Stat(binaryFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("binary file %s does not exist", binaryFilePath)
+	}
+
+	// Get all hosts in the cluster
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+
+	// Copy binary file to each host
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+
+	for _, host := range allHosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+
+			spinner := spinSession.SpinToUser("Copying binary to node %s", host.GetCloudID())
+
+			if err := ssh.RunSSHCopyBinaryFile(host, binaryFilePath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+
+			ux.SpinComplete(spinner)
+			nodeResults.AddResult(host.NodeID, "success", nil)
+		}(&wgResults, host)
+	}
+
+	wg.Wait()
+	spinSession.Stop()
+
+	// Check for errors
+	for _, node := range allHosts {
+		if wgResults.HasIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Failed to copy binary to node %s: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Binary copied to node %s", node.GetCloudID())
+		}
+	}
+
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to copy binary to some nodes: %s", wgResults.GetErrorHostMap())
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Binary file %s successfully copied to all nodes at /home/ubuntu/"), filepath.Base(binaryFilePath))
 	return nil
 }

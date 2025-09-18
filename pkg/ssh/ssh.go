@@ -327,6 +327,17 @@ func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	return nil
 }
 
+func RunSSHCopyBinaryFile(host *models.Host, binaryFilePath string) error {
+	if err := host.Upload(
+		binaryFilePath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(binaryFilePath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
 func RunSSHSetupPrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
 	for _, folder := range remoteconfig.PrometheusFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
