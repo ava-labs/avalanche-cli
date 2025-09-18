@@ -235,6 +235,7 @@ func CallDeploy(
 	useLedgerParam bool,
 	useEwoqParam bool,
 	sameControlKeyParam bool,
+	skipICMDeploy bool,
 ) error {
 	subnetOnly = subnetOnlyParam
 	globalNetworkFlags = networkFlags
@@ -242,6 +243,7 @@ func CallDeploy(
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
+	icmSpec.SkipICMDeploy = skipICMDeploy
 	return deployBlockchain(cmd, []string{blockchainName})
 }
 
@@ -869,7 +871,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if sidecar.Sovereign {
 		externalVmcDeploy := !vmcAtL1 || vmcChainFlags.Defined()
 
-		if flag := cmd.Flags().Lookup(vmcAtL1FlagName); flag != nil && !flag.Changed && !vmcChainFlags.Defined() {
+		if flag := cmd.Flags().Lookup(vmcAtL1FlagName); (flag == nil || !flag.Changed) && !vmcChainFlags.Defined() {
 			if network.Kind == models.Local {
 				externalVmcDeploy = false
 			} else {

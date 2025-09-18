@@ -79,6 +79,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	useLedgerParam := false
 	useEwoqParam := true
 	sameControlKey := true
+	skipICMDeploy := true
 
 	if err := blockchaincmd.CallDeploy(
 		cmd,
@@ -89,6 +90,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		useLedgerParam,
 		useEwoqParam,
 		sameControlKey,
+		skipICMDeploy,
 	); err != nil {
 		return err
 	}

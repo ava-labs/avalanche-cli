@@ -61,7 +61,6 @@ var (
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
-	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	clusterNameFlagValue                string
 	createLocalValidator                bool
@@ -756,9 +755,6 @@ func CallAddValidatorNonSOV(
 	}
 	if useDefaultStartTime && startTimeStr != "" {
 		return errMutuallyExclusiveStartOptions
-	}
-	if useDefaultWeight && weight != 0 {
-		return errMutuallyExclusiveWeightOptions
 	}
 
 	if outputTxPath != "" {

@@ -79,10 +79,14 @@ func CallStart(_ []string, flags StartFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
-		if err := ssh.RunSSHStartICMRelayerService(host); err != nil {
-			return err
+		if host != nil {
+			if err := ssh.RunSSHStartICMRelayerService(host); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
+		} else {
+			ux.Logger.PrintToUser("No ICM relayer host found on cluster %s", network.ClusterName)
 		}
-		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	default:
 		if relayerIsUp, _, _, err := relayer.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
