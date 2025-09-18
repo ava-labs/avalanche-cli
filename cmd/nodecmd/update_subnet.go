@@ -71,7 +71,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("node(s) %s failed to be updated for subnet %s", nonUpdatedNodes, subnetName)
 	}
 	ux.Logger.PrintToUser("Node(s) successfully updated for Subnet!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet status with avalanche node status %s --subnet %s", clusterName, subnetName))
+	ux.Logger.PrintToUser("%s", fmt.Sprintf("Check node subnet status with avalanche node status %s --subnet %s", clusterName, subnetName))
 	return nil
 }
 

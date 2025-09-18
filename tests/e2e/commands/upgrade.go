@@ -71,7 +71,7 @@ func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
@@ -144,7 +144,7 @@ func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))

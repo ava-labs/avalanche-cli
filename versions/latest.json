@@ -3,21 +3,21 @@
   "rpc": 43,
   "avalanchego": {
     "Local Network": {
-      "latest-version": "v1.13.4",
+      "latest-version": "v1.13.5",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.13.4",
+      "latest-version": "v1.13.5",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.13.4",
+      "latest-version": "v1.13.5",
       "minimum-version": "v1.13.0-fuji"
     },
     "Mainnet": {
-      "latest-version": "v1.13.4",
+      "latest-version": "v1.13.5",
       "minimum-version": "v1.13.0"
     }
   },
-  "signature-aggregator": "signature-aggregator-v0.4.4"
+  "signature-aggregator": "signature-aggregator-v0.4.5"
 }

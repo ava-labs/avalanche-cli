@@ -7,9 +7,8 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
-	"github.com/ava-labs/subnet-evm/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/libevm/core/types"
 )
 
 //go:embed contracts/bin/Token.bin

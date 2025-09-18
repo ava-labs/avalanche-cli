@@ -14,7 +14,7 @@ import (
 
 func handleBooleanSetting(cmd *cobra.Command, key string, args []string) error {
 	if len(args) == 0 {
-		ux.Logger.PrintToUser(cmd.UsageString())
+		ux.Logger.PrintToUser("%s", cmd.UsageString())
 		ux.Logger.PrintToUser("")
 		if app.Conf.GetConfigBoolValue(key) {
 			ux.Logger.PrintToUser("Current Setting: Enabled")

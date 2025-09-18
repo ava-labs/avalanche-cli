@@ -27,11 +27,9 @@ func DeployInterchainTokenTransferrer(args []string) string {
 
 	cmd := exec.Command(CLIBinary, append(icctArgs, args...)...)
 	output, err := cmd.CombinedOutput()
+	fmt.Println(cmd.String())
 	fmt.Println(string(output))
-	if err != nil {
-		fmt.Println(cmd.String())
-		utils.PrintStdErr(err)
-	}
+	utils.PrintStdErr(err)
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)

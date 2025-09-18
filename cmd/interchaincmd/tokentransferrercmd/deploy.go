@@ -8,13 +8,13 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
-
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -24,8 +24,8 @@ import (
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/precompiles"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/libevm/crypto"
 
 	"github.com/spf13/cobra"
 )
@@ -521,7 +521,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.erc20Address != "" {
 		tokenHomeAddress := common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenHomeDecimals, err := ictt.GetTokenDecimals(
+		tokenHomeDecimals, err := erc20.GetTokenDecimals(
 			homeRPCEndpoint,
 			tokenHomeAddress,
 		)
@@ -615,7 +615,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	default:
 		return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
 	}
-	tokenHomeSymbol, tokenHomeName, _, err := ictt.GetTokenParams(
+	tokenHomeSymbol, tokenHomeName, _, err := erc20.GetTokenParams(
 		homeRPCEndpoint,
 		tokenHomeAddress,
 	)

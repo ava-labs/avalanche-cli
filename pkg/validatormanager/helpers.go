@@ -11,10 +11,9 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
-	"github.com/ava-labs/subnet-evm/interfaces"
+	ethereum "github.com/ava-labs/libevm"
+	"github.com/ava-labs/libevm/common"
 	subnetEvmWarp "github.com/ava-labs/subnet-evm/precompile/contracts/warp"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func GetValidatorNonce(
@@ -45,7 +44,7 @@ func GetValidatorNonce(
 			fromBlock = big.NewInt(0)
 		}
 		toBlock := big.NewInt(blockNumber)
-		logs, err := client.FilterLogs(interfaces.FilterQuery{
+		logs, err := client.FilterLogs(ethereum.FilterQuery{
 			FromBlock: fromBlock,
 			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},

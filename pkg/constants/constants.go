@@ -162,7 +162,7 @@ const (
 	AvalancheGoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
-	BuildEnvGolangVersion                        = "1.22.1"
+	BuildEnvGolangVersion                        = "1.23.9"
 	AnsibleInventoryDir                          = "inventories"
 	AnsibleSSHShellParams                        = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleSSHUseAgentParams                     = "-o StrictHostKeyChecking=no"
@@ -312,6 +312,7 @@ const (
 
 	PluginDir        = "plugins"
 	LocalClustersDir = "local"
+	DBDirName        = "db"
 
 	DefaultNumberOfLocalMachineNodes = 1
 	MetricsNetwork                   = "network"

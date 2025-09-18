@@ -3,9 +3,11 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 )
 
 /* #nosec G204 */
@@ -19,7 +21,12 @@ func CreateKey(keyName string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -36,7 +43,12 @@ func CreateKeyFromPath(keyName string, keyPath string) (string, error) {
 		"--skip-balances",
 		"--"+constants.SkipUpdateFlag,
 	)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -52,7 +64,12 @@ func CreateKeyForce(keyName string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -69,7 +86,12 @@ func ListKeys(network string, useNanoAvax bool, subnets string, tokens string) (
 		args = append(args, "--tokens", tokens)
 	}
 	cmd := exec.Command(CLIBinary, args...)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -85,7 +107,12 @@ func DeleteKey(keyName string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -100,7 +127,12 @@ func ExportKey(keyName string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -117,7 +149,12 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }
 
@@ -132,6 +169,11 @@ func KeyTransferSend(
 	}
 
 	cmd := exec.Command(CLIBinary, append(transferArgs, args...)...)
-	outputByte, err := cmd.CombinedOutput()
-	return string(outputByte), err
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
+	return string(out), err
 }

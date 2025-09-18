@@ -37,7 +37,8 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
-	goethereumcommon "github.com/ethereum/go-ethereum/common"
+	libevmcommon "github.com/ava-labs/libevm/common"
+
 	"github.com/spf13/cobra"
 )
 
@@ -530,7 +531,7 @@ func interEvmSend(
 		return err
 	}
 	privateKey := originK.PrivKeyHex()
-	var destinationAddr goethereumcommon.Address
+	var destinationAddr libevmcommon.Address
 	if destinationAddrStr == "" && destinationKeyName == "" {
 		option, err := app.Prompt.CaptureList(
 			"Do you want to choose a stored key for the destination, or input a destination address?",
@@ -560,14 +561,14 @@ func interEvmSend(
 		if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
 			return err
 		}
-		destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+		destinationAddr = libevmcommon.HexToAddress(destinationAddrStr)
 	case destinationKeyName != "":
 		destinationK, err := app.GetKey(destinationKeyName, network, false)
 		if err != nil {
 			return err
 		}
 		destinationAddrStr = destinationK.C()
-		destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+		destinationAddr = libevmcommon.HexToAddress(destinationAddrStr)
 	default:
 		return fmt.Errorf("you should set the destination address or destination key")
 	}
@@ -584,10 +585,10 @@ func interEvmSend(
 	receipt, receipt2, err := ictt.Send(
 		duallogger.NewDualLogger(true, app),
 		senderURL,
-		goethereumcommon.HexToAddress(originTransferrerAddress),
+		libevmcommon.HexToAddress(originTransferrerAddress),
 		privateKey,
 		receiverBlockchainID,
-		goethereumcommon.HexToAddress(destinationTransferrerAddress),
+		libevmcommon.HexToAddress(destinationTransferrerAddress),
 		destinationAddr,
 		amountInt,
 	)
@@ -908,7 +909,7 @@ func importIntoC(
 	}
 	unsignedTx, err := wallet.C().Builder().NewImportTx(
 		blockchainID,
-		goethereumcommon.HexToAddress(destinationAddrStr),
+		libevmcommon.HexToAddress(destinationAddrStr),
 		baseFee,
 	)
 	if err != nil {

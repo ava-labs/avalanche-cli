@@ -8,15 +8,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"golang.org/x/mod/semver"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 var ErrNoAvagoVersion = errors.New("unable to find a compatible avalanchego version")
@@ -50,7 +48,11 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 				*rpcVersion,
 			)
 		}
-		return parsedDependency.AvalancheGo[network.Name()].LatestVersion, nil
+		depNetworkName := network.Name()
+		if network.Kind == models.Devnet {
+			depNetworkName = "DevNet"
+		}
+		return parsedDependency.AvalancheGo[depNetworkName].LatestVersion, nil
 	case constants.SubnetEVMRepoName:
 		return parsedDependency.SubnetEVM, nil
 	case constants.SignatureAggregatorRepoName:
@@ -211,7 +213,7 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			if err == nil {
 				break
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
+			ux.Logger.PrintToUser("%s", fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
 	}

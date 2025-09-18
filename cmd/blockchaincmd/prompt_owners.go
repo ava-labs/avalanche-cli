@@ -74,7 +74,7 @@ func getControlKeys(kc *keychain.Keychain, creatingBlockchain bool) ([]string, b
 	controlKeysInitialPrompt := "Configure which addresses may make changes to the blockchain.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to make a blockchain change (the threshold)."
-	ux.Logger.PrintToUser(controlKeysInitialPrompt)
+	ux.Logger.PrintToUser("%s", controlKeysInitialPrompt)
 
 	if creatingBlockchain {
 		return getControlKeysForDeploy(kc)

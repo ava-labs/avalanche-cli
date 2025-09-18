@@ -6,7 +6,7 @@ import (
 	big "math/big"
 
 	comparator "github.com/ava-labs/avalanche-cli/pkg/prompts/comparator"
-	common "github.com/ethereum/go-ethereum/common"
+	common "github.com/ava-labs/libevm/common"
 
 	ids "github.com/ava-labs/avalanchego/ids"
 

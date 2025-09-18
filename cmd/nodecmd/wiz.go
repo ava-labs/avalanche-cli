@@ -103,7 +103,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
-	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", true, "use default weight/start/duration params for subnet validator")
 	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
 	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
 	cmd.Flags().BoolVar(&icmReady, "teleporter", false, "generate an icm-ready vm")
@@ -191,7 +191,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
 		if err := blockchaincmd.CallCreate(
 			cmd,
@@ -232,7 +232,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			useAvalanchegoVersionFromSubnet = subnetName
 		}
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
 		// wizSubnet is used to get more metrics sent from node create command on whether if vm is custom or subnetEVM
 		wizSubnet = subnetName
@@ -276,34 +276,37 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap("Checking subnet compatibility"))
 	ux.Logger.PrintToUser("")
 	if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap("Creating the blockchain"))
 	ux.Logger.PrintToUser("")
 	avoidChecks = true
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
-	ux.Logger.PrintToUser("")
-	avoidSubnetValidationChecks = true
-	useEwoq = true
-	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
-	}
-
-	network, err := app.GetClusterNetwork(clusterName)
+	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
-	sc, err := app.LoadSidecar(subnetName)
+
+	if !sc.Sovereign {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Adding nodes as subnet validators"))
+		ux.Logger.PrintToUser("")
+		avoidSubnetValidationChecks = true
+		useEwoq = true
+		if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+			return err
+		}
+	}
+
+	network, err := app.GetClusterNetwork(clusterName)
 	if err != nil {
 		return err
 	}
@@ -312,11 +315,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return constants.ErrNoSubnetID
 	}
 
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Waiting for nodes to be validating the subnet"))
-	ux.Logger.PrintToUser("")
-	if err := waitForSubnetValidators(network, clusterName, subnetID, validateCheckTimeout, validateCheckPoolTime); err != nil {
-		return err
+	if !sc.Sovereign {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Waiting for nodes to be validating the subnet"))
+		ux.Logger.PrintToUser("")
+		if err := waitForSubnetValidators(network, clusterName, subnetID, validateCheckTimeout, validateCheckPoolTime); err != nil {
+			return err
+		}
 	}
 
 	isEVMGenesis, _, err := app.HasSubnetEVMGenesis(subnetName)
@@ -341,6 +346,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			relayerVersion = strings.Replace(relayerVersion, "icm-relayer-", "", 1)
 			if err := setICMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
 				return err
 			}
@@ -349,22 +355,25 @@ func wiz(cmd *cobra.Command, args []string) error {
 			}
 		} else {
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
+			ux.Logger.PrintToUser("%s", logging.Green.Wrap("Stopping AWM Relayer Service"))
 			if err := ssh.RunSSHStopICMRelayerService(awmRelayerHost); err != nil {
 				return err
 			}
 		}
 	}
 
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
-	ux.Logger.PrintToUser("")
-	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
+	if !sc.Sovereign {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Setting the nodes as subnet trackers"))
+		ux.Logger.PrintToUser("")
+		if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+			return err
+		}
+		if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+			return err
+		}
 	}
-	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
-		return err
-	}
+
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return constants.ErrNoBlockchainID
@@ -376,30 +385,35 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
-		return err
-	}
 
-	if b, err := hasICMDeploys(clusterName); err != nil {
-		return err
-	} else if b {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proposer VMs"))
-		ux.Logger.PrintToUser("")
-		if err := updateProposerVMs(network); err != nil {
-			// not going to consider fatal, as icm messaging will be working fine after a failed first msg
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
+	if !sc.Sovereign {
+		if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
+			return err
+		}
+
+		if b, err := hasICMDeploys(clusterName); err != nil {
+			return err
+		} else if b {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("%s", logging.Green.Wrap("Updating Proposer VMs"))
+			ux.Logger.PrintToUser("")
+			if err := updateProposerVMs(network); err != nil {
+				// not going to consider fatal, as icm messaging will be working fine after a failed first msg
+				ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
+			}
 		}
 	}
 
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up ICM on subnet"))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Setting up ICM on subnet"))
 		ux.Logger.PrintToUser("")
+		chainSpec := contract.ChainSpec{
+			BlockchainName: subnetName,
+		}
+		chainSpec.SetEnabled(true, true, false, false, false)
 		flags := messengercmd.DeployFlags{
-			ChainFlags: contract.ChainSpec{
-				BlockchainName: subnetName,
-			},
+			ChainFlags: chainSpec,
 			PrivateKeyFlags: contract.PrivateKeyFlags{
 				KeyName: constants.ICMKeyName,
 			},
@@ -416,11 +430,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 			RegistryBydecodePath:         icmRegistryBydecodePath,
 			IncludeCChain:                true,
 		}
-		if err := messengercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
+		if err := messengercmd.CallDeploy([]string{}, flags, network); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Starting AWM Relayer Service"))
 		ux.Logger.PrintToUser("")
 		if err := updateICMRelayerFunds(network, sc, blockchainID); err != nil {
 			return err
@@ -702,7 +716,7 @@ func waitForSubnetValidators(
 		if time.Since(startTime) > timeout {
 			ux.Logger.PrintToUser("Nodes not validating subnet ID %sf", subnetID)
 			for _, failedNode := range failedNodes {
-				ux.Logger.PrintToUser("  " + failedNode)
+				ux.Logger.PrintToUser("%s", "  "+failedNode)
 			}
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster %s not validating subnet ID %s after %d seconds", clusterName, subnetID, uint32(timeout.Seconds()))
@@ -779,7 +793,7 @@ func waitForClusterSubnetStatus(
 		if time.Since(startTime) > timeout {
 			ux.Logger.PrintToUser("Nodes not %s %s", targetStatus.String(), subnetName)
 			for _, failedNode := range failedNodes {
-				ux.Logger.PrintToUser("  " + failedNode)
+				ux.Logger.PrintToUser("%s", "  "+failedNode)
 			}
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not %s subnet %s after %d seconds", strings.ToLower(targetStatus.String()), subnetName, uint32(timeout.Seconds()))
@@ -936,7 +950,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 		wg.Add(1)
 		go func(host *models.Host) {
 			defer wg.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
+			spinner := spinSession.SpinToUser("%s", utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
 			cloudID := host.GetCloudID()
 			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 			if err != nil {

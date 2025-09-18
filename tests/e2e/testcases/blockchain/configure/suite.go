@@ -92,11 +92,11 @@ func AssertNodeConfigIsSet(
 		fileBytes, err := os.ReadFile(logFile)
 		gomega.Expect(err).Should(gomega.BeNil())
 		if expectedACPSupport != -1 {
-			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("\"acp-support\":%d", expectedACPSupport))
+			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("\"acp-support\":\"%d\"", expectedACPSupport))
 		}
 		for _, acpSupport := range []int{acpSupport1, acpSupport2} {
 			if acpSupport != expectedACPSupport {
-				gomega.Expect(fileBytes).ShouldNot(gomega.ContainSubstring("\"acp-support\":%d", acpSupport))
+				gomega.Expect(fileBytes).ShouldNot(gomega.ContainSubstring("\"acp-support\":\"%d\"", acpSupport))
 			}
 		}
 	}

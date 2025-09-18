@@ -10,15 +10,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/coreth/ethclient"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/subnet-evm/ethclient"
+
 	"go.uber.org/zap"
 )
 
 func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, error) {
 	cClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoint, blockchainID))
 	if err != nil {
-		return nil, err
+		return cClient, err
 	}
 	return cClient, nil
 }

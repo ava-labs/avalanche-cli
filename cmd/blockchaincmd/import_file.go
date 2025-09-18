@@ -333,7 +333,7 @@ func importFromAPM() error {
 		ImportedVMID:    vmDescr.ID,
 	}
 
-	ux.Logger.PrintToUser("Selected blockchain, installing " + subnetKey)
+	ux.Logger.PrintToUser("%s", "Selected blockchain, installing "+subnetKey)
 
 	if err = apmintegration.InstallVM(app, subnetKey); err != nil {
 		return err

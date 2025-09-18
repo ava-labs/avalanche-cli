@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -197,7 +197,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 
 	type test struct {
 		name                        string
-		initialPrecompiles          params.Precompiles
+		initialPrecompiles          extras.Precompiles
 		icmAddress                  string
 		icmMessengerDeployerAddress string
 		relayerAddress              string
@@ -210,7 +210,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 	tests := []test{
 		{
 			name:                        "add ICM addresses to empty precompiles",
-			initialPrecompiles:          params.Precompiles{},
+			initialPrecompiles:          extras.Precompiles{},
 			icmAddress:                  "0x1234567890123456789012345678901234567890",
 			icmMessengerDeployerAddress: "0x2345678901234567890123456789012345678901",
 			relayerAddress:              "0x3456789012345678901234567890123456789012",
@@ -219,7 +219,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 		},
 		{
 			name: "add ICM addresses to precompiles with tx allow list only",
-			initialPrecompiles: params.Precompiles{
+			initialPrecompiles: extras.Precompiles{
 				txallowlist.ConfigKey: &txallowlist.Config{
 					AllowListConfig: allowlist.AllowListConfig{
 						AdminAddresses:   []common.Address{addrs[0]},
@@ -250,7 +250,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 		},
 		{
 			name: "add ICM addresses to precompiles with deployer allow list only",
-			initialPrecompiles: params.Precompiles{
+			initialPrecompiles: extras.Precompiles{
 				deployerallowlist.ConfigKey: &deployerallowlist.Config{
 					AllowListConfig: allowlist.AllowListConfig{
 						AdminAddresses:   []common.Address{addrs[0]},
@@ -281,7 +281,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 		},
 		{
 			name: "add ICM addresses to precompiles with both allow lists",
-			initialPrecompiles: params.Precompiles{
+			initialPrecompiles: extras.Precompiles{
 				txallowlist.ConfigKey: &txallowlist.Config{
 					AllowListConfig: allowlist.AllowListConfig{
 						AdminAddresses:   []common.Address{addrs[0]},
@@ -333,7 +333,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 		},
 		{
 			name: "add ICM addresses already in admin lists",
-			initialPrecompiles: params.Precompiles{
+			initialPrecompiles: extras.Precompiles{
 				txallowlist.ConfigKey: &txallowlist.Config{
 					AllowListConfig: allowlist.AllowListConfig{
 						AdminAddresses:   []common.Address{addrs[1], addrs[2]}, // ICM addresses already admin
@@ -368,7 +368,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 		},
 		{
 			name: "add duplicate ICM addresses",
-			initialPrecompiles: params.Precompiles{
+			initialPrecompiles: extras.Precompiles{
 				txallowlist.ConfigKey: &txallowlist.Config{
 					AllowListConfig: allowlist.AllowListConfig{
 						AdminAddresses:   []common.Address{},
@@ -394,7 +394,7 @@ func TestAddICMAddressesToAllowLists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a copy of the precompiles to avoid mutation
-			precompilesCopy := make(params.Precompiles)
+			precompilesCopy := make(extras.Precompiles)
 			for key, value := range tt.initialPrecompiles {
 				switch key {
 				case txallowlist.ConfigKey:
@@ -470,7 +470,7 @@ func TestAddICMAddressesToAllowListsEdgeCases(t *testing.T) {
 	t.Run("panics with nil precompiles map", func(t *testing.T) {
 		// The function actually panics when precompiles is nil - this is a limitation of the current implementation
 		require.Panics(t, func() {
-			var precompiles *params.Precompiles
+			var precompiles *extras.Precompiles
 			addICMAddressesToAllowLists(
 				precompiles,
 				addrs[0].Hex(),
@@ -481,7 +481,7 @@ func TestAddICMAddressesToAllowListsEdgeCases(t *testing.T) {
 	})
 
 	t.Run("handles empty address strings", func(t *testing.T) {
-		precompiles := params.Precompiles{
+		precompiles := extras.Precompiles{
 			txallowlist.ConfigKey: &txallowlist.Config{
 				AllowListConfig: allowlist.AllowListConfig{
 					AdminAddresses:   []common.Address{},
@@ -507,7 +507,7 @@ func TestAddICMAddressesToAllowListsEdgeCases(t *testing.T) {
 	})
 
 	t.Run("handles invalid hex addresses", func(t *testing.T) {
-		precompiles := params.Precompiles{
+		precompiles := extras.Precompiles{
 			txallowlist.ConfigKey: &txallowlist.Config{
 				AllowListConfig: allowlist.AllowListConfig{
 					AdminAddresses:   []common.Address{},

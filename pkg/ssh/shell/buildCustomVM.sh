@@ -22,7 +22,7 @@ chmod +x build.sh
 
 #prepare build Dockerfile
 cat <<EOF >>Dockerfile
-FROM golang:{{ .GoVersion }}-bullseye AS builder
+FROM golang:{{ .GoVersion }} AS builder
 RUN apt-get update
 RUN apt-get install -y git ca-certificates 
 RUN mkdir -p {{ .CustomVMRepoDir }}

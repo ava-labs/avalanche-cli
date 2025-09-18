@@ -32,7 +32,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
@@ -707,7 +706,6 @@ func RestartNodes() error {
 	defer cancel()
 	if err := localnet.TmpNetRestartNodes(
 		ctx,
-		logging.NoLog{},
 		func(string, ...interface{}) {},
 		network,
 		network.Nodes,
@@ -793,10 +791,7 @@ func GetLocalClusterNodesInfo() (map[string]NodeInfo, error) {
 }
 
 func getNodesInfo(network *tmpnet.Network) (map[string]NodeInfo, error) {
-	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
-	if err != nil {
-		return nil, err
-	}
+	pluginDir := network.DefaultRuntimeConfig.Process.PluginDir
 	nodesInfo := map[string]NodeInfo{}
 	for _, node := range network.Nodes {
 		nodeID := node.NodeID.String()

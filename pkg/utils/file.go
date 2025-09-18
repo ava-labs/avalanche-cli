@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,16 +83,46 @@ func ReplaceUserHomeWithTilde(path string) string {
 	return path
 }
 
-// FileCopy copies a file from src to dst.
+// FileCopy copies a file from src to dst using streaming copy for memory efficiency.
 func FileCopy(src string, dst string) error {
 	if !FileExists(src) {
 		return fmt.Errorf("source file does not exist")
 	}
-	data, err := os.ReadFile(src)
+
+	// Open source file
+	srcFile, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open source file: %w", err)
 	}
-	return os.WriteFile(dst, data, constants.WriteReadReadPerms)
+	defer srcFile.Close()
+
+	// Create destination file
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer func() {
+		if cerr := dstFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+
+	// Stream copy from source to destination
+	if _, err = io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("failed to copy file: %w", err)
+	}
+
+	// Sync to ensure data is written to disk
+	if err = dstFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync file: %w", err)
+	}
+
+	// Set proper permissions
+	if err = dstFile.Chmod(constants.WriteReadReadPerms); err != nil {
+		return fmt.Errorf("failed to set file permissions: %w", err)
+	}
+
+	return nil
 }
 
 // SetupExecFile copies a file into destination and set it to have exec perms,

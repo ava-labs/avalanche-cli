@@ -13,6 +13,9 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -95,4 +98,38 @@ func SplitAvalanchegoRPCURI(requestURI string) (string, string, error) {
 	chain := matches[2]
 
 	return endpoint, chain, nil
+}
+
+// IsPortAvailable checks if a port is available for binding.
+func IsPortAvailable(port int) bool {
+	addr := fmt.Sprintf("localhost:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+	if err != nil {
+		// If we can't connect, the port is available
+		return true
+	}
+	// If we can connect, the port is in use
+	_ = conn.Close()
+	return false
+}
+
+// FindAvailablePort finds an available port starting from the given port.
+// It tries the given port first, then increments by step until finding an available port.
+// Returns an error if no port is found within the timeout.
+func FindAvailablePort(startPort, step int, timeout time.Duration) (int, error) {
+	ctx, cancel := utils.GetTimedContext(timeout)
+	defer cancel()
+
+	port := startPort
+	for {
+		select {
+		case <-ctx.Done():
+			return 0, fmt.Errorf("timeout while searching for available port starting from %d: %w", startPort, ctx.Err())
+		default:
+			if IsPortAvailable(port) {
+				return port, nil
+			}
+			port += step
+		}
+	}
 }
