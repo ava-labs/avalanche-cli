@@ -32,8 +32,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/libevm/common"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -165,9 +165,9 @@ func InitializeValidatorManager(
 	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
 	if useACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	var err error
@@ -313,22 +313,21 @@ func InitializeValidatorManager(
 
 	var signatureAggregatorEndpoint string
 	if signatureAggregatorFlags.SignatureAggregatorEndpoint == "" {
-		// TODO: replace latest below with sig agg version in flags for convert and deploy
+		if err := signatureaggregator.SignatureAggregatorCleanup(app, network); err != nil {
+			return tracked, err
+		}
+		err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, signatureAggregatorFlags)
+		if err != nil {
+			return tracked, err
+		}
 		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 		if err != nil {
-			// if local machine does not have a running signature aggregator instance for the network, we will create it first
-			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, "latest")
-			if err != nil {
-				return tracked, err
-			}
-			signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
-			if err != nil {
-				return tracked, err
-			}
+			return tracked, err
 		}
 	} else {
 		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}
+
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
@@ -755,7 +754,7 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	ux.Logger.PrintToUser("")
 	ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted to sovereign L1")
 

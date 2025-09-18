@@ -112,7 +112,7 @@ func createLocalSignatureAggregator(network models.Network) error {
 	if err != nil {
 		return err
 	}
-	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, startFlags.SigAggFlags.SignatureAggregatorVersion)
+	err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, startFlags.SigAggFlags)
 	if err != nil {
 		return err
 	}

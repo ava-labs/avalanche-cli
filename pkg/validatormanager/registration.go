@@ -28,11 +28,11 @@ import (
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
-	"github.com/ava-labs/subnet-evm/core/types"
-	"github.com/ava-labs/subnet-evm/interfaces"
+	ethereum "github.com/ava-labs/libevm"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/libevm/core/types"
 	subnetEvmWarp "github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 
-	"github.com/ethereum/go-ethereum/common"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -512,7 +512,7 @@ func InitValidatorRegistration(
 			} else {
 				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
+			ux.Logger.PrintToUser("%s", fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
 		} else {
 			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
@@ -691,7 +691,7 @@ func SearchForRegisterL1ValidatorMessage(
 			fromBlock = big.NewInt(0)
 		}
 		toBlock := big.NewInt(blockNumber)
-		logs, err := client.FilterLogs(interfaces.FilterQuery{
+		logs, err := client.FilterLogs(ethereum.FilterQuery{
 			FromBlock: fromBlock,
 			ToBlock:   toBlock,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},

@@ -8,15 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
-
-	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -28,13 +25,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	validatorsdk "github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/libevm/common"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -297,7 +295,7 @@ func removeValidatorSOV(
 			return err
 		}
 		if privateKey == "" {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("A key is needed to authorize the removal. Should be the one that provided the original staking funds"))
+			ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("A key is needed to authorize the removal. Should be the one that provided the original staking funds"))
 			privateKey, err = prompts.PromptPrivateKey(
 				app.Prompt,
 				"authorize the removal",
@@ -335,9 +333,9 @@ func removeValidatorSOV(
 	}
 
 	if sc.UseACP99 {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: V2"))
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 	} else {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	if !sc.PoS() {
@@ -384,7 +382,7 @@ func removeValidatorSOV(
 		signatureAggregatorEndpoint, err = signatureaggregator.GetSignatureAggregatorEndpoint(app, network)
 		if err != nil {
 			// if local machine does not have a running signature aggregator instance for the network, we will create it first
-			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, removeValidatorFlags.SigAggFlags.SignatureAggregatorVersion)
+			err = signatureaggregator.CreateSignatureAggregatorInstance(app, network, aggregatorLogger, removeValidatorFlags.SigAggFlags)
 			if err != nil {
 				return err
 			}
@@ -461,7 +459,7 @@ func removeValidatorSOV(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Initializing Validator Removal", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump)
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}
@@ -472,7 +470,7 @@ func removeValidatorSOV(
 		if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+		ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 		if err := blockchain.UpdatePChainHeight(
@@ -506,7 +504,7 @@ func removeValidatorSOV(
 	if rawTx != nil {
 		dump, err := evm.TxDump("Finish Validator Removal", rawTx)
 		if err == nil {
-			ux.Logger.PrintToUser(dump)
+			ux.Logger.PrintToUser("%s", dump)
 		}
 		return err
 	}

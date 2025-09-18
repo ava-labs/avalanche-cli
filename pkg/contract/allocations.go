@@ -10,8 +10,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // returns information for the blockchain default allocation key
@@ -202,8 +203,8 @@ func getGenesisNativeMinterAdmin(
 	if err != nil {
 		return false, false, "", "", "", err
 	}
-	if genesis.Config != nil && genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		allowListCfg, ok := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+	if genesis.Config != nil && params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		allowListCfg, ok := params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		if !ok {
 			return false, false, "", "", "", fmt.Errorf(
 				"expected config of type nativeminter.AllowListConfig, but got %T",
@@ -236,8 +237,8 @@ func getGenesisNativeMinterManager(
 	if err != nil {
 		return false, false, "", "", "", err
 	}
-	if genesis.Config != nil && genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		allowListCfg, ok := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+	if genesis.Config != nil && params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		allowListCfg, ok := params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		if !ok {
 			return false, false, "", "", "", fmt.Errorf(
 				"expected config of type nativeminter.AllowListConfig, but got %T",

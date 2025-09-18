@@ -21,8 +21,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	eth_crypto "github.com/ava-labs/libevm/crypto"
 
-	eth_crypto "github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/zap"
 )
 

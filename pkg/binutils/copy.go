@@ -4,36 +4,24 @@
 package binutils
 
 import (
-	"io"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
+// CopyFile copies a file from src to dest and sets executable permissions.
+// Uses utils.FileCopy for the base copy operation, then sets executable permissions.
 func CopyFile(src, dest string) error {
-	in, err := os.Open(src)
-	if err != nil {
+	// Use the common file copy logic
+	if err := utils.FileCopy(src, dest); err != nil {
 		return err
 	}
-	defer in.Close()
-	out, err := os.Create(dest)
-	if err != nil {
+
+	// Set executable permissions (the difference from utils.FileCopy)
+	if err := os.Chmod(dest, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	defer func() {
-		cerr := out.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
-	if _, err = io.Copy(out, in); err != nil {
-		return err
-	}
-	if err = out.Sync(); err != nil {
-		return err
-	}
-	if err = out.Chmod(constants.DefaultPerms755); err != nil {
-		return err
-	}
+
 	return nil
 }

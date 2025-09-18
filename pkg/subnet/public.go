@@ -32,8 +32,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-
-	goethereumcommon "github.com/ethereum/go-ethereum/common"
+	libevmcommon "github.com/ava-labs/libevm/common"
 )
 
 const showFees = true
@@ -459,7 +458,7 @@ func (d *PublicDeployer) ConvertL1(
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	validatorManagerBlockchainID ids.ID,
-	validatorManagerAddress goethereumcommon.Address,
+	validatorManagerAddress libevmcommon.Address,
 	validators []*txs.ConvertSubnetToL1Validator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now calling ConvertSubnetToL1Tx...")

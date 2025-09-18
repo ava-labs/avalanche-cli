@@ -120,7 +120,7 @@ func resize(_ *cobra.Command, args []string) error {
 		spinSession := ux.NewUserSpinner()
 		// resize node and disk. If error occurs, log it and continue to next host
 		if nodeType != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(nodeConfig.NodeID, "Resizing Instance Type"))
+			spinner := spinSession.SpinToUser("%s", utils.ScriptLog(nodeConfig.NodeID, "Resizing Instance Type"))
 			if err := resizeNode(nodeConfig); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 			} else {
@@ -128,7 +128,7 @@ func resize(_ *cobra.Command, args []string) error {
 			}
 		}
 		if diskSize != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(nodeConfig.NodeID, "Resizing Disk"))
+			spinner := spinSession.SpinToUser("%s", utils.ScriptLog(nodeConfig.NodeID, "Resizing Disk"))
 			diskSizeGb, _ := strconv.Atoi(strings.TrimSuffix(diskSize, "Gb"))
 			if err := resizeDisk(nodeConfig, diskSizeGb); err != nil {
 				ux.SpinFailWithError(spinner, "", err)

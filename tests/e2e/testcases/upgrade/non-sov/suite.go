@@ -20,7 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -194,7 +194,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		upgradeBytes, err := os.ReadFile(upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		var precmpUpgrades params.UpgradeConfig
+		var precmpUpgrades extras.UpgradeConfig
 		err = json.Unmarshal(upgradeBytes, &precmpUpgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 

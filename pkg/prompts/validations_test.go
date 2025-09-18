@@ -462,7 +462,7 @@ func TestValidateAddress(t *testing.T) {
 		{
 			name:    "invalid address - no 0x prefix",
 			input:   "742d35Cc1634C0532925a3b8D400bbcFcc09FbbF",
-			wantErr: false, // go-ethereum IsHexAddress accepts this
+			wantErr: false, // libevm IsHexAddress accepts this
 		},
 		{
 			name:    "invalid address - too short",

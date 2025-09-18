@@ -30,7 +30,7 @@ func getNewKeyPairName(ec2Svc *awsAPI.AwsCloud) (string, error) {
 			if !keyPairExists {
 				return newKeyPairName, nil
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
+			ux.Logger.PrintToUser("%s", fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
 		}
 		ux.Logger.PrintToUser("What do you want to name your key pair?")
 		var err error
@@ -263,7 +263,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 					}
 				case !useSSHAgent && !certInSSHDir:
-					ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
+					ux.Logger.PrintToUser("%s", fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
 					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 					}
@@ -297,7 +297,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
 		if !securityGroupExists {
-			ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS[%s]", securityGroupName, region))
+			ux.Logger.PrintToUser("%s", fmt.Sprintf("Creating new security group %s in AWS[%s]", securityGroupName, region))
 			if newSGID, err := ec2Svc[region].SetupSecurityGroup(userIPAddress, regionConf[region].SecurityGroupName); err != nil {
 				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 			} else {
@@ -311,7 +311,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 		} else {
 			sgID = *sg.GroupId
-			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
+			ux.Logger.PrintToUser("%s", fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
 			ipInTCP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalancheGoAPIPort)
 			ipInMonitoring := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalancheGoMonitoringPort)
@@ -528,17 +528,17 @@ func createAWSInstances(
 		failedNodes := map[string]error{}
 		for region, regionInstanceID := range instanceIDs {
 			for _, instanceID := range regionInstanceID {
-				ux.Logger.PrintToUser(fmt.Sprintf("Destroying AWS cloud server %s...", instanceID))
+				ux.Logger.PrintToUser("%s", fmt.Sprintf("Destroying AWS cloud server %s...", instanceID))
 				if destroyErr := ec2Svc[region].DestroyInstance(instanceID, "", true); destroyErr != nil {
 					failedNodes[instanceID] = destroyErr
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s destroyed", instanceID))
+				ux.Logger.PrintToUser("%s", fmt.Sprintf("AWS cloud server instance %s destroyed", instanceID))
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
+				ux.Logger.PrintToUser("%s", fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
 			ux.Logger.PrintToUser("Destroy the above instance(s) on AWS console to prevent charges")
 			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)

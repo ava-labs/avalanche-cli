@@ -22,10 +22,9 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
-	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/libevm/core/types"
 	"github.com/ava-labs/subnet-evm/warp/messages"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func InitializeValidatorRemoval(

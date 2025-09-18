@@ -8,14 +8,14 @@ import (
 	"fmt"
 
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/params/extras"
 	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/onsi/gomega"
 )
 
 const chainConfigAPI = "eth_getChainConfig"
 
-func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeConfig) error {
+func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades extras.UpgradeConfig) error {
 	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 
@@ -53,9 +53,9 @@ func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeC
 	}
 
 	// ...so that we finally can unmarshal to the object we need
-	var appliedUpgrades params.UpgradeConfig
+	var appliedUpgrades extras.UpgradeConfig
 	if err := json.Unmarshal(serialized, &appliedUpgrades); err != nil {
-		return fmt.Errorf("failed to unpack JSON strings to params.UpgradeConfig")
+		return fmt.Errorf("failed to unpack JSON strings to extras.UpgradeConfig")
 	}
 
 	gomega.Expect(appliedUpgrades).Should(gomega.Equal(deployedUpgrades))

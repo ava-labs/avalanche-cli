@@ -20,7 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/ava-labs/libevm/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )

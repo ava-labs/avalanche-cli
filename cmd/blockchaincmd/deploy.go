@@ -46,8 +46,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	"github.com/ava-labs/libevm/common"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -756,7 +756,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.Blue.Wrap(
+		ux.Logger.PrintToUser("%s", logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
 		var isPermissioned bool
@@ -825,7 +825,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			chainGenesis,
 		)
 		if err != nil {
-			ux.Logger.PrintToUser(logging.Red.Wrap(
+			ux.Logger.PrintToUser("%s", logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
 			return err
@@ -1087,7 +1087,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign && tracked {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
 
 	var icmErr, relayerErr error
@@ -1369,7 +1369,7 @@ func PrintReadyToSignMsg(
 	if blockchainName == "" {
 		cmdLine = fmt.Sprintf("  avalanche transaction commit --input-tx-filepath %s", outputTxPath)
 	}
-	ux.Logger.PrintToUser(cmdLine)
+	ux.Logger.PrintToUser("%s", cmdLine)
 }
 
 func PrintRemainingToSignMsg(
@@ -1391,7 +1391,7 @@ func PrintRemainingToSignMsg(
 	if blockchainName == "" {
 		cmdline = fmt.Sprintf("  avalanche transaction sign --input-tx-filepath %s", outputTxPath)
 	}
-	ux.Logger.PrintToUser(cmdline)
+	ux.Logger.PrintToUser("%s", cmdline)
 	ux.Logger.PrintToUser("")
 }
 
@@ -1415,7 +1415,7 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 		t.AppendRow(table.Row{"Blockchain ID", blockchainID.String()})
 		t.AppendRow(table.Row{"P-Chain TXID", blockchainID.String()})
 	}
-	ux.Logger.PrintToUser(t.Render())
+	ux.Logger.PrintToUser("%s", t.Render())
 	return nil
 }
 

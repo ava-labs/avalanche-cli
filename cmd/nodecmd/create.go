@@ -690,7 +690,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					nodeResults.AddResult(monitoringHost.IP, nil, err)
 					return
 				}
-				spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.IP, "Setup Monitoring"))
+				spinner := spinSession.SpinToUser("%s", utils.ScriptLog(monitoringHost.IP, "Setup Monitoring"))
 				if err = app.SetupMonitoringEnv(); err != nil {
 					nodeResults.AddResult(monitoringHost.IP, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -751,7 +751,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Add Monitoring"))
+				spinner := spinSession.SpinToUser("%s", utils.ScriptLog(host.IP, "Add Monitoring"))
 				if addMonitoring {
 					cloudID := host.GetCloudID()
 					nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
@@ -793,7 +793,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
-		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
+		ux.Logger.PrintToUser("%s", logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	sendNodeCreateMetrics(cloudService, network.Name(), numNodesMetricsMap)
 	return nil
@@ -1137,7 +1137,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.LightBlue.Wrap(region))
 			for _, apiNode := range cloudConfig.APIInstanceIDs {
-				ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
+				ux.Logger.PrintToUser("%s", logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
 			}
 			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("")
@@ -1174,7 +1174,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort)))
+	ux.Logger.PrintToUser("%s", logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
@@ -1201,7 +1201,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Waiting for instance response"))
+			spinner := spinSession.SpinToUser("%s", utils.ScriptLog(host.IP, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.IP, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -1348,7 +1348,7 @@ func getRegionsNodeNum(cloudName string) (
 				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
 			})
 		}
-		ux.Logger.PrintToUser("Current selection: " + strings.Join(currentInput, " "))
+		ux.Logger.PrintToUser("%s", "Current selection: "+strings.Join(currentInput, " "))
 		yes, err := app.Prompt.CaptureNoYes(additionalRegionPrompt)
 		if err != nil {
 			return nil, err

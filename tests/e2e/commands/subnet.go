@@ -433,7 +433,13 @@ func DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName string, version strin
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return output, err
 }
 
 func DeploySubnetLocallyWithArgsAndOutputSOV(subnetName string, version string, confPath string) ([]byte, error) {
@@ -456,7 +462,13 @@ func DeploySubnetLocallyWithArgsAndOutputSOV(subnetName string, version string, 
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return output, err
 }
 
 /* #nosec G204 */
@@ -1166,5 +1178,10 @@ func ListValidators(subnetName string, network string) (string, error) {
 	)
 
 	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
 	return string(out), err
 }

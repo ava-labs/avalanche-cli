@@ -90,7 +90,7 @@ func FindErrorLogs(rootDirs ...string) {
 						thisFileNotified = true
 						fmt.Println()
 					}
-					ux.Logger.PrintToUser(o)
+					ux.Logger.PrintToUser("%s", o)
 					ux.Logger.PrintToUser("----------------------------------------------------------------------")
 					fmt.Println()
 				}
@@ -99,7 +99,7 @@ func FindErrorLogs(rootDirs ...string) {
 		})
 	}
 	if len(foundErrors) > 0 {
-		ux.Logger.PrintToUser(logging.Reset.Wrap("================!!! end of errors in logs !!! ========================"))
+		ux.Logger.PrintToUser("%s", logging.Reset.Wrap("================!!! end of errors in logs !!! ========================"))
 		ux.Logger.PrintToUser("")
 	}
 }

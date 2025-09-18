@@ -321,6 +321,13 @@ func setupEnv() (string, error) {
 		return "", err
 	}
 
+	// Create db cache dir if it doesn't exist
+	dbCacheDir := filepath.Join(baseDir, constants.DBDirName)
+	if err = os.MkdirAll(dbCacheDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the db cache dir %s: %s\n", dbCacheDir, err)
+		return "", err
+	}
+
 	return baseDir, nil
 }
 

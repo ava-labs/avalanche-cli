@@ -77,7 +77,7 @@ func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
 	if err != nil {
 		return nil, err
 	}
-	return GetTmpNetNetwork(networkDir)
+	return GetTmpNetNetworkWithLog(app.Log, networkDir)
 }
 
 // Returns the endpoint associated to the local network
@@ -121,7 +121,7 @@ func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string
 	// version is in format avalanche/x.y.z, need to turn to semantic
 	splitVersion := strings.Split(versionResponse.Version, "/")
 	if len(splitVersion) != 2 {
-		return true, "", 0, fmt.Errorf("unable to parse avalanchego version " + versionResponse.Version)
+		return true, "", 0, fmt.Errorf("%s", "unable to parse avalanchego version "+versionResponse.Version)
 	}
 	// index 0 should be avalanche, index 1 will be version
 	parsedVersion := "v" + splitVersion[1]
@@ -301,7 +301,7 @@ func LoadLocalNetwork(
 	}
 	for i := range network.Nodes {
 		for k, v := range nodeConfig {
-			network.Nodes[i].Flags[k] = v
+			network.Nodes[i].Flags[k] = fmt.Sprint(v)
 		}
 	}
 	if err := network.Write(); err != nil {

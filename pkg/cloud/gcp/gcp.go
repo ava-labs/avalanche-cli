@@ -414,13 +414,13 @@ func (c *GcpCloud) DestroyGCPNode(nodeConfig models.NodeConfig, clusterName stri
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Destroying node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	ux.Logger.PrintToUser("%s", fmt.Sprintf("Destroying node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
 	instancesStopCall := c.gcpClient.Instances.Delete(c.projectID, nodeConfig.Region, nodeConfig.NodeID)
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}
 	if nodeConfig.UseStaticIP {
-		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
+		ux.Logger.PrintToUser("%s", fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
 		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
 		addressReleaseCall := c.gcpClient.Addresses.Delete(c.projectID, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))

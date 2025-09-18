@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -22,11 +23,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/avm"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/coreth/ethclient"
-
-	"github.com/ethereum/go-ethereum/common"
-	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/liyue201/erc20-go/erc20"
+	"github.com/ava-labs/libevm/common"
+	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -143,10 +141,10 @@ keys or for the ledger addresses associated to certain indices.`,
 type Clients struct {
 	x             map[models.Network]avm.Client
 	p             map[models.Network]platformvm.Client
+	cEndpoint     map[models.Network]string
 	c             map[models.Network]ethclient.Client
-	cGeth         map[models.Network]*goethereumethclient.Client
+	evmEndpoint   map[models.Network]map[string]string
 	evm           map[models.Network]map[string]ethclient.Client
-	evmGeth       map[models.Network]map[string]*goethereumethclient.Client
 	blockchainRPC map[models.Network]map[string]string
 }
 
@@ -157,10 +155,10 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	var err error
 	xClients := map[models.Network]avm.Client{}
 	pClients := map[models.Network]platformvm.Client{}
+	cEndpoints := map[models.Network]string{}
 	cClients := map[models.Network]ethclient.Client{}
-	cGethClients := map[models.Network]*goethereumethclient.Client{}
+	evmEndpoints := map[models.Network]map[string]string{}
 	evmClients := map[models.Network]map[string]ethclient.Client{}
-	evmGethClients := map[models.Network]map[string]*goethereumethclient.Client{}
 	blockchainRPCs := map[models.Network]map[string]string{}
 	for _, network := range networks {
 		if pchain {
@@ -175,10 +173,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 				return nil, err
 			}
 			if len(tokenAddresses) != 0 {
-				cGethClients[network], err = goethereumethclient.Dial(network.CChainEndpoint())
-				if err != nil {
-					return nil, err
-				}
+				cEndpoints[network] = network.CChainEndpoint()
 			}
 		}
 		for _, subnetName := range subnets {
@@ -221,14 +216,11 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 							return nil, err
 						}
 						if len(tokenAddresses) != 0 {
-							_, b := evmGethClients[network]
+							_, b := evmEndpoints[network]
 							if !b {
-								evmGethClients[network] = map[string]*goethereumethclient.Client{}
+								evmEndpoints[network] = map[string]string{}
 							}
-							evmGethClients[network][subnetName], err = goethereumethclient.Dial(endpoint)
-							if err != nil {
-								return nil, err
-							}
+							evmEndpoints[network][subnetName] = endpoint
 						}
 					}
 				}
@@ -240,8 +232,8 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		x:             xClients,
 		c:             cClients,
 		evm:           evmClients,
-		cGeth:         cGethClients,
-		evmGeth:       evmGethClients,
+		cEndpoint:     cEndpoints,
+		evmEndpoint:   evmEndpoints,
 		blockchainRPC: blockchainRPCs,
 	}, nil
 }
@@ -381,7 +373,7 @@ func getStoredKeyInfo(
 					subnetName,
 					subnetToken,
 					clients.evm[network][subnetName],
-					clients.evmGeth[network][subnetName],
+					clients.evmEndpoint[network][subnetName],
 					network,
 					evmAddr,
 					"stored",
@@ -400,7 +392,7 @@ func getStoredKeyInfo(
 		}
 		if _, ok := clients.c[network]; ok {
 			cChainAddr := sk.C()
-			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", "AVAX", clients.c[network], clients.cGeth[network], network, cChainAddr, "stored", keyName)
+			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", "AVAX", clients.c[network], clients.cEndpoint[network], network, cChainAddr, "stored", keyName)
 			if err != nil {
 				return nil, err
 			}
@@ -539,15 +531,15 @@ func getEvmBasedChainAddrInfo(
 	chainName string,
 	chainToken string,
 	cClient ethclient.Client,
-	cGethClient *goethereumethclient.Client,
+	evmEndpoint string,
 	network models.Network,
-	cChainAddr string,
+	addr string,
 	kind string,
 	name string,
 ) ([]addressInfo, error) {
 	addressInfos := []addressInfo{}
 	if showNativeToken {
-		cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
+		cChainBalance, err := getCChainBalanceStr(cClient, addr)
 		if err != nil {
 			// just ignore local network errors
 			if network.Kind != models.Local {
@@ -563,34 +555,28 @@ func getEvmBasedChainAddrInfo(
 			name:    name,
 			chain:   chainName,
 			token:   taggedChainToken,
-			address: cChainAddr,
+			address: addr,
 			balance: cChainBalance,
 			network: network.Name(),
 		}
 		addressInfos = append(addressInfos, info)
 	}
-	if cGethClient != nil {
+	if evmEndpoint != "" {
 		for _, tokenAddress := range tokenAddresses {
-			token, err := erc20.NewGGToken(common.HexToAddress(tokenAddress), cGethClient)
-			if err != nil {
-				return addressInfos, err
-			}
-
 			// Ignore contract address access errors as those may depend on network
-			tokenSymbol, err := token.Symbol(nil)
+			tokenSymbol, err := erc20.GetTokenSymbol(evmEndpoint, common.HexToAddress(tokenAddress))
 			if err != nil {
 				continue
 			}
 
-			// Get the raw balance for the given token.
-			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
+			// Get the decimal count for the token to format the balance.
+			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
+			decimals, err := erc20.GetTokenDecimals(evmEndpoint, common.HexToAddress(tokenAddress))
 			if err != nil {
 				return addressInfos, err
 			}
 
-			// Get the decimal count for the token to format the balance.
-			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
-			decimals, err := token.Decimals(nil)
+			balance, err := erc20.GetBalance(evmEndpoint, common.HexToAddress(tokenAddress), common.HexToAddress(addr))
 			if err != nil {
 				return addressInfos, err
 			}
@@ -608,7 +594,7 @@ func getEvmBasedChainAddrInfo(
 				name:    name,
 				chain:   chainName,
 				token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
-				address: cChainAddr,
+				address: addr,
 				balance: formattedBalance,
 				network: network.Name(),
 			}
