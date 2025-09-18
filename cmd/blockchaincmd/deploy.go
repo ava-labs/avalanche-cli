@@ -871,7 +871,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if sidecar.Sovereign {
 		externalVmcDeploy := !vmcAtL1 || vmcChainFlags.Defined()
 
-		if flag := cmd.Flags().Lookup(vmcAtL1FlagName); flag != nil && !flag.Changed && !vmcChainFlags.Defined() {
+		if flag := cmd.Flags().Lookup(vmcAtL1FlagName); (flag == nil || !flag.Changed) && !vmcChainFlags.Defined() {
 			if network.Kind == models.Local {
 				externalVmcDeploy = false
 			} else {
