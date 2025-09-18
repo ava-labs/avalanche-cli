@@ -42,7 +42,7 @@ require (
 	golang.org/x/crypto v0.39.0
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 	golang.org/x/mod v0.25.0
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.31.0
 	golang.org/x/sync v0.16.0
 	golang.org/x/text v0.26.0
 	google.golang.org/api v0.216.0
