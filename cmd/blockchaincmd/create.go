@@ -159,6 +159,7 @@ func CallCreate(
 	customVMRepoURLParam string,
 	customVMBranchParam string,
 	customVMBuildScriptParam string,
+	customVMPath string,
 ) error {
 	forceCreate = forceCreateParam
 	genesisPath = genesisPathParam
@@ -174,6 +175,7 @@ func CallCreate(
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
 	customVMBuildScript = customVMBuildScriptParam
+	vmFile = customVMPath
 	return createBlockchainConfig(cmd, []string{blockchainName})
 }
 
