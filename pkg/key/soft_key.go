@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -39,9 +38,6 @@ type SoftKey struct {
 	privKey        *secp256k1.PrivateKey
 	privKeyRaw     []byte
 	privKeyEncoded string
-
-	pAddr string
-	xAddr string
 
 	keyChain *secp256k1fx.Keychain
 }
@@ -83,7 +79,7 @@ func WithPrivateKeyEncoded(privKey string) SOpOption {
 	}
 }
 
-func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
+func NewSoft(opts ...SOpOption) (*SoftKey, error) {
 	ret := &SOp{}
 	ret.applyOpts(opts)
 
@@ -129,19 +125,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 		privKey:        privKey,
 		privKeyRaw:     privKey.Bytes(),
 		privKeyEncoded: privKeyEncoded,
-
-		keyChain: keyChain,
-	}
-
-	// Parse HRP to create valid address
-	hrp := GetHRP(networkID)
-	m.pAddr, err = address.Format("P", hrp, m.privKey.PublicKey().Address().Bytes())
-	if err != nil {
-		return nil, err
-	}
-	m.xAddr, err = address.Format("X", hrp, m.privKey.PublicKey().Address().Bytes())
-	if err != nil {
-		return nil, err
+		keyChain:       keyChain,
 	}
 
 	return m, nil
@@ -160,7 +144,7 @@ func LoadSoftOrCreate(networkID uint32, keyPath string) (*SoftKey, error) {
 	if utils.FileExists(keyPath) {
 		return LoadSoft(networkID, keyPath)
 	} else {
-		k, err := NewSoft(networkID)
+		k, err := NewSoft()
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +162,7 @@ func LoadEwoq(networkID uint32) (*SoftKey, error) {
 // LoadSoftFromBytes loads the private key from bytes and creates the corresponding SoftKey.
 func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 	// in case, it's already encoded
-	k, err := NewSoft(networkID, WithPrivateKeyEncoded(string(kb)))
+	k, err := NewSoft(WithPrivateKeyEncoded(string(kb)))
 	if err == nil {
 		return k, nil
 	}
@@ -205,7 +189,7 @@ func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 		return nil, err
 	}
 
-	return NewSoft(networkID, WithPrivateKey(privKey))
+	return NewSoft(WithPrivateKey(privKey))
 }
 
 // readASCII reads into 'buf', stopping when the buffer is full or
@@ -300,14 +284,6 @@ func (m *SoftKey) PrivKeyHex() string {
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
 	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.WriteReadUserOnlyPerms)
-}
-
-func (m *SoftKey) P() []string {
-	return []string{m.pAddr}
-}
-
-func (m *SoftKey) X() []string {
-	return []string{m.xAddr}
 }
 
 func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (
