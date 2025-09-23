@@ -623,6 +623,14 @@ func RunSSHCopyBinaryFile(host *models.Host, sc models.Sidecar) error {
 	); err != nil {
 		return err
 	}
+
+	// set execute permissions
+	cmd := fmt.Sprintf("chmod +x %s", subnetVMBinaryPath)
+	ux.Logger.Info("Setting permissions for %s on %s", subnetVMBinaryPath, host.NodeID)
+	if _, err := host.Command(cmd, nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+
 	return nil
 }
 
