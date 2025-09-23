@@ -270,6 +270,19 @@ func GetIndexInSlice[T comparable](list []T, element T) (int, error) {
 // Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5
 // Should return https://github.com/ava-labs/hypersdk
 func GetRepoFromCommitURL(gitRepoURL string) (string, string) {
+	// Handle SSH URLs (git@host:path format)
+	if strings.HasPrefix(gitRepoURL, "git@") && strings.Contains(gitRepoURL, ":") {
+		parts := strings.Split(gitRepoURL, ":")
+		if len(parts) == 2 {
+			// Extract repo name from path (remove .git suffix if present)
+			// For git@github.com:owner/repo.git, we want just "repo"
+			pathParts := strings.Split(parts[1], "/")
+			repoName := strings.TrimSuffix(pathParts[len(pathParts)-1], ".git")
+			return gitRepoURL, repoName
+		}
+	}
+
+	// Handle HTTP/HTTPS URLs
 	splitURL := strings.Split(gitRepoURL, "/")
 	if len(splitURL) > 4 {
 		// get first five members of splitURL because it will be [ https, ' ', github.com, ava-labs, hypersdk]

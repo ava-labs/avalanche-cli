@@ -502,7 +502,7 @@ func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
-		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
+		if err := validateRepositoryURL(loadTestRepoURL); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
 		}
@@ -550,4 +550,24 @@ func getExistingLoadTestInstance(clusterName, loadTestName string) (string, erro
 		}
 	}
 	return "", nil
+}
+
+// validateRepositoryURL validates both HTTP and SSH repository URLs
+func validateRepositoryURL(url string) error {
+	// Check if it's an SSH URL (git@host:path format)
+	if strings.HasPrefix(url, "git@") && strings.Contains(url, ":") {
+		// Basic SSH URL validation
+		parts := strings.Split(url, ":")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid SSH URL format")
+		}
+		hostPart := strings.TrimPrefix(parts[0], "git@")
+		if hostPart == "" || parts[1] == "" {
+			return fmt.Errorf("invalid SSH URL format")
+		}
+		return nil
+	}
+
+	// For HTTP/HTTPS URLs, use the existing validation
+	return prompts.ValidateURL(url)
 }

@@ -834,7 +834,8 @@ func RunSSHSetupDeployKey(host *models.Host, deployKeyPath string) error {
 	}
 
 	// Upload the deploy key first
-	remoteDeployKeyPath := "~/.ssh/avalanche-deploy-key"
+	remoteDeployKeyPath := "/home/ubuntu/.ssh/avalanche-deploy-key"
+
 	if err := host.Upload(expandedPath, remoteDeployKeyPath, constants.SSHFileOpsTimeout); err != nil {
 		return fmt.Errorf("failed to upload deploy key: %w", err)
 	}
@@ -851,12 +852,16 @@ func RunSSHSetupDeployKey(host *models.Host, deployKeyPath string) error {
 
 // expandTilde expands ~ to the user's home directory
 func expandTilde(path string) (string, error) {
-	if strings.HasPrefix(path, "~/") {
+	if strings.HasPrefix(path, "~") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
-		return filepath.Join(homeDir, path[2:]), nil
+		// Handle both ~/ and ~ cases
+		if len(path) == 1 {
+			return homeDir, nil
+		}
+		return filepath.Join(homeDir, path[1:]), nil
 	}
 	return path, nil
 }
