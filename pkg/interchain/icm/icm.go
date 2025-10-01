@@ -12,9 +12,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
-	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var InterchainMessagingPrefundedAddressBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600)) // 600 AVAX
@@ -183,7 +183,6 @@ func GetICMInfo(
 // Returns: alreadyDeployed, messengerAddress, registryAddress, error
 func Deploy(
 	deployer *icm.Deployer,
-	logger logging.Logger,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -199,20 +198,25 @@ func Deploy(
 	)
 
 	if deployMessenger {
-		messengerAddress, err = deployer.DeployMessenger(logger, subnetName, rpcURL, privateKey)
-		if err == icm.ErrMessengerAlreadyDeployed {
+		messengerAddress, err = deployer.DeployMessenger(rpcURL, privateKey)
+		switch {
+		case err == icm.ErrMessengerAlreadyDeployed:
 			alreadyDeployed = true
-		} else if err != nil {
+			ux.Logger.PrintToUser("ICM Messenger has already been deployed to %s", subnetName)
+		case err != nil:
 			return false, "", "", err
+		default:
+			ux.Logger.PrintToUser("ICM Messenger successfully deployed to %s (%s)", subnetName, messengerAddress)
 		}
 	}
 
 	if deployRegistry {
 		if !deployMessenger || !alreadyDeployed || forceRegistryDeploy {
-			registryAddress, err = deployer.DeployRegistry(logger, subnetName, rpcURL, privateKey)
+			registryAddress, err = deployer.DeployRegistry(rpcURL, privateKey)
 			if err != nil {
 				return alreadyDeployed, messengerAddress, "", err
 			}
+			ux.Logger.PrintToUser("ICM Registry successfully deployed to %s (%s)", subnetName, registryAddress)
 		}
 	}
 

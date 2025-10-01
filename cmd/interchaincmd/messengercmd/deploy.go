@@ -186,7 +186,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 	alreadyDeployed, messengerAddress, registryAddress, err := icm.Deploy(
 		deployer,
-		app.Log,
 		blockchainDesc,
 		rpcURL,
 		privateKey,
@@ -228,7 +227,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 		alreadyDeployed, messengerAddress, registryAddress, err := icm.Deploy(
 			deployer,
-			app.Log,
 			cChainName,
 			network.BlockchainEndpoint(cChainAlias),
 			ewoq.PrivKeyHex(),
