@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -165,8 +165,8 @@ func TestCreateEVMGenesis(t *testing.T) {
 	}
 
 	// Helper to create ICM info
-	createICMInfo := func() *interchain.ICMInfo {
-		return &interchain.ICMInfo{
+	createICMInfo := func() *icm.ICMInfo {
+		return &icm.ICMInfo{
 			FundedAddress:            "0x1234567890123456789012345678901234567890",
 			MessengerDeployerAddress: "0x1111111111111111111111111111111111111111",
 			Version:                  "v1.0.0",
@@ -176,7 +176,7 @@ func TestCreateEVMGenesis(t *testing.T) {
 	type test struct {
 		name                    string
 		params                  SubnetEVMGenesisParams
-		icmInfo                 *interchain.ICMInfo
+		icmInfo                 *icm.ICMInfo
 		addICMRegistryToGenesis bool
 		proxyOwner              string
 		rewardBasisPoints       uint64
