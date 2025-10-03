@@ -15,13 +15,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkicm "github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/subnet-evm/params"
 
@@ -266,7 +267,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// get ICM info
-	icmInfo, err := interchain.GetICMInfo(app)
+	icmInfo, err := icm.GetICMInfo(app)
 	if err != nil {
 		return err
 	}
@@ -423,7 +424,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
 		sc.TeleporterKey = constants.ICMKeyName
-		sc.TeleporterVersion = icmInfo.Version
+		sc.TeleporterVersion = sdkicm.DefaultVersion
 		if genesisPath != "" {
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err

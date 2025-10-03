@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -21,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -353,9 +353,9 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		}
 		var description, deployer string
 		switch {
-		case address == common.HexToAddress(icmgenesis.MessengerContractAddress):
+		case address == common.HexToAddress(icm.DefaultMessengerContractAddress):
 			description = "ICM Messenger"
-			deployer = icmgenesis.MessengerDeployerAddress
+			deployer = icm.DefaultMessengerDeployerAddress
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress):
 			description = "Validator Messages Lib"
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorContractAddress):

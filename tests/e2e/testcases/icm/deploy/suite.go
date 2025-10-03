@@ -7,7 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
@@ -304,14 +304,10 @@ var _ = ginkgo.Describe("[ICM] deploy", func() {
 		})
 
 		ginkgo.It("should deploy ICM contracts from paths", func() {
-			td := interchain.ICMDeployer{}
 			contractsDirPath := path.Join(utils.GetBaseDir(), constants.AvalancheCliBinDir, constants.ICMContractsInstallDir)
 			version := "v1.0.0"
-			// Download contracts
-			err := td.DownloadAssets(
-				contractsDirPath,
-				version,
-			)
+			// Download contracts using GetDeployer (which caches to disk)
+			_, err := icm.GetDeployer(contractsDirPath, version)
 			gomega.Expect(err).Should(gomega.BeNil())
 
 			testFlags := utils.TestFlags{

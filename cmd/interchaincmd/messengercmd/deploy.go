@@ -7,12 +7,13 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkicm "github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
@@ -156,28 +157,26 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	case flags.Version != "" && flags.Version != "latest":
 		icmVersion = flags.Version
 	default:
-		icmInfo, err := interchain.GetICMInfo(app)
-		if err != nil {
-			return err
-		}
-		icmVersion = icmInfo.Version
+		icmVersion = sdkicm.DefaultVersion
 	}
 	// deploy to subnet
-	td := interchain.ICMDeployer{}
+	var deployer *sdkicm.Deployer
 	if flags.MessengerContractAddressPath != "" {
-		if err := td.SetAssetsFromPaths(
+		deployer, err = icm.GetDeployerFromPaths(
 			flags.MessengerContractAddressPath,
 			flags.MessengerDeployerAddressPath,
 			flags.MessengerDeployerTxPath,
 			flags.RegistryBydecodePath,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 	} else {
-		if err := td.DownloadAssets(
+		deployer, err = icm.GetDeployer(
 			app.GetICMContractsBinDir(),
 			icmVersion,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 	}
@@ -185,7 +184,8 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if err != nil {
 		return err
 	}
-	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
+	alreadyDeployed, messengerAddress, registryAddress, err := icm.Deploy(
+		deployer,
 		blockchainDesc,
 		rpcURL,
 		privateKey,
@@ -225,7 +225,8 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
-		alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
+		alreadyDeployed, messengerAddress, registryAddress, err := icm.Deploy(
+			deployer,
 			cChainName,
 			network.BlockchainEndpoint(cChainAlias),
 			ewoq.PrivKeyHex(),

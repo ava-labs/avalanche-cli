@@ -21,7 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -520,13 +520,13 @@ func updateProposerVMs(
 			if blockchainID == ids.Empty {
 				return constants.ErrNoBlockchainID
 			}
-			if err := interchain.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+			if err := icm.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
 			}
 		}
 	}
 	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
-	return interchain.SetProposerVM(app, network, "C", "")
+	return icm.SetProposerVM(app, network, "C", "")
 }
 
 func setICMRelayerHost(host *models.Host, relayerVersion string) error {

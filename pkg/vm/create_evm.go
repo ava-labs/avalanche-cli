@@ -12,12 +12,12 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
-	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/icm"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+	icmsdk "github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/utils"
@@ -88,7 +88,7 @@ func CreateEvmSidecar(
 func CreateEVMGenesis(
 	app *application.Avalanche,
 	params SubnetEVMGenesisParams,
-	icmInfo *interchain.ICMInfo,
+	icmInfo *icm.ICMInfo,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
 	rewardBasisPoints uint64,
@@ -123,10 +123,10 @@ func CreateEVMGenesis(
 			Balance: balance,
 		}
 		if !params.DisableICMOnGenesis {
-			icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+			icmsdk.AddMessengerContractToAllocations(params.initialTokenAllocation)
 			if addICMRegistryToGenesis {
 				// experimental
-				if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
+				if err := icmsdk.AddRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
 					return nil, err
 				}
 			}
