@@ -33,18 +33,14 @@ func InitializeValidatorWeightChange(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	managerOwnerAddress common.Address,
-	privateKey string,
+	signer *evm.Signer,
 	validationID ids.ID,
 	weight uint64,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		managerOwnerAddress,
-		privateKey,
+		signer,
 		managerAddress,
 		big.NewInt(0),
 		"POA validator weight change initialization",
@@ -62,8 +58,7 @@ func InitValidatorWeightChange(
 	network models.Network,
 	rpcURL string,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	ownerPrivateKey string,
+	ownerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	aggregatorLogger logging.Logger,
 	managerBlockchainID ids.ID,
@@ -84,7 +79,6 @@ func InitValidatorWeightChange(
 	}
 
 	managerAddress := common.HexToAddress(managerAddressStr)
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	validationID, err := validatormanager.GetValidationID(
 		rpcURL,
@@ -125,9 +119,7 @@ func InitValidatorWeightChange(
 			logger,
 			rpcURL,
 			managerAddress,
-			generateRawTxOnly,
-			ownerAddress,
-			ownerPrivateKey,
+			ownerSigner,
 			validationID,
 			weight,
 		)
@@ -177,17 +169,13 @@ func CompleteValidatorWeightChange(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	ownerAddress common.Address,
-	privateKey string, // not need to be owner atm
+	signer *evm.Signer, // not need to be owner atm
 	pchainL1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contractSDK.TxToMethodWithWarpMessage(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		signer,
 		managerAddress,
 		pchainL1ValidatorRegistrationSignedMessage,
 		big.NewInt(0),
@@ -205,8 +193,7 @@ func FinishValidatorWeightChange(
 	network models.Network,
 	rpcURL string,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	privateKey string,
+	signer *evm.Signer,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
 	managerBlockchainID ids.ID,
@@ -249,24 +236,21 @@ func FinishValidatorWeightChange(
 	if err != nil {
 		return nil, err
 	}
-	if privateKey != "" {
+	if !signer.IsNoOp() {
 		if client, err := evm.GetClient(rpcURL); err != nil {
-			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
-			if err := client.SetupProposerVM(privateKey); err != nil {
-				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+			if err := client.SetupProposerVM(signer); err != nil {
+				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorWeightChange(
 		logger,
 		rpcURL,
 		managerAddress,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		signer,
 		signedMessage,
 	)
 	if err != nil {

@@ -108,33 +108,17 @@ func GetDeployerFromPaths(
 }
 
 func SetProposerVM(
-	app *application.Avalanche,
 	network models.Network,
 	blockchainID string,
-	fundedKeyName string,
+	signer *evm.Signer,
 ) error {
-	var (
-		err error
-		k   *key.SoftKey
-	)
-	if fundedKeyName == "" {
-		if k, err = key.LoadEwoq(network.ID); err != nil {
-			return err
-		}
-	} else {
-		k, err = key.LoadSoft(network.ID, app.GetKeyPath(fundedKeyName))
-		if err != nil {
-			return err
-		}
-	}
-	privKeyStr := k.PrivKeyHex()
 	wsEndpoint := network.BlockchainWSEndpoint(blockchainID)
 	client, err := evm.GetClient(wsEndpoint)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	return client.SetupProposerVM(privKeyStr)
+	return client.SetupProposerVM(signer)
 }
 
 func getICMKeyInfo(
@@ -185,7 +169,7 @@ func Deploy(
 	deployer *icm.Deployer,
 	subnetName string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	deployMessenger bool,
 	deployRegistry bool,
 	forceRegistryDeploy bool,
@@ -198,7 +182,7 @@ func Deploy(
 	)
 
 	if deployMessenger {
-		messengerAddress, err = deployer.DeployMessenger(rpcURL, privateKey)
+		messengerAddress, err = deployer.DeployMessenger(rpcURL, signer)
 		switch {
 		case err == icm.ErrMessengerAlreadyDeployed:
 			alreadyDeployed = true
@@ -212,7 +196,7 @@ func Deploy(
 
 	if deployRegistry {
 		if !deployMessenger || !alreadyDeployed || forceRegistryDeploy {
-			registryAddress, err = deployer.DeployRegistry(rpcURL, privateKey)
+			registryAddress, err = deployer.DeployRegistry(rpcURL, signer)
 			if err != nil {
 				return alreadyDeployed, messengerAddress, "", err
 			}

@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -199,6 +200,14 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	var validatorManagerOwnerSigner *evm.Signer
+	if validatorManagerOwnerPrivateKey != "" {
+		validatorManagerOwnerSigner, err = evm.NewSignerFromPrivateKey(validatorManagerOwnerPrivateKey)
+		if err != nil {
+			return err
+		}
+	}
+
 	bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
 	avaGoBootstrapValidators, err := blockchaincmd.ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
@@ -225,7 +234,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		ValidatorManagerAddress:            &validatorManagerAddress,
 		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
 		ValidatorManagerOwnerAddress:       &validatorManagerOwnerAddress,
-		ValidatorManagerOwnerPrivateKey:    validatorManagerOwnerPrivateKey,
+		ValidatorManagerOwnerSigner:        validatorManagerOwnerSigner,
 		BootstrapValidators:                avaGoBootstrapValidators,
 	}
 
@@ -247,13 +256,18 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		signatureAggregatorEndpoint = initValidatorManagerFlags.SigAggFlags.SignatureAggregatorEndpoint
 	}
 
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			app.Log,
 			subnetSDK,
-			privateKey,
+			signer,
 			aggregatorLogger,
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
@@ -291,10 +305,17 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		var nativeMinterSigner *evm.Signer
+		if nativeMinterPrecompileAdminPrivateKey != "" {
+			nativeMinterSigner, err = evm.NewSignerFromPrivateKey(nativeMinterPrecompileAdminPrivateKey)
+			if err != nil {
+				return err
+			}
+		}
 		if err := validatormanager.SetupPoS(
 			app.Log,
 			subnetSDK,
-			privateKey,
+			signer,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
@@ -308,7 +329,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			},
 			sc.UseACP99,
 			signatureAggregatorEndpoint,
-			nativeMinterPrecompileAdminPrivateKey,
+			nativeMinterSigner,
 		); err != nil {
 			return err
 		}

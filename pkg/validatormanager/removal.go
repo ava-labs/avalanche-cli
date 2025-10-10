@@ -31,9 +31,7 @@ func InitializeValidatorRemoval(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	managerOwnerAddress common.Address,
-	privateKey string,
+	signer *evm.Signer,
 	validationID ids.ID,
 	isPoS bool,
 	uptimeProofSignedMessage *warp.Message,
@@ -52,12 +50,8 @@ func InitializeValidatorRemoval(
 			}
 			if stakingValidatorInfo.MinStakeDuration != 0 {
 				// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
-				currentAddress, err := evm.PrivateKeyToAddress(privateKey)
-				if err != nil {
-					return nil, nil, err
-				}
-				if currentAddress != stakingValidatorInfo.Owner {
-					return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", currentAddress, stakingValidatorInfo.Owner)
+				if signer.Address() != stakingValidatorInfo.Owner {
+					return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", signer.Address(), stakingValidatorInfo.Owner)
 				}
 				startTime := time.Unix(int64(validatorInfo.StartTime), 0)
 				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
@@ -70,9 +64,7 @@ func InitializeValidatorRemoval(
 				return contractSDK.TxToMethod(
 					logger,
 					rpcURL,
-					false,
-					common.Address{},
-					privateKey,
+					signer,
 					managerAddress,
 					big.NewInt(0),
 					"force POS validator removal",
@@ -87,9 +79,7 @@ func InitializeValidatorRemoval(
 			return contractSDK.TxToMethodWithWarpMessage(
 				logger,
 				rpcURL,
-				false,
-				common.Address{},
-				privateKey,
+				signer,
 				managerAddress,
 				uptimeProofSignedMessage,
 				big.NewInt(0),
@@ -105,9 +95,7 @@ func InitializeValidatorRemoval(
 			return contractSDK.TxToMethod(
 				logger,
 				rpcURL,
-				false,
-				common.Address{},
-				privateKey,
+				signer,
 				managerAddress,
 				big.NewInt(0),
 				"force POS validator removal",
@@ -122,9 +110,7 @@ func InitializeValidatorRemoval(
 		return contractSDK.TxToMethodWithWarpMessage(
 			logger,
 			rpcURL,
-			false,
-			common.Address{},
-			privateKey,
+			signer,
 			managerAddress,
 			uptimeProofSignedMessage,
 			big.NewInt(0),
@@ -141,9 +127,7 @@ func InitializeValidatorRemoval(
 		return contractSDK.TxToMethod(
 			logger,
 			rpcURL,
-			generateRawTxOnly,
-			managerOwnerAddress,
-			privateKey,
+			signer,
 			managerAddress,
 			big.NewInt(0),
 			"POA validator removal initialization",
@@ -155,9 +139,7 @@ func InitializeValidatorRemoval(
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		managerOwnerAddress,
-		privateKey,
+		signer,
 		managerAddress,
 		big.NewInt(0),
 		"POA validator removal initialization",
@@ -214,8 +196,7 @@ func InitValidatorRemoval(
 	chainSpec contract.ChainSpec,
 	l1RPCURL string,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	ownerPrivateKey string,
+	ownerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	aggregatorLogger logging.Logger,
 	isPoS bool,
@@ -257,7 +238,6 @@ func InitValidatorRemoval(
 	}
 
 	managerAddress := common.HexToAddress(managerAddressStr)
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	validationID, err := validatormanager.GetValidationID(
 		rpcURL,
@@ -317,9 +297,7 @@ func InitValidatorRemoval(
 			logger,
 			rpcURL,
 			managerAddress,
-			generateRawTxOnly,
-			ownerAddress,
-			ownerPrivateKey,
+			ownerSigner,
 			validationID,
 			isPoS,
 			signedUptimeProof, // is empty for non-PoS
@@ -375,9 +353,7 @@ func CompleteValidatorRemoval(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	ownerAddress common.Address,
-	privateKey string, // not need to be owner atm
+	signer *evm.Signer, // not need to be owner atm
 	subnetValidatorRegistrationSignedMessage *warp.Message,
 	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
@@ -385,9 +361,7 @@ func CompleteValidatorRemoval(
 		return contractSDK.TxToMethodWithWarpMessage(
 			logger,
 			rpcURL,
-			generateRawTxOnly,
-			ownerAddress,
-			privateKey,
+			signer,
 			managerAddress,
 			subnetValidatorRegistrationSignedMessage,
 			big.NewInt(0),
@@ -400,9 +374,7 @@ func CompleteValidatorRemoval(
 	return contractSDK.TxToMethodWithWarpMessage(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		signer,
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
@@ -421,8 +393,7 @@ func FinishValidatorRemoval(
 	rpcURL string,
 	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	privateKey string,
+	signer *evm.Signer,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
 	managerBlockchainID ids.ID,
@@ -466,24 +437,21 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
-	if privateKey != "" {
+	if !signer.IsNoOp() {
 		if client, err := evm.GetClient(rpcURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
-			if err := client.SetupProposerVM(privateKey); err != nil {
+			if err := client.SetupProposerVM(signer); err != nil {
 				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRemoval(
 		logger,
 		rpcURL,
 		managerAddress,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		signer,
 		signedMessage,
 		useACP99,
 	)

@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/libevm/common"
 
@@ -149,9 +150,13 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
 	address, _, _, err := contract.DeployERC20(
 		deployERC20Flags.rpcEndpoint,
-		privateKey,
+		signer,
 		deployERC20Flags.symbol,
 		common.HexToAddress(deployERC20Flags.funded),
 		supply,

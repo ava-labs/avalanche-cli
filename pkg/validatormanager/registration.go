@@ -40,7 +40,7 @@ func InitializeValidatorRegistrationPoSNative(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	privateKey string,
+	signer *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
 	expiry uint64,
@@ -82,9 +82,7 @@ func InitializeValidatorRegistrationPoSNative(
 		return contractSDK.TxToMethod(
 			logger,
 			rpcURL,
-			false,
-			common.Address{},
-			privateKey,
+			signer,
 			managerAddress,
 			stakeAmount,
 			"initialize validator registration with stake",
@@ -103,9 +101,7 @@ func InitializeValidatorRegistrationPoSNative(
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
-		false,
-		common.Address{},
-		privateKey,
+		signer,
 		managerAddress,
 		stakeAmount,
 		"initialize validator registration with stake",
@@ -128,9 +124,7 @@ func InitializeValidatorRegistrationPoA(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	managerOwnerAddress common.Address,
-	managerOwnerPrivateKey string,
+	managerOwnerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
 	expiry uint64,
@@ -159,9 +153,7 @@ func InitializeValidatorRegistrationPoA(
 		return contractSDK.TxToMethod(
 			logger,
 			rpcURL,
-			generateRawTxOnly,
-			managerOwnerAddress,
-			managerOwnerPrivateKey,
+			managerOwnerSigner,
 			managerAddress,
 			big.NewInt(0),
 			"initialize validator registration",
@@ -184,9 +176,7 @@ func InitializeValidatorRegistrationPoA(
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		managerOwnerAddress,
-		managerOwnerPrivateKey,
+		managerOwnerSigner,
 		managerAddress,
 		big.NewInt(0),
 		"initialize validator registration",
@@ -388,17 +378,13 @@ func CompleteValidatorRegistration(
 	logger logging.Logger,
 	rpcURL string,
 	managerAddress common.Address,
-	generateRawTxOnly bool,
-	ownerAddress common.Address,
-	privateKey string, // not need to be owner atm
+	signer *evm.Signer,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contractSDK.TxToMethodWithWarpMessage(
 		logger,
 		rpcURL,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		signer,
 		managerAddress,
 		l1ValidatorRegistrationSignedMessage,
 		big.NewInt(0),
@@ -417,8 +403,7 @@ func InitValidatorRegistration(
 	rpcURL string,
 	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	ownerPrivateKey string,
+	ownerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
 	expiry uint64,
@@ -457,7 +442,6 @@ func InitValidatorRegistration(
 	}
 
 	managerAddress := common.HexToAddress(managerAddressStr)
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 
 	alreadyInitialized := initiateTxHash != ""
 	if validationID, err := validatormanager.GetValidationID(
@@ -491,7 +475,7 @@ func InitValidatorRegistration(
 				logger,
 				rpcURL,
 				managerAddress,
-				ownerPrivateKey,
+				ownerSigner,
 				nodeID,
 				blsPublicKey,
 				expiry,
@@ -519,9 +503,7 @@ func InitValidatorRegistration(
 				logger,
 				rpcURL,
 				managerAddress,
-				generateRawTxOnly,
-				ownerAddress,
-				ownerPrivateKey,
+				ownerSigner,
 				nodeID,
 				blsPublicKey,
 				expiry,
@@ -586,8 +568,7 @@ func FinishValidatorRegistration(
 	rpcURL string,
 	chainSpec contract.ChainSpec,
 	generateRawTxOnly bool,
-	ownerAddressStr string,
-	privateKey string,
+	ownerSigner *evm.Signer,
 	validationID ids.ID,
 	aggregatorLogger logging.Logger,
 	managerBlockchainID ids.ID,
@@ -631,24 +612,21 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-	if privateKey != "" {
+	if !ownerSigner.IsNoOp() {
 		if client, err := evm.GetClient(rpcURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
-			if err := client.SetupProposerVM(privateKey); err != nil {
+			if err := client.SetupProposerVM(ownerSigner); err != nil {
 				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
-	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
 		logger,
 		rpcURL,
 		managerAddress,
-		generateRawTxOnly,
-		ownerAddress,
-		privateKey,
+		ownerSigner,
 		signedMessage,
 	)
 	if err != nil {

@@ -280,7 +280,7 @@ func removeValidatorSOV(
 		return err
 	}
 
-	var from, privateKey string
+	var signer *evm.Signer
 	if sc.PoS() {
 		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 			app,
@@ -290,7 +290,7 @@ func removeValidatorSOV(
 		if err != nil {
 			return err
 		}
-		privateKey, err = stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+		privateKey, err := stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 		if err != nil {
 			return err
 		}
@@ -308,15 +308,15 @@ func removeValidatorSOV(
 				return err
 			}
 		}
-		address, err := evm.PrivateKeyToAddress(privateKey)
+		signer, err = evm.NewSignerFromPrivateKey(privateKey)
 		if err != nil {
 			return err
 		}
-		from = address.Hex()
 	} else {
-		if !externalValidatorManagerOwner {
-			var ownerPrivateKeyFound bool
-			ownerPrivateKeyFound, _, _, privateKey, err = contract.SearchForManagedKey(
+		if externalValidatorManagerOwner {
+			signer = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+		} else {
+			ownerPrivateKeyFound, _, _, privateKey, err := contract.SearchForManagedKey(
 				app,
 				network,
 				common.HexToAddress(validatorManagerOwner),
@@ -328,8 +328,11 @@ func removeValidatorSOV(
 			if !ownerPrivateKeyFound {
 				return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
 			}
+			signer, err = evm.NewSignerFromPrivateKey(privateKey)
+			if err != nil {
+				return err
+			}
 		}
-		from = validatorManagerOwner
 	}
 
 	if sc.UseACP99 {
@@ -404,8 +407,7 @@ func removeValidatorSOV(
 		chainSpec,
 		l1RPCEndpoint,
 		externalValidatorManagerOwner,
-		from,
-		privateKey,
+		signer,
 		nodeID,
 		aggregatorLogger,
 		sc.PoS(),
@@ -437,8 +439,7 @@ func removeValidatorSOV(
 			chainSpec,
 			l1RPCEndpoint,
 			externalValidatorManagerOwner,
-			from,
-			privateKey,
+			signer,
 			nodeID,
 			aggregatorLogger,
 			sc.PoS(),
@@ -489,8 +490,7 @@ func removeValidatorSOV(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		from,
-		privateKey,
+		signer,
 		validationID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,

@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -520,13 +521,29 @@ func updateProposerVMs(
 			if blockchainID == ids.Empty {
 				return constants.ErrNoBlockchainID
 			}
-			if err := icm.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+			icmKey, err := app.GetKey(deployedSubnetSc.TeleporterKey, network, true)
+			if err != nil {
+				return err
+			}
+			signer, err := evm.NewSignerFromPrivateKey(icmKey.PrivKeyHex())
+			if err != nil {
+				return err
+			}
+			if err := icm.SetProposerVM(network, blockchainID.String(), signer); err != nil {
 				return err
 			}
 		}
 	}
 	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
-	return icm.SetProposerVM(app, network, "C", "")
+	ewoqKey, err := app.GetKey("ewoq", network, true)
+	if err != nil {
+		return err
+	}
+	signer, err := evm.NewSignerFromPrivateKey(ewoqKey.PrivKeyHex())
+	if err != nil {
+		return err
+	}
+	return icm.SetProposerVM(network, "C", signer)
 }
 
 func setICMRelayerHost(host *models.Host, relayerVersion string) error {
@@ -591,9 +608,13 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
+	icmSigner, err := evm.NewSignerFromPrivateKey(icmKey.PrivKeyHex())
+	if err != nil {
+		return err
+	}
 	if err := relayer.FundRelayer(
 		network.BlockchainEndpoint(blockchainID.String()),
-		icmKey.PrivKeyHex(),
+		icmSigner,
 		relayerAddress,
 	); err != nil {
 		return nil
@@ -602,9 +623,13 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
+	ewoqSigner, err := evm.NewSignerFromPrivateKey(ewoqKey.PrivKeyHex())
+	if err != nil {
+		return err
+	}
 	return relayer.FundRelayer(
 		network.BlockchainEndpoint("C"),
-		ewoqKey.PrivKeyHex(),
+		ewoqSigner,
 		relayerAddress,
 	)
 }

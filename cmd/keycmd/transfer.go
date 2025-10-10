@@ -449,7 +449,11 @@ func intraEvmSend(
 		return err
 	}
 
-	receipt, err := client.FundAddress(privateKey, destinationAddrStr, amount)
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	receipt, err := client.FundAddress(signer, destinationAddrStr, amount)
 	if err != nil {
 		return err
 	}
@@ -582,11 +586,15 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
 	receipt, receipt2, err := ictt.Send(
 		duallogger.NewDualLogger(true, app),
 		senderURL,
 		libevmcommon.HexToAddress(originTransferrerAddress),
-		privateKey,
+		signer,
 		receiverBlockchainID,
 		libevmcommon.HexToAddress(destinationTransferrerAddress),
 		destinationAddr,

@@ -212,13 +212,22 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		}
 	}
 
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	proxyOwnerSigner, err := evm.NewSignerFromPrivateKey(proxyOwnerPrivateKey)
+	if err != nil {
+		return err
+	}
+
 	ux.Logger.PrintToUser("Deploying validator manager contract")
 	var validatorManagerAddress common.Address
 	switch {
 	case flags.poa:
 		validatorManagerAddress, _, _, err = validatormanager.DeployValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
-			privateKey,
+			signer,
 			false,
 		)
 		if err != nil {
@@ -227,7 +236,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 	case flags.pos:
 		rewardCalculatorAddress, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
 			flags.rpcEndpoint,
-			privateKey,
+			signer,
 			flags.rewardBasisPoints,
 		)
 		if err != nil {
@@ -236,7 +245,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		ux.Logger.PrintToUser("Reward Calculator Address: %s", rewardCalculatorAddress.Hex())
 		validatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
-			privateKey,
+			signer,
 			false,
 		)
 		if err != nil {
@@ -249,7 +258,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		}
 		validatorManagerAddress, _, _, err = validatormanager.DeployValidatorManagerContract(
 			flags.rpcEndpoint,
-			privateKey,
+			signer,
 			false,
 			string(bytecode),
 		)
@@ -267,7 +276,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 			flags.rpcEndpoint,
 			common.HexToAddress(flags.proxyAdmin),
 			common.HexToAddress(flags.proxy),
-			proxyOwnerPrivateKey,
+			proxyOwnerSigner,
 			validatorManagerAddress,
 			"setup deployed VMC at proxy",
 		)
@@ -280,13 +289,10 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 
 	ux.Logger.PrintToUser("Deploying proxy contracts")
 
-	proxyOwnerAddress, err := evm.PrivateKeyToAddress(proxyOwnerPrivateKey)
-	if err != nil {
-		return err
-	}
+	proxyOwnerAddress := proxyOwnerSigner.Address()
 	proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
 		flags.rpcEndpoint,
-		privateKey,
+		signer,
 		validatorManagerAddress,
 		proxyOwnerAddress,
 	)

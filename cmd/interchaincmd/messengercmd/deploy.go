@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkicm "github.com/ava-labs/avalanche-tooling-sdk-go/interchain/icm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -148,6 +149,11 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 	}
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+
 	var icmVersion string
 	switch {
 	case flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "":
@@ -188,7 +194,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		deployer,
 		blockchainDesc,
 		rpcURL,
-		privateKey,
+		signer,
 		flags.DeployMessenger,
 		flags.DeployRegistry,
 		flags.ForceRegistryDeploy,
@@ -225,11 +231,15 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
+		ewoqSigner, err := evm.NewSignerFromPrivateKey(ewoq.PrivKeyHex())
+		if err != nil {
+			return err
+		}
 		alreadyDeployed, messengerAddress, registryAddress, err := icm.Deploy(
 			deployer,
 			cChainName,
 			network.BlockchainEndpoint(cChainAlias),
-			ewoq.PrivKeyHex(),
+			ewoqSigner,
 			flags.DeployMessenger,
 			flags.DeployRegistry,
 			false,
