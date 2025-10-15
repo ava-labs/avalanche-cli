@@ -304,8 +304,8 @@ const (
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/versions/latest.json"
-	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/versions/min_cli_version.json"
+	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/latest.json"
+	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/min_cli_version.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"

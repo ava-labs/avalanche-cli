@@ -142,6 +142,15 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
+	case network.Kind == models.Granite:
+		// prompt the user if no key source was provided
+		if !useEwoq && !useLedger && keyName == "" {
+			var err error
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), false)
+			if err != nil {
+				return nil, err
+			}
+		}
 	case network.Kind == models.Fuji:
 		if useEwoq || keyName == "ewoq" {
 			return nil, ErrEwoqKeyOnFujiOrMainnet

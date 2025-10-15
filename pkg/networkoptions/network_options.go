@@ -123,7 +123,7 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`")
 		case Granite:
-			cmd.Flags().BoolVarP(&networkFlags.UseGranite, "granite", "g", false, "operate on a granite devnet")
+			cmd.Flags().BoolVar(&networkFlags.UseGranite, "granite", false, "operate on a granite devnet")
 		case Mainnet:
 			cmd.Flags().BoolVarP(&networkFlags.UseMainnet, "mainnet", "m", false, "operate on mainnet")
 		case Cluster:
@@ -146,7 +146,7 @@ func GetNetworkFlagsGroup(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 			case Local:
 				set.BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
 			case Granite:
-				set.BoolVarP(&networkFlags.UseLocal, "granite", "l", false, "operate on a local network")
+				set.BoolVar(&networkFlags.UseGranite, "granite", false, "operate on granite devnet")
 			case Devnet:
 				set.BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 				addEndpoint = true
