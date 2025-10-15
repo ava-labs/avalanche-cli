@@ -314,7 +314,10 @@ func removeValidatorSOV(
 		}
 	} else {
 		if externalValidatorManagerOwner {
-			signer = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+			signer, err = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+			if err != nil {
+				return err
+			}
 		} else {
 			ownerPrivateKeyFound, _, _, privateKey, err := contract.SearchForManagedKey(
 				app,

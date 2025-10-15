@@ -5,7 +5,7 @@ go 1.24.7
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20250910215556-315d6052ef18
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251010091636-0cc15094b0b2
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251015104658-965df8e46fc8
 	github.com/ava-labs/avalanchego v1.13.3-0.20250911181736-31dcd1ea2540
 	github.com/ava-labs/coreth v0.15.2
 	github.com/ava-labs/icm-services v1.4.1-0.20250729175537-a74c15880023

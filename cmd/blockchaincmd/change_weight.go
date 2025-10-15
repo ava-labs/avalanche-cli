@@ -355,7 +355,10 @@ func changeWeightACP99(
 
 	var signer *evm.Signer
 	if externalValidatorManagerOwner {
-		signer = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+		signer, err = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+		if err != nil {
+			return err
+		}
 	} else {
 		ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 			app,

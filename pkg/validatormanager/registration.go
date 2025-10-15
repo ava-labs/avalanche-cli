@@ -612,7 +612,9 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-	if !ownerSigner.IsNoOp() {
+	if isNoOp, err := ownerSigner.IsNoOp(); err != nil {
+		return nil, err
+	} else if !isNoOp {
 		if client, err := evm.GetClient(rpcURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {

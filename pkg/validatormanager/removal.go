@@ -437,7 +437,9 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
-	if !signer.IsNoOp() {
+	if isNoOp, err := signer.IsNoOp(); err != nil {
+		return nil, err
+	} else if !isNoOp {
 		if client, err := evm.GetClient(rpcURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
