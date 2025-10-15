@@ -353,10 +353,14 @@ func changeWeightACP99(
 		validatorManagerOwner = sc.ValidatorManagerOwner
 	}
 
-	var ownerPrivateKey string
-	if !externalValidatorManagerOwner {
-		var ownerPrivateKeyFound bool
-		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+	var signer *evm.Signer
+	if externalValidatorManagerOwner {
+		signer, err = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+		if err != nil {
+			return err
+		}
+	} else {
+		ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 			app,
 			network,
 			common.HexToAddress(validatorManagerOwner),
@@ -367,6 +371,10 @@ func changeWeightACP99(
 		}
 		if !ownerPrivateKeyFound {
 			return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
+		}
+		signer, err = evm.NewSignerFromPrivateKey(ownerPrivateKey)
+		if err != nil {
+			return err
 		}
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's weight change (Blockchain gas token)"), validatorManagerOwner)
@@ -419,8 +427,7 @@ func changeWeightACP99(
 		network,
 		validatorManagerRPCEndpoint,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		signer,
 		nodeID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,
@@ -478,8 +485,7 @@ func changeWeightACP99(
 		network,
 		validatorManagerRPCEndpoint,
 		externalValidatorManagerOwner,
-		validatorManagerOwner,
-		ownerPrivateKey,
+		signer,
 		validationID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,

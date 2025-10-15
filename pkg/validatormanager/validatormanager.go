@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -35,12 +36,12 @@ var validatorMessagesV2_0_0Bytecode []byte
 
 func DeployValidatorMessagesV2_0_0Contract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	validatorMessagesBytes := []byte(strings.TrimSpace(string(validatorMessagesV2_0_0Bytecode)))
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesBytes,
 		"()",
 	)
@@ -106,7 +107,7 @@ func AddValidatorManagerV2_0_0ContractToAllocations(
 
 func DeployValidatorManagerContract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
 	validatorManagerBytecode string,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
@@ -115,7 +116,7 @@ func DeployValidatorManagerContract(
 		if validatorMessagesAtGenesis {
 			validatorManagerString = fillGenesisValidatorMessagesAddressPlaceholder(validatorManagerString)
 		} else {
-			validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, privateKey)
+			validatorMessagesContractAddress, _, _, err := DeployValidatorMessagesV2_0_0Contract(rpcURL, signer)
 			if err != nil {
 				return common.Address{}, nil, nil, err
 			}
@@ -125,7 +126,7 @@ func DeployValidatorManagerContract(
 	validatorManagerBytes := []byte(validatorManagerString)
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorManagerBytes,
 		"(uint8)",
 		uint8(0),
@@ -137,12 +138,12 @@ var validatorManagerV2_0_0Bytecode []byte
 
 func DeployValidatorManagerV2_0_0Contract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	return DeployValidatorManagerContract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 		string(validatorManagerV2_0_0Bytecode),
 	)
@@ -151,13 +152,13 @@ func DeployValidatorManagerV2_0_0Contract(
 func DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	logger logging.Logger,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 ) (common.Address, error) {
 	validatorManagerAddress, _, _, err := DeployValidatorManagerV2_0_0Contract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 	)
 	if err != nil {
@@ -166,7 +167,7 @@ func DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	if _, _, err := SetupGenesisValidatorProxyImplementation(
 		logger,
 		rpcURL,
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		validatorManagerAddress,
 	); err != nil {
 		return common.Address{}, err
@@ -179,12 +180,12 @@ var posValidatorManagerV1_0_0Bytecode []byte
 
 func DeployPoSValidatorManagerV1_0_0Contract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	return DeployValidatorManagerContract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 		string(posValidatorManagerV1_0_0Bytecode),
 	)
@@ -193,13 +194,13 @@ func DeployPoSValidatorManagerV1_0_0Contract(
 func DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 	logger logging.Logger,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 ) (common.Address, error) {
 	posValidatorManagerAddress, _, _, err := DeployPoSValidatorManagerV1_0_0Contract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 	)
 	if err != nil {
@@ -208,7 +209,7 @@ func DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 	if _, _, err := SetupGenesisValidatorProxyImplementation(
 		logger,
 		rpcURL,
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		posValidatorManagerAddress,
 	); err != nil {
 		return common.Address{}, err
@@ -221,12 +222,12 @@ var posValidatorManagerV2_0_0Bytecode []byte
 
 func DeployPoSValidatorManagerV2_0_0Contract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	return DeployValidatorManagerContract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 		string(posValidatorManagerV2_0_0Bytecode),
 	)
@@ -235,13 +236,13 @@ func DeployPoSValidatorManagerV2_0_0Contract(
 func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	logger logging.Logger,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	validatorMessagesAtGenesis bool,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 ) (common.Address, error) {
 	posValidatorManagerAddress, _, _, err := DeployPoSValidatorManagerV2_0_0Contract(
 		rpcURL,
-		privateKey,
+		signer,
 		validatorMessagesAtGenesis,
 	)
 	if err != nil {
@@ -250,7 +251,7 @@ func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	if _, _, err := SetupGenesisSpecializationProxyImplementation(
 		logger,
 		rpcURL,
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		posValidatorManagerAddress,
 	); err != nil {
 		return common.Address{}, err
@@ -357,13 +358,13 @@ var exampleRewardCalculatorV2_0_0Bytecode []byte
 
 func DeployRewardCalculatorV2_0_0Contract(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	rewardBasisPoints uint64,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	exampleRewardCalculatorBytes := []byte(strings.TrimSpace(string(exampleRewardCalculatorV2_0_0Bytecode)))
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		exampleRewardCalculatorBytes,
 		"(uint64)",
 		rewardBasisPoints,
@@ -378,14 +379,14 @@ func DeployRewardCalculatorV2_0_0Contract(
 func SetupPoA(
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
-	privateKey string,
+	signer *evm.Signer,
 	aggregatorLogger logging.Logger,
 	v2_0_0 bool,
 	signatureAggregatorEndpoint string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		log,
-		privateKey,
+		signer,
 		aggregatorLogger,
 		v2_0_0,
 		signatureAggregatorEndpoint,
@@ -400,20 +401,20 @@ func SetupPoA(
 func SetupPoS(
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
-	privateKey string,
+	signer *evm.Signer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanagerSDK.PoSParams,
 	v2_0_0 bool,
 	signatureAggregatorEndpoint string,
-	nativeMinterPrecompileAdminPrivateKey string,
+	nativeMinterPrecompileAdminSigner *evm.Signer,
 ) error {
 	return subnet.InitializeProofOfStake(
 		log,
-		privateKey,
+		signer,
 		aggregatorLogger,
 		posParams,
 		v2_0_0,
 		signatureAggregatorEndpoint,
-		nativeMinterPrecompileAdminPrivateKey,
+		nativeMinterPrecompileAdminSigner,
 	)
 }

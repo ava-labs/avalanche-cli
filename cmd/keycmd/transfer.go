@@ -19,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	sdkconstants "github.com/ava-labs/avalanche-tooling-sdk-go/constants"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -449,7 +448,11 @@ func intraEvmSend(
 		return err
 	}
 
-	receipt, err := client.FundAddress(privateKey, destinationAddrStr, amount)
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+	receipt, err := client.FundAddress(signer, destinationAddrStr, amount)
 	if err != nil {
 		return err
 	}
@@ -582,11 +585,15 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
 	receipt, receipt2, err := ictt.Send(
 		duallogger.NewDualLogger(true, app),
 		senderURL,
 		libevmcommon.HexToAddress(originTransferrerAddress),
-		privateKey,
+		signer,
 		receiverBlockchainID,
 		libevmcommon.HexToAddress(destinationTransferrerAddress),
 		destinationAddr,
@@ -664,7 +671,7 @@ func pToPSend(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel = sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel = sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -764,7 +771,7 @@ func exportFromP(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -812,7 +819,7 @@ func importIntoX(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.X().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -916,7 +923,7 @@ func importIntoC(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.C().Signer().SignAtomic(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -1036,7 +1043,7 @@ func exportFromC(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.C().Signer().SignAtomic(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -1082,7 +1089,7 @@ func importIntoP(
 		return fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)

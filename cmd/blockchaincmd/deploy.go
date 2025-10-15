@@ -33,6 +33,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
@@ -944,11 +945,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 
+			vmcSigner, err := evm.NewSignerFromPrivateKey(vmcPrivateKey)
+			if err != nil {
+				return err
+			}
+
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Deploying Validator Manager into %s", validatorManagerRPCEndpoint)
 			validatorManagerAddress, _, _, err := validatormanager.DeployValidatorManagerV2_0_0Contract(
 				validatorManagerRPCEndpoint,
-				vmcPrivateKey,
+				vmcSigner,
 				false,
 			)
 			if err != nil {
@@ -956,7 +962,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
 				validatorManagerRPCEndpoint,
-				vmcPrivateKey,
+				vmcSigner,
 				validatorManagerAddress,
 				common.HexToAddress(sidecar.ProxyContractOwner),
 			)
@@ -973,7 +979,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Deploying Specialized Validator Manager into %s", validatorManagerRPCEndpoint)
 				specializedValidatorManagerAddress, _, _, err := validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
 					validatorManagerRPCEndpoint,
-					vmcPrivateKey,
+					vmcSigner,
 					false,
 				)
 				if err != nil {
@@ -981,7 +987,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				proxy, proxyAdmin, _, _, err := validatormanager.DeployTransparentProxy(
 					validatorManagerRPCEndpoint,
-					vmcPrivateKey,
+					vmcSigner,
 					specializedValidatorManagerAddress,
 					common.HexToAddress(sidecar.ProxyContractOwner),
 				)

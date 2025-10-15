@@ -66,7 +66,7 @@ func GetDefaultRelayerKeyInfo(app *application.Avalanche) (string, string, strin
 
 func FundRelayer(
 	rpcURL string,
-	prefundedPrivateKey string,
+	signer *evm.Signer,
 	relayerAddress string,
 ) error {
 	// get relayer balance
@@ -81,7 +81,7 @@ func FundRelayer(
 	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
 		_, err := client.FundAddress(
-			prefundedPrivateKey,
+			signer,
 			relayerAddress,
 			toFund,
 		)

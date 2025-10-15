@@ -127,6 +127,11 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return err
+	}
+
 	sourceBlockchainID, err := contract.GetBlockchainID(app, network, sourceChainSpec)
 	if err != nil {
 		return err
@@ -174,7 +179,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		duallogger.NewDualLogger(true, app),
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
-		privateKey,
+		signer,
 		destBlockchainID,
 		destAddr,
 		messageBytes,

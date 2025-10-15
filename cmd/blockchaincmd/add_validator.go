@@ -448,9 +448,9 @@ func CallAddValidator(
 		validatorManagerOwner = sc.ValidatorManagerOwner
 	}
 
-	var from, privateKey string
-
 	pos := sc.PoS()
+
+	var signer *evm.Signer
 
 	if pos {
 		stakeAmount, err := validatormanager.PoSWeightToValue(
@@ -469,7 +469,7 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		privateKey, err = stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+		privateKey, err := stakerPrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 		if err != nil {
 			return err
 		}
@@ -488,15 +488,18 @@ func CallAddValidator(
 				return err
 			}
 		}
-		address, err := evm.PrivateKeyToAddress(privateKey)
+		signer, err = evm.NewSignerFromPrivateKey(privateKey)
 		if err != nil {
 			return err
 		}
-		from = address.Hex()
 	} else {
-		if !externalValidatorManagerOwner {
-			var ownerPrivateKeyFound bool
-			ownerPrivateKeyFound, _, _, privateKey, err = contract.SearchForManagedKey(
+		if externalValidatorManagerOwner {
+			signer, err = evm.NewNoOpSigner(common.HexToAddress(validatorManagerOwner))
+			if err != nil {
+				return err
+			}
+		} else {
+			ownerPrivateKeyFound, _, _, privateKey, err := contract.SearchForManagedKey(
 				app,
 				network,
 				common.HexToAddress(validatorManagerOwner),
@@ -508,8 +511,11 @@ func CallAddValidator(
 			if !ownerPrivateKeyFound {
 				return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
 			}
+			signer, err = evm.NewSignerFromPrivateKey(privateKey)
+			if err != nil {
+				return err
+			}
 		}
-		from = validatorManagerOwner
 	}
 
 	if pos {
@@ -637,8 +643,7 @@ func CallAddValidator(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		from,
-		privateKey,
+		signer,
 		nodeID,
 		blsInfo.PublicKey[:],
 		expiry,
@@ -693,8 +698,7 @@ func CallAddValidator(
 		validatorManagerRPCEndpoint,
 		chainSpec,
 		externalValidatorManagerOwner,
-		from,
-		privateKey,
+		signer,
 		validationID,
 		aggregatorLogger,
 		validatorManagerBlockchainID,

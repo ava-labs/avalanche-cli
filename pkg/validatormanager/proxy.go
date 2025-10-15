@@ -21,14 +21,14 @@ var transparentProxyBytecode []byte
 
 func DeployTransparentProxy(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	implementation common.Address,
 	admin common.Address,
 ) (common.Address, common.Address, *types.Transaction, *types.Receipt, error) {
 	transparentProxyBytes := []byte(strings.TrimSpace(string(transparentProxyBytecode)))
 	proxy, tx, receipt, err := contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		transparentProxyBytes,
 		"(address, address, bytes)",
 		implementation,
@@ -51,7 +51,7 @@ func SetupProxyImplementation(
 	rpcURL string,
 	proxyAdminContractAddress common.Address,
 	transparentProxyContractAddress common.Address,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 	implementation common.Address,
 	description string,
 ) (*types.Transaction, *types.Receipt, error) {
@@ -70,9 +70,7 @@ func SetupProxyImplementation(
 		return contract.TxToMethod(
 			logger,
 			rpcURL,
-			false,
-			common.Address{},
-			proxyOwnerPrivateKey,
+			proxyOwnerSigner,
 			proxyAdminContractAddress,
 			big.NewInt(0),
 			description,
@@ -86,9 +84,7 @@ func SetupProxyImplementation(
 	return contract.TxToMethod(
 		logger,
 		rpcURL,
-		false,
-		common.Address{},
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		proxyAdminContractAddress,
 		big.NewInt(0),
 		description,
@@ -139,7 +135,7 @@ func ParseAdminChanged(log types.Log) (*TransparentUpgradeableProxyAdminChanged,
 func SetupGenesisValidatorProxyImplementation(
 	logger logging.Logger,
 	rpcURL string,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return SetupProxyImplementation(
@@ -147,7 +143,7 @@ func SetupGenesisValidatorProxyImplementation(
 		rpcURL,
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress),
 		common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress),
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		validatorManager,
 		"set validator proxy implementation",
 	)
@@ -192,7 +188,7 @@ func GetGenesisSpecializedValidatorProxyImplementation(
 func SetupGenesisSpecializationProxyImplementation(
 	logger logging.Logger,
 	rpcURL string,
-	proxyOwnerPrivateKey string,
+	proxyOwnerSigner *evm.Signer,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
 	return SetupProxyImplementation(
@@ -200,7 +196,7 @@ func SetupGenesisSpecializationProxyImplementation(
 		rpcURL,
 		common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress),
 		common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
-		proxyOwnerPrivateKey,
+		proxyOwnerSigner,
 		validatorManager,
 		"set specialization proxy implementation",
 	)

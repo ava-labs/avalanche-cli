@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/libevm/common"
@@ -31,7 +32,7 @@ type TokenRemoteSettings struct {
 func RegisterRemote(
 	logger logging.Logger,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	remoteAddress common.Address,
 ) error {
 	ux.Logger.PrintToUser("Registering remote contract with home contract")
@@ -41,9 +42,7 @@ func RegisterRemote(
 	_, _, err := contract.TxToMethod(
 		logger,
 		rpcURL,
-		false,
-		common.Address{},
-		privateKey,
+		signer,
 		remoteAddress,
 		nil,
 		"register remote with home",
@@ -57,7 +56,7 @@ func RegisterRemote(
 func DeployERC20Remote(
 	srcDir string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	icmRegistryAddress common.Address,
 	icmManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
@@ -81,7 +80,7 @@ func DeployERC20Remote(
 	}
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, string, uint8)",
 		tokenRemoteSettings,
@@ -94,7 +93,7 @@ func DeployERC20Remote(
 func DeployNativeRemote(
 	srcDir string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	icmRegistryAddress common.Address,
 	icmManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
@@ -118,7 +117,7 @@ func DeployNativeRemote(
 	}
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, uint256, uint256)",
 		tokenRemoteSettings,
@@ -131,7 +130,7 @@ func DeployNativeRemote(
 func DeployERC20Home(
 	srcDir string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	icmRegistryAddress common.Address,
 	icmManagerAddress common.Address,
 	erc20TokenAddress common.Address,
@@ -144,7 +143,7 @@ func DeployERC20Home(
 	}
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		binBytes,
 		"(address, address, address, uint8)",
 		icmRegistryAddress,
@@ -157,7 +156,7 @@ func DeployERC20Home(
 func DeployNativeHome(
 	srcDir string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	icmRegistryAddress common.Address,
 	icmManagerAddress common.Address,
 	wrappedNativeTokenAddress common.Address,
@@ -169,7 +168,7 @@ func DeployNativeHome(
 	}
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		binBytes,
 		"(address, address, address)",
 		icmRegistryAddress,
@@ -181,7 +180,7 @@ func DeployNativeHome(
 func DeployWrappedNativeToken(
 	srcDir string,
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	tokenSymbol string,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	binPath := filepath.Join(utils.ExpandHome(srcDir), "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.bin")
@@ -191,7 +190,7 @@ func DeployWrappedNativeToken(
 	}
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		binBytes,
 		"(string)",
 		tokenSymbol,

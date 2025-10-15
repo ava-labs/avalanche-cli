@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -342,13 +343,21 @@ func CompleteValidatorManagerL1Deploy(
 			if err != nil {
 				return err
 			}
+			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+			proxyOwnerSigner, err := evm.NewSignerFromPrivateKey(proxyOwnerPrivateKey)
+			if err != nil {
+				return err
+			}
 			if useACP99 {
 				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					logger,
 					validatorManagerRPCEndpoint,
-					genesisPrivateKey,
+					genesisSigner,
 					true,
-					proxyOwnerPrivateKey,
+					proxyOwnerSigner,
 				)
 				if err != nil {
 					return err
@@ -356,9 +365,9 @@ func CompleteValidatorManagerL1Deploy(
 				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					logger,
 					validatorManagerRPCEndpoint,
-					genesisPrivateKey,
+					genesisSigner,
 					true,
-					proxyOwnerPrivateKey,
+					proxyOwnerSigner,
 				)
 				if err != nil {
 					return err
@@ -367,9 +376,9 @@ func CompleteValidatorManagerL1Deploy(
 				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
 					logger,
 					validatorManagerRPCEndpoint,
-					genesisPrivateKey,
+					genesisSigner,
 					true,
-					proxyOwnerPrivateKey,
+					proxyOwnerSigner,
 				); err != nil {
 					return err
 				}

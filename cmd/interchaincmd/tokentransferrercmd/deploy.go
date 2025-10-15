@@ -21,11 +21,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/precompiles"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/libevm/common"
-	"github.com/ava-labs/libevm/crypto"
 
 	"github.com/spf13/cobra"
 )
@@ -103,7 +103,7 @@ func deploy(_ *cobra.Command, args []string) error {
 	return CallDeploy(args, deployFlags)
 }
 
-func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, homeFlags HomeFlags) (string, string, error) {
+func getHomeSigner(app *application.Avalanche, network models.Network, homeFlags HomeFlags) (*evm.Signer, error) {
 	// First check if there is a genesis key able to be used.
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
@@ -111,12 +111,12 @@ func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, ho
 		homeFlags.chainFlags,
 	)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	homeKey, err := homeFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	if homeKey == "" {
@@ -133,18 +133,11 @@ func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, ho
 			genesisPrivateKey,
 		)
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
 	}
 
-	// Calculate the address for the key.
-	pk, err := crypto.HexToECDSA(homeKey)
-	if err != nil {
-		return "", "", err
-	}
-	homeKeyAddress := crypto.PubkeyToAddress(pk.PublicKey).Hex()
-
-	return homeKey, homeKeyAddress, nil
+	return evm.NewSignerFromPrivateKey(homeKey)
 }
 
 func CallDeploy(_ []string, flags DeployFlags) error {
@@ -352,7 +345,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Get the key to be used to deploy the token home contract and collateralize the remote
 	// in the case that it is a native token remote.
-	homeKey, homeKeyAddress, err := getHomeKeyAndAddress(app, network, flags.homeFlags)
+	homeSigner, err := getHomeSigner(app, network, flags.homeFlags)
 	if err != nil {
 		return err
 	}
@@ -428,11 +421,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
-	pk, err := crypto.HexToECDSA(remoteKey)
+	remoteSigner, err := evm.NewSignerFromPrivateKey(remoteKey)
 	if err != nil {
 		return err
 	}
-	remoteKeyAddress := crypto.PubkeyToAddress(pk.PublicKey).Hex()
 
 	// Remote Chain Validations
 	if flags.remoteFlags.chainFlags.BlockchainName != "" {
@@ -455,6 +447,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	var (
 		remoteMinterManagerPrivKey, remoteMinterManagerAddress string
 		remoteMinterManagerIsAdmin                             bool
+		remoteMinterManagerSigner                              *evm.Signer
 	)
 	if flags.remoteFlags.native {
 		var remoteMinterAdminFound, remoteManagedMinterAdmin bool
@@ -488,6 +481,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 		} else {
 			remoteMinterManagerIsAdmin = true
+		}
+
+		remoteMinterManagerSigner, err = evm.NewSignerFromPrivateKey(remoteMinterManagerPrivKey)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -531,9 +529,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		homeAddress, _, _, err = ictt.DeployERC20Home(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey,
+			homeSigner,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKeyAddress),
+			homeSigner.Address(),
 			tokenHomeAddress,
 			tokenHomeDecimals,
 		)
@@ -555,7 +553,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		wrappedNativeTokenAddress, _, _, err := ictt.DeployWrappedNativeToken(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey,
+			homeSigner,
 			nativeTokenSymbol,
 		)
 		if err != nil {
@@ -567,9 +565,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		homeAddress, _, _, err = ictt.DeployNativeHome(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey,
+			homeSigner,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKeyAddress),
+			homeSigner.Address(),
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
@@ -637,9 +635,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteAddress, _, _, err = ictt.DeployERC20Remote(
 			icttSrcDir,
 			remoteRPCEndpoint,
-			remoteKey,
+			remoteSigner,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKeyAddress),
+			remoteSigner.Address(),
 			homeBlockchainID,
 			homeAddress,
 			homeDecimals,
@@ -669,9 +667,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteAddress, _, _, err = ictt.DeployNativeRemote(
 			icttSrcDir,
 			remoteRPCEndpoint,
-			remoteKey,
+			remoteSigner,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKeyAddress),
+			remoteSigner.Address(),
 			homeBlockchainID,
 			homeAddress,
 			homeDecimals,
@@ -689,7 +687,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err := ictt.RegisterRemote(
 		duallogger.NewDualLogger(true, app),
 		remoteRPCEndpoint,
-		remoteKey,
+		remoteSigner,
 		remoteAddress,
 	); err != nil {
 		return err
@@ -726,7 +724,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			duallogger.NewDualLogger(true, app),
 			homeRPCEndpoint,
 			homeAddress,
-			homeKey,
+			homeSigner,
 			remoteBlockchainID,
 			remoteAddress,
 			collateralNeeded,
@@ -756,7 +754,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			duallogger.NewDualLogger(true, app),
 			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
-			remoteMinterManagerPrivKey,
+			remoteMinterManagerSigner,
 			remoteAddress,
 		); err != nil {
 			return err
@@ -767,10 +765,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			duallogger.NewDualLogger(true, app),
 			homeRPCEndpoint,
 			homeAddress,
-			homeKey,
+			homeSigner,
 			remoteBlockchainID,
 			remoteAddress,
-			common.HexToAddress(homeKeyAddress),
+			homeSigner.Address(),
 			big.NewInt(1),
 		)
 		if err != nil {
@@ -802,7 +800,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				duallogger.NewDualLogger(true, app),
 				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
-				remoteMinterManagerPrivKey,
+				remoteMinterManagerSigner,
 				common.HexToAddress(remoteMinterManagerAddress),
 			); err != nil {
 				return err

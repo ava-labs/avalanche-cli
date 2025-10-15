@@ -59,6 +59,8 @@ const (
 	CloudOperationTimeout  = 2 * time.Minute
 	WalletCreationTimeout  = 3 * time.Minute
 
+	SignatureTimeout = 5 * time.Minute
+
 	APIRequestTimeout      = 10 * time.Second
 	APIRequestLargeTimeout = 30 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
