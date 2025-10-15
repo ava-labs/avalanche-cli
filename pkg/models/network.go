@@ -24,6 +24,7 @@ const (
 	Fuji
 	Local
 	Devnet
+	Granite
 )
 
 const wssScheme = "wss"
@@ -38,6 +39,8 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
+	case Granite:
+		return "Granite"
 	}
 	return "invalid network"
 }
@@ -68,6 +71,10 @@ func NewLocalNetwork() Network {
 	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, "")
 }
 
+func NewGraniteNetwork() Network {
+	return NewNetwork(Granite, constants.GraniteNetworkID, constants.GraniteNetworkEndpoint, "")
+}
+
 func NewDevnetNetwork(endpoint string, id uint32) Network {
 	if endpoint == "" {
 		endpoint = constants.DevnetAPIEndpoint
@@ -90,6 +97,8 @@ func ConvertClusterToNetwork(clusterNetwork Network) Network {
 		return NewFujiNetwork()
 	case clusterNetwork.ID == avagoconstants.MainnetID:
 		return NewMainnetNetwork()
+	case clusterNetwork.ID == constants.GraniteNetworkID:
+		return NewGraniteNetwork()
 	default:
 		networkID := uint32(0)
 		if clusterNetwork.Endpoint != "" {
@@ -127,6 +136,8 @@ func NetworkFromNetworkID(networkID uint32) Network {
 		return NewFujiNetwork()
 	case constants.LocalNetworkID:
 		return NewLocalNetwork()
+	case constants.GraniteNetworkID:
+		return NewGraniteNetwork()
 	}
 	return UndefinedNetwork
 }
@@ -164,6 +175,8 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
 	scheme := "ws"
 	switch n.Kind {
+	case Granite:
+		scheme = wssScheme
 	case Fuji:
 		scheme = wssScheme
 	case Mainnet:
@@ -178,6 +191,8 @@ func (n Network) NetworkIDFlagValue() string {
 		return fmt.Sprintf("network-%d", n.ID)
 	case Devnet:
 		return fmt.Sprintf("network-%d", n.ID)
+	case Granite:
+		return "granite"
 	case Fuji:
 		return "fuji"
 	case Mainnet:
@@ -191,6 +206,8 @@ func (n Network) GenesisParams() *genesis.Params {
 	case Local:
 		return &genesis.LocalParams
 	case Devnet:
+		return &genesis.LocalParams
+	case Granite:
 		return &genesis.LocalParams
 	case Fuji:
 		return &genesis.FujiParams

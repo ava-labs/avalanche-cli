@@ -100,6 +100,9 @@ const (
 	LocalNetworkAvalancheGoMaxLogSize  = 1
 	LocalNetworkAvalancheGoMaxLogFiles = 2
 
+	GraniteNetworkEndpoint = "https://granite.avax-dev.network"
+	GraniteNetworkID       = 76
+
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
 

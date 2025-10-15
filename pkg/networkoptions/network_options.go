@@ -33,6 +33,7 @@ const (
 	Local
 	Devnet
 	Cluster
+	Granite
 )
 
 var (
@@ -41,6 +42,7 @@ var (
 		Devnet,
 		Fuji,
 		Mainnet,
+		Granite,
 	}
 	NonLocalSupportedNetworkOptions = []NetworkOption{
 		Devnet,
@@ -70,6 +72,8 @@ func (n NetworkOption) String() string {
 		return "Devnet"
 	case Cluster:
 		return "Cluster"
+	case Granite:
+		return "Granite"
 	}
 	return "invalid network"
 }
@@ -82,6 +86,8 @@ func NetworkOptionFromString(s string) NetworkOption {
 		return Fuji
 	case s == "Fuji Testnet":
 		return Fuji
+	case s == "Granite":
+		return Granite
 	case s == "Local Network":
 		return Local
 	case s == "Devnet" || strings.Contains(s, "Devnet"):
@@ -98,6 +104,7 @@ type NetworkFlags struct {
 	UseDevnet   bool
 	UseFuji     bool
 	UseMainnet  bool
+	UseGranite  bool
 	Endpoint    string
 	ClusterName string
 }
@@ -115,6 +122,8 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 		case Fuji:
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`")
+		case Granite:
+			cmd.Flags().BoolVarP(&networkFlags.UseGranite, "granite", "g", false, "operate on a granite devnet")
 		case Mainnet:
 			cmd.Flags().BoolVarP(&networkFlags.UseMainnet, "mainnet", "m", false, "operate on mainnet")
 		case Cluster:
@@ -136,6 +145,8 @@ func GetNetworkFlagsGroup(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 			switch networkOption {
 			case Local:
 				set.BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
+			case Granite:
+				set.BoolVarP(&networkFlags.UseLocal, "granite", "l", false, "operate on a local network")
 			case Devnet:
 				set.BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 				addEndpoint = true
@@ -276,6 +287,7 @@ func GetNetworkFromCmdLineFlags(
 		Fuji:    "--fuji/--testnet",
 		Mainnet: "--mainnet",
 		Cluster: "--cluster",
+		Granite: "--granite",
 	}
 	supportedNetworksFlags := strings.Join(sdkutils.Map(supportedNetworkOptions, func(n NetworkOption) string { return networkFlagsMap[n] }), ", ")
 	// received option
@@ -285,6 +297,8 @@ func GetNetworkFromCmdLineFlags(
 		networkOption = Local
 	case networkFlags.UseDevnet:
 		networkOption = Devnet
+	case networkFlags.UseGranite:
+		networkOption = Granite
 	case networkFlags.UseFuji:
 		networkOption = Fuji
 	case networkFlags.UseMainnet:
@@ -299,6 +313,8 @@ func GetNetworkFromCmdLineFlags(
 			networkOption = Fuji
 		case constants.LocalAPIEndpoint:
 			networkOption = Local
+		case constants.GraniteNetworkEndpoint:
+			networkOption = Granite
 		default:
 			networkOption = Devnet
 		}
@@ -322,7 +338,7 @@ func GetNetworkFromCmdLineFlags(
 		return models.UndefinedNetwork, errMsg
 	}
 	// mutual exclusion
-	if !flags.EnsureMutuallyExclusive([]bool{networkFlags.UseLocal, networkFlags.UseDevnet, networkFlags.UseFuji, networkFlags.UseMainnet, networkFlags.ClusterName != ""}) {
+	if !flags.EnsureMutuallyExclusive([]bool{networkFlags.UseLocal, networkFlags.UseDevnet, networkFlags.UseFuji, networkFlags.UseGranite, networkFlags.UseMainnet, networkFlags.ClusterName != ""}) {
 		return models.UndefinedNetwork, fmt.Errorf("network flags %s are mutually exclusive", supportedNetworksFlags)
 	}
 
@@ -410,6 +426,8 @@ func GetNetworkFromCmdLineFlags(
 	switch networkOption {
 	case Local:
 		network = models.NewLocalNetwork()
+	case Granite:
+		network = models.NewGraniteNetwork()
 	case Devnet:
 		networkID := uint32(0)
 		if networkFlags.Endpoint != "" {

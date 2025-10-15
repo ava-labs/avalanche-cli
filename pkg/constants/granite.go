@@ -13,11 +13,6 @@ var GraniteDevnetGenesisData []byte
 //go:embed graniteDevnet/upgrade.json
 var GraniteDevnetUpgradeData []byte
 
-const (
-	GraniteDevnetEndpoint  = "https://granite.avax-dev.network"
-	GraniteDevnetNetworkID = uint32(76)
-)
-
 var (
 	GraniteDevnetBootstrapNodeIDs = []string{
 		"NodeID-DG4zG5SNeMof4Fh6u5Dmn7qhpQD5pqbw1",
