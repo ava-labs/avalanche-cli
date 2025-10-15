@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	sdkconstants "github.com/ava-labs/avalanche-tooling-sdk-go/constants"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -145,7 +144,7 @@ func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 		}
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -195,7 +194,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 		}
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -279,7 +278,7 @@ func (d *PublicDeployer) CreateAssetTx(
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.X().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
@@ -524,7 +523,7 @@ func (d *PublicDeployer) PChainTransfer(
 		return ids.Empty, nil, err
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, nil, err
@@ -689,7 +688,7 @@ func (d *PublicDeployer) createBlockchainTx(
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -722,7 +721,7 @@ func (d *PublicDeployer) createConvertL1Tx(
 		}
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -758,7 +757,7 @@ func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -779,7 +778,7 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -801,7 +800,7 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
@@ -872,7 +871,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
@@ -900,7 +899,7 @@ func (*PublicDeployer) signTx(
 	tx *txs.Tx,
 	wallet *primary.Wallet,
 ) error {
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -933,7 +932,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
@@ -958,7 +957,7 @@ func (d *PublicDeployer) increaseValidatorPChainBalance(validationID ids.ID, bal
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
@@ -1055,7 +1054,7 @@ func IssueXToPExportTx(
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.X().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
@@ -1092,7 +1091,7 @@ func IssuePFromXImportTx(
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	ctx, cancel := sdkutils.GetTimedContext(sdkconstants.SignatureTimeout)
+	ctx, cancel := sdkutils.GetTimedContext(constants.SignatureTimeout)
 	defer cancel()
 	if err := wallet.P().Signer().Sign(ctx, &tx); err != nil {
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
