@@ -247,6 +247,7 @@ func InitializeValidatorManager(
 	validatorManagerOwnerAddress := common.HexToAddress(validatorManagerOwnerAddressStr)
 
 	// needed for ACP99 PoS (that flow will fail if missing)
+	var validatorManagerOwnerSigner *evm.Signer
 	_, _, _, validatorManagerOwnerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
@@ -255,6 +256,12 @@ func InitializeValidatorManager(
 	)
 	if err != nil {
 		return tracked, err
+	}
+	if validatorManagerOwnerPrivateKey != "" {
+		validatorManagerOwnerSigner, err = evm.NewSignerFromPrivateKey(validatorManagerOwnerPrivateKey)
+		if err != nil {
+			return tracked, err
+		}
 	}
 
 	if privateKey == "" {
@@ -284,6 +291,11 @@ func InitializeValidatorManager(
 		}
 	}
 
+	signer, err := evm.NewSignerFromPrivateKey(privateKey)
+	if err != nil {
+		return tracked, err
+	}
+
 	validatorManagerSubnetID, err := GetValidatorManagerSubnetID(network, validatorManagerBlockchainID)
 	if err != nil {
 		return tracked, err
@@ -298,7 +310,7 @@ func InitializeValidatorManager(
 		ValidatorManagerAddress:            &validatorManagerAddress,
 		SpecializedValidatorManagerAddress: &specializedValidatorManagerAddress,
 		ValidatorManagerOwnerAddress:       &validatorManagerOwnerAddress,
-		ValidatorManagerOwnerPrivateKey:    validatorManagerOwnerPrivateKey,
+		ValidatorManagerOwnerSigner:        validatorManagerOwnerSigner,
 		BootstrapValidators:                avaGoBootstrapValidators,
 	}
 
@@ -340,9 +352,16 @@ func InitializeValidatorManager(
 		if err != nil {
 			return tracked, err
 		}
+		var nativeMinterSigner *evm.Signer
+		if nativeMinterPrecompileAdminPrivateKey != "" {
+			nativeMinterSigner, err = evm.NewSignerFromPrivateKey(nativeMinterPrecompileAdminPrivateKey)
+			if err != nil {
+				return tracked, err
+			}
+		}
 		if err := subnetSDK.InitializeProofOfStake(
 			app.Log,
-			privateKey,
+			signer,
 			aggregatorLogger,
 			validatormanagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
@@ -356,7 +375,7 @@ func InitializeValidatorManager(
 			},
 			useACP99,
 			signatureAggregatorEndpoint,
-			nativeMinterPrecompileAdminPrivateKey,
+			nativeMinterSigner,
 		); err != nil {
 			return tracked, err
 		}
@@ -365,7 +384,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			app.Log,
-			privateKey,
+			signer,
 			aggregatorLogger,
 			useACP99,
 			signatureAggregatorEndpoint,

@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/libevm/core/types"
@@ -16,14 +17,14 @@ var tokenBin []byte
 
 func DeployERC20(
 	rpcURL string,
-	privateKey string,
+	signer *evm.Signer,
 	symbol string,
 	funded common.Address,
 	supply *big.Int,
 ) (common.Address, *types.Transaction, *types.Receipt, error) {
 	return contract.DeployContract(
 		rpcURL,
-		privateKey,
+		signer,
 		tokenBin,
 		"(string, address, uint256)",
 		symbol,

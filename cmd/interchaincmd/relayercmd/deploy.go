@@ -376,7 +376,13 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 						return err
 					}
 				}
-				balance, err := client.GetPrivateKeyBalance(privateKey)
+
+				signer, err := evm.NewSignerFromPrivateKey(privateKey)
+				if err != nil {
+					return err
+				}
+
+				balance, err := client.GetSignerBalance(signer)
 				if err != nil {
 					return err
 				}
@@ -421,7 +427,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 				amount, _ := amountBigFlt.Int(nil)
-				receipt, err := client.FundAddress(privateKey, addr.Hex(), amount)
+				receipt, err := client.FundAddress(signer, addr.Hex(), amount)
 				if err != nil {
 					return err
 				}

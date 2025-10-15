@@ -28,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -656,6 +657,10 @@ func addAsValidator(
 			}
 		}
 	}
+	signer, err := evm.NewSignerFromPrivateKey(payerPrivateKey)
+	if err != nil {
+		return err
+	}
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
 		duallogger.NewDualLogger(true, app),
@@ -664,8 +669,7 @@ func addAsValidator(
 		localValidateFlags.RPC,
 		chainSpec,
 		false,
-		"",
-		payerPrivateKey,
+		signer,
 		nodeID,
 		blsInfo.PublicKey[:],
 		expiry,
@@ -714,8 +718,7 @@ func addAsValidator(
 		localValidateFlags.RPC,
 		chainSpec,
 		false,
-		"",
-		payerPrivateKey,
+		signer,
 		validationID,
 		aggregatorLogger,
 		ids.Empty,
