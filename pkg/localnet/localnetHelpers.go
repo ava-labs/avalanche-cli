@@ -56,6 +56,7 @@ func LocalNetworkTrackSubnet(
 		printFunc,
 		blockchainName,
 		networkDir,
+		networkModel,
 		wallet,
 	)
 }

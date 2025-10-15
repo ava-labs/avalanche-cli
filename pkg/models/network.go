@@ -139,7 +139,7 @@ func NetworkFromNetworkID(networkID uint32) Network {
 	case constants.GraniteNetworkID:
 		return NewGraniteNetwork()
 	}
-	return UndefinedNetwork
+	return NewDevnetNetwork("", networkID)
 }
 
 func (n Network) StandardPublicEndpoint() bool {
