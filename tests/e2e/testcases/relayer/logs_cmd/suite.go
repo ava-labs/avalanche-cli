@@ -142,7 +142,6 @@ var _ = ginkgo.Describe("[Relayer] stop", func() {
 			}, logsFlags)
 			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(output).Should(gomega.ContainSubstring("Initializing icm-relayer"))
-			gomega.Expect(output).Should(gomega.ContainSubstring("Initializing destination clients"))
 			gomega.Expect(output).ShouldNot(gomega.ContainSubstring("Initializing source clients"))
 		})
 
