@@ -4,6 +4,7 @@
 package vm
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
@@ -173,13 +174,7 @@ func TestAddAddressToAllowed(t *testing.T) {
 			// Check if the address was added to enabled list when expected
 			if tt.shouldAddToEnabled {
 				expectedAddress := common.HexToAddress(tt.addressToAdd)
-				found := false
-				for _, addr := range result.EnabledAddresses {
-					if addr == expectedAddress {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(result.EnabledAddresses, expectedAddress)
 				require.True(t, found, "Address should have been added to enabled list")
 			}
 

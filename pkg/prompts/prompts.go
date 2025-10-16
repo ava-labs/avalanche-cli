@@ -125,13 +125,7 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 		return fmt.Errorf("number of given auth keys differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
-		found := false
-		for _, controlKey := range controlKeys {
-			if subnetAuthKey == controlKey {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(controlKeys, subnetAuthKey)
 		if !found {
 			return fmt.Errorf("auth key %s does not belong to control keys", subnetAuthKey)
 		}
