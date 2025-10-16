@@ -313,6 +313,7 @@ func GenerateConfigSpec(
 		}
 		chainSpec.SetEnabled(true, true, false, false, false)
 		configSpec, err = addBoth(network, configSpec, chainSpec, defaultKey)
+
 		if err != nil {
 			return ConfigSpec{}, false, err
 		}

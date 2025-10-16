@@ -120,7 +120,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		}
 	}
 	if deployERC20Flags.symbol == "" {
-		ux.Logger.PrintToUser("Which is the token symbol?")
+		ux.Logger.PrintToUser("What is the token symbol?")
 		deployERC20Flags.symbol, err = app.Prompt.CaptureString("Token symbol")
 		if err != nil {
 			return err
@@ -128,7 +128,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	}
 	supply := new(big.Int).SetUint64(deployERC20Flags.supply)
 	if deployERC20Flags.supply == 0 {
-		ux.Logger.PrintToUser("Which is the total token supply?")
+		ux.Logger.PrintToUser("What is the total token supply?")
 		supply, err = app.Prompt.CapturePositiveBigInt("Token supply")
 		if err != nil {
 			return err

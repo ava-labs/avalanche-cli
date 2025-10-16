@@ -319,7 +319,7 @@ func getRepoURL(reposDir string) error {
 		remotes[i] = r.URLs[0]
 		i++
 	}
-	repoURL, err = app.Prompt.CaptureList("Which is the remote URL for this repo?", remotes)
+	repoURL, err = app.Prompt.CaptureList("What is the remote URL for this repo?", remotes)
 	if err != nil {
 		// should never happen
 		return err

@@ -17,6 +17,10 @@
     "Mainnet": {
       "latest-version": "v1.13.5",
       "minimum-version": "v1.13.0"
+    },
+    "Granite": {
+      "latest-version": "v1.13.5",
+      "minimum-version": "v1.13.0"
     }
   },
   "signature-aggregator": "signature-aggregator-v0.4.5"

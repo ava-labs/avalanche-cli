@@ -284,6 +284,7 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local &&
 		network.Kind != models.Devnet &&
+		network.Kind != models.Granite &&
 		!simulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
@@ -1173,6 +1174,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if network.Kind == models.Local {
 					deployRelayerFlags.CChainFundingKey = "ewoq"
 					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
+				}
+				if network.Kind == models.Granite {
+					deployRelayerFlags.BlockchainsToRelay = []string{blockchainName}
 				}
 				if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
 					relayerErr = err

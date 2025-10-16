@@ -21,12 +21,9 @@ import (
 func UpdateBlockchainConfig(
 	app *application.Avalanche,
 	networkDir string,
+	networkModel models.Network,
 	blockchainName string,
 ) error {
-	networkModel, err := GetNetworkModel(networkDir)
-	if err != nil {
-		return err
-	}
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -114,17 +111,15 @@ func TrackSubnet(
 	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 	networkDir string,
+	networkModel models.Network,
 	wallet *primary.Wallet,
 ) error {
 	if err := UpdateBlockchainConfig(
 		app,
 		networkDir,
+		networkModel,
 		blockchainName,
 	); err != nil {
-		return err
-	}
-	networkModel, err := GetNetworkModel(networkDir)
-	if err != nil {
 		return err
 	}
 	sc, err := app.LoadSidecar(blockchainName)

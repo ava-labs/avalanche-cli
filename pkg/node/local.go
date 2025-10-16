@@ -49,6 +49,22 @@ func setupAvalancheGo(
 	return avalancheGoBinaryPath, err
 }
 
+func GetGraniteConnectionSettings() localnet.ConnectionSettings {
+	networkID := constants.GraniteNetworkID
+	bootstrapIDs := constants.GraniteDevnetBootstrapNodeIDs
+	bootstrapIPs := constants.GraniteDevnetBootstrapIPs
+	genesis := constants.GraniteDevnetGenesisData
+	upgrade := constants.GraniteDevnetUpgradeData
+
+	return localnet.ConnectionSettings{
+		NetworkID:    uint32(networkID),
+		Genesis:      genesis,
+		Upgrade:      upgrade,
+		BootstrapIDs: bootstrapIDs,
+		BootstrapIPs: bootstrapIPs,
+	}
+}
+
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
@@ -91,7 +107,6 @@ func StartLocalNode(
 
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network.ClusterName = clusterName
-
 		switch {
 		case network.Kind == models.Fuji:
 			ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
@@ -105,7 +120,6 @@ func StartLocalNode(
 				return err
 			}
 		}
-
 		if defaultFlags == nil {
 			defaultFlags = map[string]interface{}{}
 		}

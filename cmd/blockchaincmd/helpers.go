@@ -186,6 +186,10 @@ func StartLocalMachine(
 	if localMachineFlags.UseLocalMachine && bootstrapValidatorFlags.NumBootstrapValidators == 0 {
 		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
 	}
+	connectionSettings := localnet.ConnectionSettings{}
+	if network.Kind == models.Granite {
+		connectionSettings = node.GetGraniteConnectionSettings()
+	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -284,7 +288,7 @@ func StartLocalMachine(
 			vm.EvmDebugConfig,
 			uint32(bootstrapValidatorFlags.NumBootstrapValidators),
 			nodeConfig,
-			localnet.ConnectionSettings{},
+			connectionSettings,
 			nodeSettings,
 			avagoVersionSettings,
 			network,

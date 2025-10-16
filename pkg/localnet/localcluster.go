@@ -282,7 +282,14 @@ func GetLocalClusterNetworkModel(
 	clusterName string,
 ) (models.Network, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	return GetNetworkModel(networkDir)
+	networkModel, err := GetNetworkModel(networkDir)
+	if err != nil {
+		return networkModel, err
+	}
+	if networkModel.Kind == models.Devnet {
+		networkModel.ClusterName = clusterName
+	}
+	return networkModel, nil
 }
 
 // Gets a list of clusters connected to local network that are also running
@@ -574,11 +581,16 @@ func LocalClusterTrackSubnet(
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return err
+	}
 	return TrackSubnet(
 		app,
 		printFunc,
 		blockchainName,
 		networkDir,
+		networkModel,
 		nil,
 	)
 }
@@ -595,6 +607,10 @@ func LoadLocalCluster(
 	if !LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return err
+	}
 	networkDir := GetLocalClusterDir(app, clusterName)
 	blockchains, err := GetLocalClusterManagedTrackedBlockchains(app, clusterName)
 	if err != nil {
@@ -605,12 +621,13 @@ func LoadLocalCluster(
 		if err := UpdateBlockchainConfig(
 			app,
 			networkDir,
+			networkModel,
 			blockchainName,
 		); err != nil {
 			return err
 		}
 	}
-	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	networkModel, err = GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
 	}

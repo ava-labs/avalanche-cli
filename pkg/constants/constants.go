@@ -68,6 +68,7 @@ const (
 	LocalBootstrapTimeout   = 2 * time.Minute
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
+	GraniteBootstrapTimeout = 15 * time.Minute
 
 	EVMEventLookupTimeout = 2 * time.Minute
 
@@ -101,6 +102,9 @@ const (
 	LocalNetworkNumNodes               = 2
 	LocalNetworkAvalancheGoMaxLogSize  = 1
 	LocalNetworkAvalancheGoMaxLogFiles = 2
+
+	GraniteNetworkEndpoint = "https://granite.avax-dev.network"
+	GraniteNetworkID       = 76
 
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
@@ -303,8 +307,8 @@ const (
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/versions/latest.json"
-	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/versions/min_cli_version.json"
+	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/latest.json"
+	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/min_cli_version.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
