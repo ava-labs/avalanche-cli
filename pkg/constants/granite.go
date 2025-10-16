@@ -4,7 +4,6 @@ package constants
 
 import (
 	_ "embed"
-	"time"
 )
 
 //go:embed graniteDevnet/genesis.json
@@ -29,5 +28,3 @@ var (
 		"98.82.41.186:9651",
 	}
 )
-
-const StakingGraniteMinimumDuration = 100 * time.Second

@@ -210,12 +210,14 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		// and use this to change the config, before saving it
 		// most probably, also, relayer config should restart the relayer
 		var cancel bool
+		fmt.Printf(" flags.BlockchainsToRelay %s\n", flags.BlockchainsToRelay)
 		configSpec, cancel, err = GenerateConfigSpec(
 			network,
 			flags.RelayCChain,
 			flags.BlockchainsToRelay,
 			flags.Key,
 		)
+		fmt.Printf("generated config spec %s \n", configSpec)
 		if cancel {
 			return nil
 		}

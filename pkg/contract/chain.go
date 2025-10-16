@@ -346,6 +346,9 @@ func GetICMInfo(
 ) (string, string, error) {
 	registryAddress := ""
 	messengerAddress := ""
+	fmt.Printf("chainSpec.BlockchainName %s \n", chainSpec.BlockchainName)
+	fmt.Printf("network.Name() %s \n", network.Name())
+
 	switch {
 	case chainSpec.CChain:
 		var err error
@@ -372,7 +375,7 @@ func GetICMInfo(
 		return "", "", err
 	}
 	if registryAddress == "" && promptForRegistry {
-		addr, err := app.Prompt.CaptureAddress("Which is the ICM Registry address for " + blockchainDesc)
+		addr, err := app.Prompt.CaptureAddress("What is the ICM Registry address for " + blockchainDesc)
 		if err != nil {
 			return "", "", err
 		}
@@ -380,7 +383,7 @@ func GetICMInfo(
 	}
 	if messengerAddress == "" {
 		if promptForMessenger {
-			addr, err := app.Prompt.CaptureAddress("Which is the ICM Messenger address for " + blockchainDesc)
+			addr, err := app.Prompt.CaptureAddress("What is the ICM Messenger address for " + blockchainDesc)
 			if err != nil {
 				return "", "", err
 			}

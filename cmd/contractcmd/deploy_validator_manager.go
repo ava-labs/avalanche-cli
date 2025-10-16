@@ -176,14 +176,14 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 
 	if !flags.deployProxy {
 		if flags.proxy == "" {
-			addr, err := app.Prompt.CaptureAddress("Which is the proxy contract address?")
+			addr, err := app.Prompt.CaptureAddress("What is the proxy contract address?")
 			if err != nil {
 				return err
 			}
 			flags.proxy = addr.Hex()
 		}
 		if flags.proxyAdmin == "" {
-			addr, err := app.Prompt.CaptureAddress("Which is the proxy admin contract address?")
+			addr, err := app.Prompt.CaptureAddress("What is the proxy admin contract address?")
 			if err != nil {
 				return err
 			}

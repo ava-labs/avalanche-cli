@@ -239,6 +239,8 @@ func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 		timeout = constants.FujiBootstrapTimeout
 	case Mainnet:
 		timeout = constants.MainnetBootstrapTimeout
+	case Granite:
+		timeout = constants.GraniteBootstrapTimeout
 	}
 	return utils.GetTimedContext(timeout)
 }
@@ -253,6 +255,8 @@ func (n Network) SDKNetwork() sdkNetwork.Network {
 		return sdkNetwork.NewNetwork(sdkNetwork.Devnet, n.ID, n.Endpoint)
 	case Devnet:
 		return sdkNetwork.NewNetwork(sdkNetwork.Devnet, n.ID, n.Endpoint)
+	case Granite:
+		return sdkNetwork.GraniteNetwork()
 	}
 	return sdkNetwork.UndefinedNetwork
 }

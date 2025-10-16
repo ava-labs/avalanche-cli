@@ -68,6 +68,7 @@ const (
 	LocalBootstrapTimeout   = 2 * time.Minute
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
+	GraniteBootstrapTimeout = 15 * time.Minute
 
 	EVMEventLookupTimeout = 2 * time.Minute
 

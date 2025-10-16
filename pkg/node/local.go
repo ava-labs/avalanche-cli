@@ -107,7 +107,6 @@ func StartLocalNode(
 
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network.ClusterName = clusterName
-
 		switch {
 		case network.Kind == models.Fuji:
 			ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
@@ -121,7 +120,7 @@ func StartLocalNode(
 				return err
 			}
 		}
-
+		fmt.Printf("connectionSettings.NetworkID %s \n", connectionSettings.NetworkID)
 		if defaultFlags == nil {
 			defaultFlags = map[string]interface{}{}
 		}
