@@ -76,7 +76,7 @@ func (cs *ChainSpec) CheckMutuallyExclusiveFields() error {
 }
 
 func (cs *ChainSpec) Defined() bool {
-	if cs.blockchainNameFlagEnabled && cs.BlockchainName != "" {
+	if cs.BlockchainName != "" {
 		return true
 	}
 	if cs.cChainFlagEnabled && cs.CChain {
@@ -88,7 +88,7 @@ func (cs *ChainSpec) Defined() bool {
 	if cs.xChainFlagEnabled && cs.XChain {
 		return true
 	}
-	if cs.blockchainIDFlagEnabled && cs.BlockchainID != "" {
+	if cs.BlockchainID != "" {
 		return true
 	}
 	return false
@@ -346,8 +346,6 @@ func GetICMInfo(
 ) (string, string, error) {
 	registryAddress := ""
 	messengerAddress := ""
-	fmt.Printf("chainSpec.BlockchainName %s \n", chainSpec.BlockchainName)
-	fmt.Printf("network.Name() %s \n", network.Name())
 
 	switch {
 	case chainSpec.CChain:

@@ -120,7 +120,6 @@ func StartLocalNode(
 				return err
 			}
 		}
-		fmt.Printf("connectionSettings.NetworkID %s \n", connectionSettings.NetworkID)
 		if defaultFlags == nil {
 			defaultFlags = map[string]interface{}{}
 		}

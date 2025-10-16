@@ -66,14 +66,12 @@ func preview(configSpec ConfigSpec) {
 func addBoth(network models.Network, configSpec ConfigSpec, chainSpec contract.ChainSpec, defaultKey string) (ConfigSpec, error) {
 	prompt := "Which blockchain do you want to set both as source and destination?"
 	var err error
-	fmt.Printf("addBoth before %s \n", chainSpec)
 	if !chainSpec.Defined() {
 		chainSpec, err = getBlockchain(network, prompt)
 		if err != nil {
 			return ConfigSpec{}, err
 		}
 	}
-	fmt.Printf("addBoth after %s \n", chainSpec)
 	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 	if err != nil {
 		return ConfigSpec{}, err
@@ -114,7 +112,6 @@ func addSource(
 	wsEndpoint string,
 	defaultKey string,
 ) (ConfigSpec, error) {
-	fmt.Printf("addSource chainspec %s \n", chainSpec)
 	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as source?"
 		var err error
@@ -315,7 +312,6 @@ func GenerateConfigSpec(
 			CChain: true,
 		}
 		chainSpec.SetEnabled(true, true, false, false, false)
-		fmt.Printf("we in relaychian %s \n", chainSpec)
 		configSpec, err = addBoth(network, configSpec, chainSpec, defaultKey)
 
 		if err != nil {
@@ -328,8 +324,6 @@ func GenerateConfigSpec(
 			BlockchainName: blockchainName,
 		}
 		chainSpec.SetEnabled(true, true, false, false, false)
-		fmt.Printf("we in blockchainsToRelay blockchainName %s \n", blockchainName)
-		fmt.Printf("we in blockchainsToRelay %s \n", chainSpec)
 		configSpec, err = addBoth(network, configSpec, chainSpec, defaultKey)
 		if err != nil {
 			return ConfigSpec{}, false, err
