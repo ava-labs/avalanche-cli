@@ -1064,7 +1064,7 @@ func TmpNetStartNode(
 	}
 	_, ok := node.Flags[config.BootstrapIPsKey]
 	if !ok && !IsPublicNetwork(networkID) {
-		// it does not have boostrappers set, and it is also not a public network node,
+		// it does not have bootstrappers set, and it is also not a public network node,
 		// so we need to set bootstrappers from the custom network itself
 		bootstrapIPs, bootstrapIDs, err := GetTmpNetBootstrappers(network.Dir, node.NodeID)
 		if err != nil {
@@ -1084,7 +1084,7 @@ func TmpNetStartNode(
 	return nil
 }
 
-// Indicates wether a given network ID is for public network
+// Indicates whether a given network ID is for public network
 func IsPublicNetwork(networkID uint32) bool {
 	return networkID == avagoconstants.FujiID || networkID == avagoconstants.MainnetID
 }
@@ -1126,7 +1126,7 @@ func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
 	return network, nil
 }
 
-// Get all node URIs of the network. transformates URIs
+// Get all node URIs of the network. transforms URIs
 func GetTmpNetNodeURIsWithFix(
 	networkDir string,
 ) ([]string, error) {

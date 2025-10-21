@@ -45,7 +45,7 @@ func newDeployValidatorManagerCmd() *cobra.Command {
 		Short: "Deploy a Validator Manager into a given Network and Blockchain",
 		Long: `Deploy a Validator Manager, a Proxy, and a Proxy Admin, into a given Network and Blockchain.
 If a proxy is provided, configures it to point to the deployed validator manager.
-Note: This command deploys smart contracts for a validator manager, but does not initializate it to start operating on a given
+Note: This command deploys smart contracts for a validator manager, but does not initialize it to start operating on a given
 L1. For that, you need to call 'avalanche contract initValidatorManager'.
 `,
 		RunE: deployValidatorManager,

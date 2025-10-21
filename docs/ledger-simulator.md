@@ -59,7 +59,7 @@ The test should call `utils.StartLedgerSim(numApprovals, ledgerSeed, showStdout)
 
 - number of txs to be approved by the ledger
 - seed for the ledger
-- wether to show stdout
+- whether to show stdout
 
 The function returns two channels:
 

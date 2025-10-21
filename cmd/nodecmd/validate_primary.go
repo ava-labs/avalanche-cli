@@ -308,7 +308,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exclude api nodes
 	defer node.DisconnectHosts(hosts)
 
 	// TODO: will estimate fee in subsecuent PR
