@@ -3,7 +3,6 @@ module github.com/ava-labs/avalanche-cli
 go 1.24.9
 
 require (
-	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c
 	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022155152-d72156237f61
 	github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1
