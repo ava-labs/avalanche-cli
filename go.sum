@@ -51,6 +51,14 @@ github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c/go.mod h1:NS2385T7YN9VVdIRbM+5NpskLTF2I6ArTdts4qUFwoI=
 github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022155152-d72156237f61 h1:9QelQ+1l1vmU1E+5f3cAFT0IDsKDxnkGcyqN8kTVuvQ=
 github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022155152-d72156237f61/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022204914-8ca45a4875e4 h1:wxvByRKUyQBL2aoZtj3ylsiFHiLh0fBjJQO8Rx7QXPg=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022204914-8ca45a4875e4/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022210238-6e37bf622377 h1:3l4M2RyuVDZELCUh1SlDcZoL4LvsabpcZ8svv93W3NM=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022210238-6e37bf622377/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022211635-c16a3c7beb50 h1:j5CeIrH9VOOX8ao0Ayi1Q3Ma8BuD1zJuD1LvhOG2TT4=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022211635-c16a3c7beb50/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022220255-f93df3d44dbf h1:djy+swG+APIZzc/XyeTHD7O4Y21wu92zOm5j0sO//kA=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022220255-f93df3d44dbf/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1 h1:/eQUKFGzK+CY2rHOypox87Cqpc9DEIOIjYgEtuRar9g=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1/go.mod h1:wEiDa5Lc3oKm9l2AxJOXmLz00Wg7b3hUttgkfzgRoDA=
 github.com/ava-labs/coreth v0.15.4-rc.4 h1:ze7/IwDptWG1u2d32uUZz9Ix9ycVUtlB8JufuSKSSS4=
