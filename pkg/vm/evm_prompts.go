@@ -878,10 +878,11 @@ func promptPermissioning(
 func PromptSubnetEVMVersion(
 	app *application.Avalanche,
 	subnetEVMVersion string,
+	network models.Network,
 ) (string, error) {
 	switch subnetEVMVersion {
 	case latest:
-		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
+		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, network, nil)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,

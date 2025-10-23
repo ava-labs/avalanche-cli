@@ -4,6 +4,7 @@ package vm
 
 import (
 	"errors"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"os"
 	"testing"
 
@@ -1027,7 +1028,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			)
 
 			// Call the function under test
-			result, err := PromptSubnetEVMVersion(app, tt.subnetEVMVersion)
+			result, err := PromptSubnetEVMVersion(app, tt.subnetEVMVersion, models.NewLocalNetwork())
 
 			// Assertions
 			if tt.expectedError != "" {

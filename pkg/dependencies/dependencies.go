@@ -38,6 +38,10 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 		return "", err
 	}
 
+	networkName := network.Name()
+	if network.Kind == models.Devnet {
+		networkName = "DevNet"
+	}
 	switch dependencyName {
 	case constants.AvalancheGoRepoName:
 		// if the user is using RPC that is lower than the latest RPC supported by CLI, user will get latest AvalancheGo version for that RPC
@@ -48,15 +52,11 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 				*rpcVersion,
 			)
 		}
-		depNetworkName := network.Name()
-		if network.Kind == models.Devnet {
-			depNetworkName = "DevNet"
-		}
-		return parsedDependency.AvalancheGo[depNetworkName].LatestVersion, nil
+		return parsedDependency.AvalancheGo[networkName].LatestVersion, nil
 	case constants.SubnetEVMRepoName:
-		return parsedDependency.SubnetEVM, nil
+		return parsedDependency.SubnetEVM[networkName].LatestVersion, nil
 	case constants.SignatureAggregatorRepoName:
-		return parsedDependency.SignatureAggregator, nil
+		return parsedDependency.SignatureAggregator[networkName].LatestVersion, nil
 	default:
 		return "", fmt.Errorf("unsupported dependency: %s", dependencyName)
 	}

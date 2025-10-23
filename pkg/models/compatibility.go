@@ -16,7 +16,7 @@ type NetworkVersion struct {
 
 type CLIDependencyMap struct {
 	RPC                 int                       `json:"rpc"`
-	SubnetEVM           string                    `json:"subnet-evm"`
+	SubnetEVM           map[string]NetworkVersion `json:"subnet-evm"`
 	AvalancheGo         map[string]NetworkVersion `json:"avalanchego"`
-	SignatureAggregator string                    `json:"signature-aggregator"`
+	SignatureAggregator map[string]NetworkVersion `json:"signature-aggregator"`
 }
