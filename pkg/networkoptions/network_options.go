@@ -465,3 +465,23 @@ func GetNetworkFromCmdLineFlags(
 
 	return network, nil
 }
+
+// NetworkToNetworkFlags converts a models.Network into a NetworkFlags object
+func NetworkToNetworkFlags(network models.Network) NetworkFlags {
+	var flags NetworkFlags
+
+	switch network.Kind {
+	case models.Local:
+		flags.UseLocal = true
+	case models.Devnet:
+		flags.UseDevnet = true
+	case models.Fuji:
+		flags.UseFuji = true
+	case models.Mainnet:
+		flags.UseMainnet = true
+	case models.Granite:
+		flags.UseGranite = true
+	}
+
+	return flags
+}

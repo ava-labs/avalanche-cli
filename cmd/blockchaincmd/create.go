@@ -110,7 +110,7 @@ configuration, pass the -f flag.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &createFlags.Network, true, createNetworkOptions)
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
-	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	cmd.Flags().BoolVar(&forceCreate, forceFlag, false, "overwrite the existing configuration if one exists")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 
 	sovGroup := flags.RegisterFlagGroup(cmd, "Subnet-Only-Validators (SOV) Flags", "show-sov-flags", true, func(set *pflag.FlagSet) {
@@ -304,6 +304,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("using network %s \n", network.Name())
 
 	if vmType == models.SubnetEvm {
 		if sovereign {

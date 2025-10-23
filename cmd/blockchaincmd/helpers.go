@@ -33,7 +33,7 @@ import (
 
 var globalNetworkFlags networkoptions.NetworkFlags
 
-func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
+func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, network models.Network) error {
 	if !app.BlockchainConfigExists(blockchainName) {
 		if !skipPrompt {
 			yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName))
@@ -44,6 +44,7 @@ func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 				return fmt.Errorf("blockchain not available and not being created first")
 			}
 		}
+		createFlags.Network = networkoptions.NetworkToNetworkFlags(network)
 		return createBlockchainConfig(cmd, []string{blockchainName})
 	}
 	return nil

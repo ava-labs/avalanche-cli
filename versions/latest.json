@@ -54,7 +54,7 @@
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "signature-aggregator-v0.4.5",
+      "latest-version": "signature-aggregator-v0.5.0-fuji",
       "minimum-version": ""
     },
     "Mainnet": {
