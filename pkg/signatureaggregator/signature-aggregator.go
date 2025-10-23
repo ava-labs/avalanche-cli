@@ -333,6 +333,21 @@ func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, co
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
+	// Parse into a map to filter out invalid fields
+	var configMap map[string]interface{}
+	if err := json.Unmarshal(configBytes, &configMap); err != nil {
+		return fmt.Errorf("failed to parse config for filtering: %w", err)
+	}
+
+	// Remove invalid fields that are not part of the current config schema
+	delete(configMap, "max-p-chain-lookback")
+
+	// Marshal back to JSON with proper indentation
+	configBytes, err = json.MarshalIndent(configMap, "", "    ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal filtered config: %w", err)
+	}
+
 	// Create parent directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
