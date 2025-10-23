@@ -23,5 +23,5 @@
       "minimum-version": "v1.13.0"
     }
   },
-  "signature-aggregator": "signature-aggregator-v0.5.0"
+  "signature-aggregator": "signature-aggregator-v0.5.0-fuji"
 }
