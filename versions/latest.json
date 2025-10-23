@@ -23,5 +23,26 @@
       "minimum-version": "v1.13.0"
     }
   },
-  "signature-aggregator": "signature-aggregator-v0.5.0-fuji"
+  "signature-aggregator":{
+    "Local Network": {
+      "latest-version": "signature-aggregator-v0.5.0-fuji",
+      "minimum-version": ""
+    },
+    "DevNet": {
+      "latest-version": "signature-aggregator-v0.5.0-fuji",
+      "minimum-version": ""
+    },
+    "Fuji": {
+      "latest-version": "signature-aggregator-v0.4.5",
+      "minimum-version": ""
+    },
+    "Mainnet": {
+      "latest-version": "signature-aggregator-v0.4.5",
+      "minimum-version": ""
+    },
+    "Granite": {
+      "latest-version": "signature-aggregator-v0.5.0-fuji",
+      "minimum-version": "signature-aggregator-v0.5.0-fuji"
+    }
+  }
 }

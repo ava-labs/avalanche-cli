@@ -68,7 +68,7 @@ func GetLatestSignatureAggregatorPreReleaseVersion() (string, error) {
 	)
 }
 
-func InstallSignatureAggregator(app *application.Avalanche, version *string) (string, error) {
+func InstallSignatureAggregator(app *application.Avalanche, version *string, network models.Network) (string, error) {
 	if *version == "" || *version == constants.LatestPreReleaseVersionTag {
 		var err error
 		*version, err = GetLatestSignatureAggregatorPreReleaseVersion()
@@ -78,7 +78,7 @@ func InstallSignatureAggregator(app *application.Avalanche, version *string) (st
 	}
 	if *version == constants.LatestReleaseVersionTag {
 		var err error
-		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, models.UndefinedNetwork, nil)
+		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, network, nil)
 		if err != nil {
 			return "", err
 		}
@@ -147,7 +147,7 @@ func getSignatureAggregatorURL(version string) (string, error) {
 
 // StartSignatureAggregator starts the signature aggregator process.
 func StartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logFile string, logger logging.Logger, version string, signatureAggregatorEndpoint string) (int, error) {
-	binPath, err := InstallSignatureAggregator(app, &version)
+	binPath, err := InstallSignatureAggregator(app, &version, network)
 	if err != nil {
 		return 0, err
 	}
