@@ -46,15 +46,15 @@
   },
   "signature-aggregator":{
     "Local Network": {
-      "latest-version": "signature-aggregator-v0.5.0-fuji",
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "signature-aggregator-v0.5.0-fuji",
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "signature-aggregator-v0.4.5",
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
       "minimum-version": ""
     },
     "Mainnet": {
@@ -62,8 +62,8 @@
       "minimum-version": ""
     },
     "Granite": {
-      "latest-version": "signature-aggregator-v0.5.0-fuji",
-      "minimum-version": "signature-aggregator-v0.5.0-fuji"
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "minimum-version": "signature-aggregator-v0.5.1-fuji"
     }
   }
 }
