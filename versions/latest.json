@@ -9,7 +9,7 @@
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v0.7.8",
+      "latest-version": "v0.8.0-fuji",
       "minimum-version": "v0.7.1"
     },
     "Mainnet": {
@@ -32,7 +32,7 @@
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v1.14.0-fuji",
       "minimum-version": "v1.13.0-fuji"
     },
     "Mainnet": {
