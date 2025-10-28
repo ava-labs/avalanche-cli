@@ -24,11 +24,11 @@
   "rpc": 44,
   "avalanchego": {
     "Local Network": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v1.14.0-fuji",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v1.14.0-fuji",
       "minimum-version": ""
     },
     "Fuji": {
