@@ -60,6 +60,7 @@ func CreateEtnaSubnetEvmConfig(
 		"--evm-token=TOK",
 		"--icm=false",
 		"--"+constants.SkipUpdateFlag,
+		"--local",
 	)
 	if rewardBasisPoints != "" {
 		cmd.Args = append(cmd.Args, rewardBasisPoints)
