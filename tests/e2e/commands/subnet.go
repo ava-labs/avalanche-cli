@@ -67,6 +67,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		icmFlag,
 		"--evm-token",
 		"TOK",
+		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -111,6 +112,7 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		"--icm=false",
 		"--evm-token",
 		"TOK",
+		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
