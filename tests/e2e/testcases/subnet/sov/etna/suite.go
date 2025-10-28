@@ -42,6 +42,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
+		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
