@@ -238,7 +238,6 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			return err
 		}
 		printSmartContracts(sc, genesis)
-		printPrecompiles(genesis)
 	}
 
 	if locallyDeployed {
