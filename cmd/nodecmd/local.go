@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -665,6 +667,10 @@ func addAsValidator(
 	if err != nil {
 		return err
 	}
+	pChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, ids.Empty.String())
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain height: %w", err)
+	}
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
 		duallogger.NewDualLogger(true, app),
@@ -690,6 +696,7 @@ func addAsValidator(
 		useACP99,
 		"",
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return err
@@ -728,6 +735,7 @@ func addAsValidator(
 		ids.Empty,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	); err != nil {
 		return err
 	}

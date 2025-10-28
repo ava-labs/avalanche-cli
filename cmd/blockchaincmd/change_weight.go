@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -418,6 +420,10 @@ func changeWeightACP99(
 			}
 		}
 	}
+	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain height: %w", err)
+	}
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
@@ -435,6 +441,7 @@ func changeWeightACP99(
 		weight,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return err
@@ -475,7 +482,6 @@ func changeWeightACP99(
 			}
 		}
 	}
-
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
@@ -493,6 +499,7 @@ func changeWeightACP99(
 		signedMessage,
 		newWeight,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return err

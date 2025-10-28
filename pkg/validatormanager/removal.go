@@ -158,6 +158,7 @@ func GetUptimeProofMessage(
 	validationID ids.ID,
 	uptime uint64,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, error) {
 	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
 	if err != nil {
@@ -184,6 +185,7 @@ func GetUptimeProofMessage(
 		"",
 		l1SubnetID.String(),
 		aggregatorQuorumPercentage,
+		pChainHeight,
 	)
 }
 
@@ -207,6 +209,7 @@ func InitValidatorRemoval(
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	l1SubnetID, err := contract.GetSubnetID(
 		app,
@@ -287,6 +290,7 @@ func InitValidatorRemoval(
 				validationID,
 				uptimeSec,
 				signatureAggregatorEndpoint,
+				pChainHeight,
 			)
 			if err != nil {
 				return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime proof")
@@ -345,6 +349,7 @@ func InitValidatorRemoval(
 		nonce,
 		0,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	return signedMsg, validationID, nil, err
 }
@@ -400,6 +405,7 @@ func FinishValidatorRemoval(
 	managerAddressStr string,
 	useACP99 bool,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(managerAddressStr)
 	subnetID, err := contract.GetSubnetID(
@@ -433,6 +439,7 @@ func FinishValidatorRemoval(
 		validationID,
 		false,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return nil, err

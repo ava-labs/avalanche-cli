@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -398,6 +400,10 @@ func removeValidatorSOV(
 			}
 		}
 	}
+	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain height: %w", err)
+	}
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
@@ -421,6 +427,7 @@ func removeValidatorSOV(
 		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil && errors.Is(err, validatormanagersdk.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
@@ -453,6 +460,7 @@ func removeValidatorSOV(
 			sc.UseACP99,
 			initiateTxHash,
 			signatureAggregatorEndpoint,
+			pChainHeight,
 		)
 		if err != nil {
 			return err
@@ -500,6 +508,7 @@ func removeValidatorSOV(
 		validatorManagerAddress,
 		sc.UseACP99,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return err

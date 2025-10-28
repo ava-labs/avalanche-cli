@@ -4,9 +4,10 @@ package vm
 
 import (
 	"errors"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"os"
 	"testing"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"

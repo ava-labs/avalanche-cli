@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 
 	"github.com/ava-labs/subnet-evm/params/extras"
 

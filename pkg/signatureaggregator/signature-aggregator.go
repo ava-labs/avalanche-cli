@@ -132,6 +132,7 @@ func extractSemanticVersion(version string) (string, error) {
 
 	return version, nil
 }
+
 func getSignatureAggregatorVersion(app *application.Avalanche, version *string, network models.Network) (string, error) {
 	if *version == "" || *version == constants.LatestPreReleaseVersionTag {
 		var err error
@@ -149,6 +150,7 @@ func getSignatureAggregatorVersion(app *application.Avalanche, version *string, 
 	}
 	return *version, nil
 }
+
 func InstallSignatureAggregator(app *application.Avalanche, version *string, network models.Network) (string, error) {
 	sigAggVersion, err := getSignatureAggregatorVersion(app, version, network)
 	if err != nil {

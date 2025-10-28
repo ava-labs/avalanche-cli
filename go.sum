@@ -61,6 +61,8 @@ github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022220255-f93df3d44db
 github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251022220255-f93df3d44dbf/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
 github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251023150657-785dd8591586 h1:ALEpJYX9EiV6FCMmzDMAVCopykiYMmJbc7EKDKSO24M=
 github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251023150657-785dd8591586/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251028163352-b3a4327615ba h1:M3zoJCkMqrSfOIgupz1cgizjc9Vuc3wumB31aSRD8CY=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251028163352-b3a4327615ba/go.mod h1:ucgSCw7GyfkO4IHKuavyH/HjnMcSQ0d3ktBy93GxX8I=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1 h1:/eQUKFGzK+CY2rHOypox87Cqpc9DEIOIjYgEtuRar9g=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1/go.mod h1:wEiDa5Lc3oKm9l2AxJOXmLz00Wg7b3hUttgkfzgRoDA=
 github.com/ava-labs/coreth v0.15.4-rc.4 h1:ze7/IwDptWG1u2d32uUZz9Ix9ycVUtlB8JufuSKSSS4=
