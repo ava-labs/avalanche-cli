@@ -653,6 +653,50 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	return nil
 }
 
+// extractBlockchainIDFromEndpoint extracts the blockchain ID from an RPC or WS endpoint URL.
+// Expected format: {scheme}://{host}/ext/bc/{blockchainID}/{rpc|ws}
+// Returns empty string if the blockchain ID cannot be extracted.
+func extractBlockchainIDFromEndpoint(endpoint string) string {
+	// Look for /ext/bc/ pattern followed by the blockchain ID
+	const bcPrefix = "/ext/bc/"
+	bcIndex := strings.Index(endpoint, bcPrefix)
+	if bcIndex == -1 {
+		return ""
+	}
+
+	// Extract the part after /ext/bc/
+	afterBC := endpoint[bcIndex+len(bcPrefix):]
+
+	// The blockchain ID is everything before the next /
+	slashIndex := strings.Index(afterBC, "/")
+	if slashIndex == -1 {
+		return ""
+	}
+
+	return afterBC[:slashIndex]
+}
+
+// filterOutdatedBlockchainEndpoints removes endpoints that contain a blockchain ID
+// that doesn't match the current blockchain ID. Endpoints without a blockchain ID
+// in the URL are preserved.
+func filterOutdatedBlockchainEndpoints(endpoints []string, currentBlockchainID string) []string {
+	if currentBlockchainID == "" {
+		return endpoints
+	}
+
+	filtered := []string{}
+	for _, endpoint := range endpoints {
+		extractedID := extractBlockchainIDFromEndpoint(endpoint)
+		// Keep endpoint if:
+		// 1. It doesn't contain a blockchain ID pattern (extractedID == "")
+		// 2. It contains the current blockchain ID
+		if extractedID == "" || extractedID == currentBlockchainID {
+			filtered = append(filtered, endpoint)
+		}
+	}
+	return filtered
+}
+
 // AddDefaultBlockchainRPCsToSidecar, given a list of (public) node URIs, it generates
 // the default blockchain RPC and WS endpoints for those URIs, and adds them
 // to the blockchain's sidecar as blockchain URLs
@@ -669,11 +713,17 @@ func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
 	if networkInfo.BlockchainID == ids.Empty {
 		return sc, fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+
+	// Filter out endpoints that reference old blockchain IDs
+	currentBlockchainID := networkInfo.BlockchainID.String()
+	filteredRPCEndpoints := filterOutdatedBlockchainEndpoints(networkInfo.RPCEndpoints, currentBlockchainID)
+	filteredWSEndpoints := filterOutdatedBlockchainEndpoints(networkInfo.WSEndpoints, currentBlockchainID)
+
+	rpcEndpoints := set.Of(filteredRPCEndpoints...)
+	wsEndpoints := set.Of(filteredWSEndpoints...)
 	for _, nodeURI := range nodeURIs {
-		rpcEndpoints.Add(models.GetRPCEndpoint(nodeURI, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(models.GetWSEndpoint(nodeURI, networkInfo.BlockchainID.String()))
+		rpcEndpoints.Add(models.GetRPCEndpoint(nodeURI, currentBlockchainID))
+		wsEndpoints.Add(models.GetWSEndpoint(nodeURI, currentBlockchainID))
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()

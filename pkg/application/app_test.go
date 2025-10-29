@@ -283,3 +283,134 @@ func newTestApp(t *testing.T) *Avalanche {
 		Log:     logging.NoLog{},
 	}
 }
+
+func TestExtractBlockchainIDFromEndpoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		endpoint string
+		expected string
+	}{
+		{
+			name:     "valid RPC endpoint",
+			endpoint: "http://127.0.0.1:55067/ext/bc/2ATnxvq9GwPrEPHyULDJqpanFNJecvzSGZ3w5jMzfZAWSmXC6u/rpc",
+			expected: "2ATnxvq9GwPrEPHyULDJqpanFNJecvzSGZ3w5jMzfZAWSmXC6u",
+		},
+		{
+			name:     "valid WS endpoint",
+			endpoint: "ws://127.0.0.1:55067/ext/bc/X2oDj86zGjCRCy6vd8Cca4FDStMeFAHWc7SUUygPCCfYf9sHh/ws",
+			expected: "X2oDj86zGjCRCy6vd8Cca4FDStMeFAHWc7SUUygPCCfYf9sHh",
+		},
+		{
+			name:     "endpoint without blockchain ID",
+			endpoint: "http://127.0.0.1:9650/ext/info",
+			expected: "",
+		},
+		{
+			name:     "endpoint with no path after blockchain ID",
+			endpoint: "http://127.0.0.1:9650/ext/bc/someblockchainid",
+			expected: "",
+		},
+		{
+			name:     "empty endpoint",
+			endpoint: "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			result := extractBlockchainIDFromEndpoint(tt.endpoint)
+			require.Equal(tt.expected, result)
+		})
+	}
+}
+
+func TestFilterOutdatedBlockchainEndpoints(t *testing.T) {
+	currentBlockchainID := "X2oDj86zGjCRCy6vd8Cca4FDStMeFAHWc7SUUygPCCfYf9sHh"
+	oldBlockchainID := "2ATnxvq9GwPrEPHyULDJqpanFNJecvzSGZ3w5jMzfZAWSmXC6u"
+
+	tests := []struct {
+		name                string
+		endpoints           []string
+		currentBlockchainID string
+		expected            []string
+	}{
+		{
+			name: "filter out old blockchain ID endpoints",
+			endpoints: []string{
+				"http://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/rpc",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+			currentBlockchainID: currentBlockchainID,
+			expected: []string{
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+		},
+		{
+			name: "preserve endpoints without blockchain ID",
+			endpoints: []string{
+				"http://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/rpc",
+				"http://127.0.0.1:9650/ext/info",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+			currentBlockchainID: currentBlockchainID,
+			expected: []string{
+				"http://127.0.0.1:9650/ext/info",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+		},
+		{
+			name: "keep all current blockchain endpoints",
+			endpoints: []string{
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+				"http://127.0.0.1:60646/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+			currentBlockchainID: currentBlockchainID,
+			expected: []string{
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+				"http://127.0.0.1:60646/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+		},
+		{
+			name: "empty current blockchain ID returns all endpoints",
+			endpoints: []string{
+				"http://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/rpc",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+			currentBlockchainID: "",
+			expected: []string{
+				"http://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/rpc",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+		},
+		{
+			name:                "empty endpoints list",
+			endpoints:           []string{},
+			currentBlockchainID: currentBlockchainID,
+			expected:            []string{},
+		},
+		{
+			name: "mixed WS and RPC endpoints",
+			endpoints: []string{
+				"ws://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/ws",
+				"http://127.0.0.1:55067/ext/bc/" + oldBlockchainID + "/rpc",
+				"ws://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/ws",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+			currentBlockchainID: currentBlockchainID,
+			expected: []string{
+				"ws://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/ws",
+				"http://127.0.0.1:60645/ext/bc/" + currentBlockchainID + "/rpc",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			result := filterOutdatedBlockchainEndpoints(tt.endpoints, tt.currentBlockchainID)
+			require.ElementsMatch(tt.expected, result)
+		})
+	}
+}
