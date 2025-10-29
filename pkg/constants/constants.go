@@ -90,7 +90,7 @@ const (
 	LatestPreReleaseVersionTag        = "latest-prerelease"
 	LatestReleaseVersionTag           = "latest"
 	DefaultAvalancheGoVersion         = LatestReleaseVersionTag
-	DefaultRelayerVersion             = LatestReleaseVersionTag
+	DefaultRelayerVersion             = LatestPreReleaseVersionTag
 	DefaultSignatureAggregatorVersion = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
