@@ -30,6 +30,7 @@ const (
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 	ServicesDir        = "services"
+	DownloadCacheDir   = "download-cache"
 
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
@@ -71,6 +72,8 @@ const (
 	GraniteBootstrapTimeout = 15 * time.Minute
 
 	EVMEventLookupTimeout = 2 * time.Minute
+
+	DownloadCacheExpiration = 3 * time.Hour
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute

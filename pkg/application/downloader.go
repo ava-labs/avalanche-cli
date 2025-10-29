@@ -38,6 +38,7 @@ const (
 type Downloader interface {
 	Download(url string) ([]byte, error)
 	DownloadWithTee(url string, path string) ([]byte, error)
+	DownloadWithCache(url string, path string, duration time.Duration) ([]byte, error)
 	GetLatestReleaseVersion(org, repo, component string) (string, error)
 	GetLatestPreReleaseVersion(org, repo, component string) (string, error)
 	GetAllReleasesForRepo(org, repo, component string, kind ReleaseKind) ([]string, error)
@@ -72,6 +73,38 @@ func (d downloader) DownloadWithTee(url string, path string) ([]byte, error) {
 		return nil, err
 	}
 	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
+}
+
+func (d downloader) DownloadWithCache(url string, path string, duration time.Duration) ([]byte, error) {
+	var data []byte
+	var useCache bool
+
+	// Check if cache file exists and is recent
+	if fileInfo, err := os.Stat(path); err == nil {
+		if time.Since(fileInfo.ModTime()) < duration {
+			// Cache is valid, read from it
+			data, err = os.ReadFile(path)
+			if err == nil {
+				useCache = true
+			}
+		}
+	}
+
+	// If cache is not valid or doesn't exist, download
+	if !useCache {
+		var err error
+		data, err = d.Download(url)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save to cache
+		if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err == nil {
+			_ = os.WriteFile(path, data, constants.WriteReadReadPerms)
+		}
+	}
+
+	return data, nil
 }
 
 // GetLatestPreReleaseVersion returns the latest available pre release or release version from github
