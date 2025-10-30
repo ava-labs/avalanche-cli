@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -28,13 +29,15 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 }
 
 func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependencyName string, network models.Network, rpcVersion *int) (string, error) {
-	dependencyBytes, err := app.Downloader.Download(constants.CLILatestDependencyURL)
+	cacheDir := filepath.Join(app.GetBaseDir(), constants.DownloadCacheDir)
+	cacheFile := filepath.Join(cacheDir, constants.CLILatestDependencyFileName)
+	dependencyBytes, err := app.Downloader.DownloadWithCache(constants.CLILatestDependencyURL, cacheFile, constants.DownloadCacheExpiration)
 	if err != nil {
 		return "", err
 	}
 
 	var parsedDependency models.CLIDependencyMap
-	if err = json.Unmarshal(dependencyBytes, &parsedDependency); err != nil {
+	if err := json.Unmarshal(dependencyBytes, &parsedDependency); err != nil {
 		return "", err
 	}
 

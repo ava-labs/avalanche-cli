@@ -30,6 +30,7 @@ const (
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 	ServicesDir        = "services"
+	DownloadCacheDir   = "download-cache"
 
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
@@ -72,6 +73,8 @@ const (
 
 	EVMEventLookupTimeout = 2 * time.Minute
 
+	DownloadCacheExpiration = 3 * time.Hour
+
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
 	SSHLongRunningScriptTimeout = 10 * time.Minute
@@ -90,7 +93,7 @@ const (
 	LatestPreReleaseVersionTag        = "latest-prerelease"
 	LatestReleaseVersionTag           = "latest"
 	DefaultAvalancheGoVersion         = LatestReleaseVersionTag
-	DefaultRelayerVersion             = LatestReleaseVersionTag
+	DefaultRelayerVersion             = LatestPreReleaseVersionTag
 	DefaultSignatureAggregatorVersion = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
@@ -307,8 +310,10 @@ const (
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/latest.json"
-	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/min_cli_version.json"
+	CLILatestDependencyFileName  = "latest.json"
+	CLIMinVersionFileName        = "min_cli_version.json"
+	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/" + CLILatestDependencyFileName
+	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/" + CLIMinVersionFileName
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
