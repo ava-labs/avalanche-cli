@@ -34,6 +34,7 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -668,9 +669,16 @@ func addAsValidator(
 	if err != nil {
 		return err
 	}
-	pChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, ids.Empty.String())
+	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
+	pChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, avagoconstants.PlatformChainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain height: %w", err)
+	}
+
+	// Get L1 blockchain ID from chainSpec
+	l1BlockchainID, err := ids.FromString(chainSpec.BlockchainID)
+	if err != nil {
+		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
@@ -692,7 +700,7 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		common.HexToAddress(rewardsRecipientAddr),
-		ids.Empty,
+		l1BlockchainID,
 		validatorManagerAddress,
 		useACP99,
 		"",
@@ -720,6 +728,12 @@ func addAsValidator(
 		}
 	}
 
+	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
+	l1PChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, chainSpec.BlockchainID)
+	if err != nil {
+		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+	}
+
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
@@ -733,10 +747,10 @@ func addAsValidator(
 		signer,
 		validationID,
 		aggregatorLogger,
-		ids.Empty,
+		l1BlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		l1PChainHeight,
 	); err != nil {
 		return err
 	}

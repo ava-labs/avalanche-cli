@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -420,7 +421,8 @@ func changeWeightACP99(
 			}
 		}
 	}
-	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
+	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, avagoconstants.PlatformChainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain height: %w", err)
 	}
@@ -482,6 +484,12 @@ func changeWeightACP99(
 			}
 		}
 	}
+	// Get L1's current epoch for L1ValidatorWeightMessage (signed by P-Chain, verified by L1)
+	l1PChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+	}
+
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorWeightChange(
@@ -499,7 +507,7 @@ func changeWeightACP99(
 		signedMessage,
 		newWeight,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		l1PChainHeight,
 	)
 	if err != nil {
 		return err

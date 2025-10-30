@@ -632,7 +632,8 @@ func CallAddValidator(
 			}
 		}
 	}
-	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
+	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, avagoconstants.PlatformChainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain height: %w", err)
 	}
@@ -695,6 +696,12 @@ func CallAddValidator(
 		}
 	}
 
+	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
+	l1PChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+	}
+
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
@@ -711,7 +718,7 @@ func CallAddValidator(
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		l1PChainHeight,
 	)
 	if err != nil {
 		return err
