@@ -5,6 +5,7 @@ package dependencies
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 
 	"golang.org/x/mod/semver"
 
@@ -15,13 +16,15 @@ import (
 )
 
 func CheckVersionIsOverMin(app *application.Avalanche, dependencyName string, network models.Network, version string) error {
-	dependencyBytes, err := app.Downloader.Download(constants.CLILatestDependencyURL)
+	cacheDir := filepath.Join(app.GetBaseDir(), constants.DownloadCacheDir)
+	cacheFile := filepath.Join(cacheDir, constants.CLILatestDependencyFileName)
+	dependencyBytes, err := app.Downloader.DownloadWithCache(constants.CLILatestDependencyURL, cacheFile, constants.DownloadCacheExpiration)
 	if err != nil {
 		return err
 	}
 
 	var parsedDependency models.CLIDependencyMap
-	if err = json.Unmarshal(dependencyBytes, &parsedDependency); err != nil {
+	if err := json.Unmarshal(dependencyBytes, &parsedDependency); err != nil {
 		return err
 	}
 

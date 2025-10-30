@@ -5,6 +5,7 @@ package version
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -18,13 +19,15 @@ type CLIMinVersionMap struct {
 }
 
 func CheckCLIVersionIsOverMin(app *application.Avalanche, version string) error {
-	minVersionBytes, err := app.Downloader.Download(constants.CLIMinVersionURL)
+	cacheDir := filepath.Join(app.GetBaseDir(), constants.DownloadCacheDir)
+	cacheFile := filepath.Join(cacheDir, constants.CLIMinVersionFileName)
+	minVersionBytes, err := app.Downloader.DownloadWithCache(constants.CLIMinVersionURL, cacheFile, constants.DownloadCacheExpiration)
 	if err != nil {
 		return err
 	}
 
 	var parsedMinVersion CLIMinVersionMap
-	if err = json.Unmarshal(minVersionBytes, &parsedMinVersion); err != nil {
+	if err := json.Unmarshal(minVersionBytes, &parsedMinVersion); err != nil {
 		return err
 	}
 
