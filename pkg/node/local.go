@@ -76,6 +76,7 @@ func StartLocalNode(
 	nodeSettings []localnet.NodeSetting,
 	avaGoVersionSetting dependencies.AvalancheGoVersionSettings,
 	network models.Network,
+	setPublicIP bool,
 ) error {
 	// initializes directories
 	networkDir := localnet.GetLocalClusterDir(app, clusterName)
@@ -144,8 +145,9 @@ func StartLocalNode(
 			nodeSettings,
 			[]ids.ID{},
 			network,
-			true, // Download DB
-			true, // Bootstrap
+			true,       // Download DB
+			true,       // Bootstrap
+			setPublicIP, // Set Public IP
 		)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)

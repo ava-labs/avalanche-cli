@@ -896,6 +896,12 @@ func GetNewTmpNetNodes(
 		return nil, fmt.Errorf("node settings length is bigger than the number of nodes")
 	}
 	nodes := []*tmpnet.Node{}
+	// Start with default ports for nodes without explicit settings
+	// API ports: 9650, 9652, 9654, ...
+	// Staking ports: 9651, 9653, 9655, ...
+	nextAPIPort := 9650
+	nextStakingPort := 9651
+
 	for i := range numNodes {
 		node := tmpnet.NewNode()
 		if int(i) < len(nodeSettings) {
@@ -911,8 +917,22 @@ func GetNewTmpNetNodes(
 			node.Flags[config.HTTPPortKey] = fmt.Sprint(nodeSettings[i].HTTPPort)
 			node.Flags[config.StakingPortKey] = fmt.Sprint(nodeSettings[i].StakingPort)
 		} else {
-			node.Flags[config.HTTPPortKey] = "0"
-			node.Flags[config.StakingPortKey] = "0"
+			// Find next available API port
+			apiPort, err := utils.FindAvailablePort(nextAPIPort, 2, 5*time.Second)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find available API port starting from %d: %w", nextAPIPort, err)
+			}
+			nextAPIPort = apiPort + 2
+
+			// Find next available staking port
+			stakingPort, err := utils.FindAvailablePort(nextStakingPort, 2, 5*time.Second)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find available staking port starting from %d: %w", nextStakingPort, err)
+			}
+			nextStakingPort = stakingPort + 2
+
+			node.Flags[config.HTTPPortKey] = fmt.Sprint(apiPort)
+			node.Flags[config.StakingPortKey] = fmt.Sprint(stakingPort)
 		}
 		if len(trackedSubnets) > 0 {
 			trackedSubnetsStr := sdkutils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })

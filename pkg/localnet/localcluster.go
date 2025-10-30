@@ -11,7 +11,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -35,6 +37,7 @@ type ConnectionSettings struct {
 // If [downloadDB] is set, and network is fuji, downloads the current avalanchego DB -note: db download is not desired
 // if migrating from a network runner cluster-
 // If [bootstrap] is set, starts the nodes
+// If [setPublicIP] is set, configures nodes with the user's public IP address
 func CreateLocalCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -50,6 +53,7 @@ func CreateLocalCluster(
 	networkModel models.Network,
 	downloadDB bool,
 	bootstrap bool,
+	setPublicIP bool,
 ) (*tmpnet.Network, error) {
 	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
 		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
@@ -57,6 +61,16 @@ func CreateLocalCluster(
 	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings, trackedSubnets)
 	if err != nil {
 		return nil, err
+	}
+	if setPublicIP {
+		publicIP, err := utils.GetUserIPAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user IP address: %w", err)
+		}
+		for _, node := range nodes {
+			node.Flags[config.PublicIPKey] = publicIP
+			node.Flags[config.StakingHostKey] = "0.0.0.0"
+		}
 	}
 	var unparsedGenesis *genesis.UnparsedConfig
 	if len(connectionSettings.Genesis) > 0 {

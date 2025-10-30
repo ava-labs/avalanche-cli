@@ -543,7 +543,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock with identical release and pre-release versions - note the correct JSON field name
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4", nil)
 			},
 			expectedError: "",
@@ -562,7 +562,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock with different pre-release and release versions
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.5-rc1", nil)
 			},
 			expectedError: "",
@@ -587,7 +587,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock with same release and pre-release versions to get 2 options - note the correct JSON field name
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4", nil)
 
 				// Mock the version list for custom selection
@@ -616,7 +616,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock with same release and pre-release versions to get 2 options - note the correct JSON field name
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4", nil)
 
 				// Mock the version list for custom selection
@@ -638,7 +638,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock the dependency calls that happen before the prompt
 				depResponseJSON := `{"subnet-evm": "v0.7.4"}`
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.5-rc1", nil) // Different from release to trigger 3 options
 			},
 			expectedError: "version selection failed",
@@ -662,7 +662,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock the network calls up to the point where the prompt fails - note the correct JSON field name
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4", nil)
 
 				// Mock the version list for custom selection
@@ -684,7 +684,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock with different pre-release and release versions
 				depResponseJSON := testSubnetEVMVersion073
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4-beta1", nil)
 			},
 			expectedError: "",
@@ -703,7 +703,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock to ensure pre-release is different from release version
 				depResponseJSON := testSubnetEVMVersion073
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4-rc1", nil) // Different from release
 			},
 			expectedError: "",
@@ -738,8 +738,8 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 				// The prompt shouldn't be called since the error occurs before it
 			},
 			mockDownloader: func(m *mocks.Downloader) {
-				// Mock Download to fail for GetLatestCLISupportedDependencyVersion
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte{}, errors.New("network download failed"))
+				// Mock DownloadWithCache to fail for GetLatestCLISupportedDependencyVersion
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte{}, errors.New("network download failed"))
 			},
 			expectedError: "network download failed",
 			validateResult: func(_ *testing.T, _ string) {
@@ -754,7 +754,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock successful Download for GetLatestCLISupportedDependencyVersion
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				// Mock GetLatestPreReleaseVersion to fail
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("", errors.New("pre-release fetch failed"))
 			},
@@ -772,7 +772,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock successful calls for the version options with different versions to force 3 options
 				depResponseJSON := testSubnetEVMVersion073
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4-rc1", nil) // Different from release to trigger 3 options
 				// Mock GetAllReleasesForRepo to fail
 				m.On("GetAllReleasesForRepo", "ava-labs", "subnet-evm", "", application.All).Return([]string{}, errors.New("failed to get releases"))
@@ -864,7 +864,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock GetLatestCLISupportedDependencyVersion
 				depResponseJSON := `{"subnet-evm": "v0.7.5"}`
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 			},
 			expectedError: "",
 			validateResult: func(t *testing.T, result string) {
@@ -880,7 +880,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			},
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock GetLatestCLISupportedDependencyVersion to fail
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte{}, errors.New("dependency fetch failed"))
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte{}, errors.New("dependency fetch failed"))
 			},
 			expectedError: "dependency fetch failed",
 			validateResult: func(_ *testing.T, _ string) {
@@ -929,7 +929,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock the calls made by promptUserForSubnetEVMVersion
 				depResponseJSON := testSubnetEVMVersion074
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte(depResponseJSON), nil)
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.4", nil)
 			},
 			expectedError: "",
@@ -945,8 +945,8 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 				// No prompt setup - error will occur before prompting
 			},
 			mockDownloader: func(m *mocks.Downloader) {
-				// Mock Download to fail for GetLatestCLISupportedDependencyVersion
-				m.On("Download", mock.AnythingOfType("string")).Return([]byte{}, errors.New("network error"))
+				// Mock DownloadWithCache to fail for GetLatestCLISupportedDependencyVersion
+				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte{}, errors.New("network error"))
 			},
 			expectedError: "network error",
 			validateResult: func(_ *testing.T, _ string) {

@@ -292,6 +292,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		nodeSettings,
 		avaGoVersionSetting,
 		network,
+		false, // setPublicIP - not needed for node local command
 	)
 }
 
