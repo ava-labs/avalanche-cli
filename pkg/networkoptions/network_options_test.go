@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkToNetworkFlags(t *testing.T) {
@@ -146,7 +146,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := NetworkToNetworkFlags(tt.network)
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
