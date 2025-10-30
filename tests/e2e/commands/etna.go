@@ -83,7 +83,7 @@ func CreateEtnaSubnetEvmConfig(
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
-	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
+	return mapping[utils.LatestEVM2AvagoKey], "v1.14.0-fuji"
 }
 
 func CreateLocalEtnaNode(

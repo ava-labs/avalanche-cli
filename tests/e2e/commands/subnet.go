@@ -181,6 +181,7 @@ func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath st
 		"--icm=false",
 		"--evm-token",
 		"TOK",
+		"--local",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
