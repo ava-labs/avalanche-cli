@@ -77,9 +77,9 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		mockDownloader := &mocks.Downloader{}
-		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
+		mockDownloader.On("DownloadWithCache", mock.MatchedBy(func(url string) bool {
 			return url == constants.CLILatestDependencyURL
-		})).Return(tt.cliDependencyData, nil)
+		}), mock.Anything, mock.Anything).Return(tt.cliDependencyData, nil)
 
 		app := application.New()
 		app.Downloader = mockDownloader

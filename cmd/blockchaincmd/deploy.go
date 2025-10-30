@@ -451,6 +451,7 @@ func prepareBootstrapValidators(
 			availableBalance,
 			localMachineFlags,
 			bootstrapValidatorFlags,
+			deployFlags.SigAggFlags,
 		); err != nil {
 			return err
 		} else if cancel {

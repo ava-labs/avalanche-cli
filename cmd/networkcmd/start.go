@@ -235,6 +235,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			nil,
 			dependencies.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
+			false, // setPublicIP - not needed for network start command
 		); err != nil {
 			return err
 		}

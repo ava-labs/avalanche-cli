@@ -226,9 +226,9 @@ func TestGetLatestCLISupportedDependencyVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		mockDownloader := &mocks.Downloader{}
-		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
+		mockDownloader.On("DownloadWithCache", mock.MatchedBy(func(url string) bool {
 			return url == constants.CLILatestDependencyURL
-		})).Return(tt.cliDependencyData, nil)
+		}), mock.Anything, mock.Anything).Return(tt.cliDependencyData, nil)
 
 		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
 			return url == constants.AvalancheGoCompatibilityURL
@@ -303,9 +303,9 @@ func TestGetLatestCLISupportedDependencyVersionWithLowerRPC(t *testing.T) {
 
 	for _, tt := range tests {
 		mockDownloader := &mocks.Downloader{}
-		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
+		mockDownloader.On("DownloadWithCache", mock.MatchedBy(func(url string) bool {
 			return url == constants.CLILatestDependencyURL
-		})).Return(tt.cliDependencyData, nil)
+		}), mock.Anything, mock.Anything).Return(tt.cliDependencyData, nil)
 
 		mockDownloader.On("Download", mock.MatchedBy(func(url string) bool {
 			return url == constants.AvalancheGoCompatibilityURL

@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -150,6 +151,7 @@ func StartLocalMachine(
 	availableBalance uint64,
 	localMachineFlags *flags.LocalMachineFlags,
 	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
+	sigAggFlags flags.SignatureAggregatorFlags,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local &&
@@ -282,6 +284,8 @@ func StartLocalMachine(
 			return false, fmt.Errorf("too many bootstrap validators")
 		}
 		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+		// Set public IP if signature aggregator is not localhost
+		setPublicIP := !sdkutils.IsEndpointLocalhost(sigAggFlags.SignatureAggregatorEndpoint)
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
@@ -293,6 +297,7 @@ func StartLocalMachine(
 			nodeSettings,
 			avagoVersionSettings,
 			network,
+			setPublicIP,
 		); err != nil {
 			return false, err
 		}

@@ -289,6 +289,7 @@ func migrateCluster(
 		networkModel,
 		false,
 		false,
+		false, // Set Public IP
 	)
 	if err != nil {
 		return err

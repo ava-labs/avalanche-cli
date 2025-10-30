@@ -4,7 +4,7 @@ go 1.24.9
 
 require (
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251028232112-fd688a8a8296
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251030005802-b7dea87f7633
 	github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1
 	github.com/ava-labs/coreth v0.15.4-rc.4
 	github.com/ava-labs/icm-services v1.4.1-0.20251021221544-ae1d7d5a81f3
@@ -36,7 +36,6 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.42.0
 	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9
@@ -228,6 +227,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.8.0 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
+	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
