@@ -131,6 +131,7 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
+		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
