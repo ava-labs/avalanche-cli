@@ -32,9 +32,9 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabl
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	fmt.Printf("mapping[utils.LatestEVM2AvagoKey] CreateSubnetEvmConfigNonSOV %s \n", mapping[utils.LatestEVM2AvagoKey])
-	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, "v0.8.0-fuji", icmEnabled)
-	return mapping[utils.LatestEVM2AvagoKey], "v1.14.0-fuji"
+	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
+	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion, icmEnabled)
+	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
 }
 
 func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
@@ -42,9 +42,9 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	fmt.Printf("mapping[utils.LatestEVM2AvagoKey] CreateSubnetEvmConfigSOV %s \n", mapping[utils.LatestEVM2AvagoKey])
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, "v0.8.0-fuji")
-	return mapping[utils.LatestEVM2AvagoKey], "v1.14.0-fuji"
+	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion)
+	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
 }
 
 /* #nosec G204 */
