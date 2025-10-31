@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -32,7 +31,6 @@ import (
 	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/libevm/common"
 
@@ -402,9 +400,9 @@ func removeValidatorSOV(
 		}
 	}
 	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
-	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, avagoconstants.PlatformChainID.String())
+	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
-		return fmt.Errorf("failure getting p-chain height: %w", err)
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
@@ -429,7 +427,7 @@ func removeValidatorSOV(
 		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil && errors.Is(err, validatormanagersdk.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
@@ -462,7 +460,7 @@ func removeValidatorSOV(
 			sc.UseACP99,
 			initiateTxHash,
 			signatureAggregatorEndpoint,
-			pChainHeight,
+			pChainEpoch.PChainHeight,
 		)
 		if err != nil {
 			return err
@@ -493,10 +491,29 @@ func removeValidatorSOV(
 			return err
 		}
 	}
+
+	epochDuration := network.ProposerVMEpochDuration()
+
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
-	l1PChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
-		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+	}
+	epochTime := time.Unix(l1Epoch.StartTime, 0)
+	elapsed := time.Since(epochTime)
+	if elapsed < epochDuration {
+		time.Sleep(epochDuration - elapsed)
+	}
+	client, err := evm.GetClient(validatorManagerRPCEndpoint)
+	if err != nil {
+		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
+	}
+	if err := client.SetupProposerVM(signer); err != nil {
+		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
+	}
+	l1Epoch, err = utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
 
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
@@ -516,7 +533,7 @@ func removeValidatorSOV(
 		validatorManagerAddress,
 		sc.UseACP99,
 		signatureAggregatorEndpoint,
-		l1PChainHeight,
+		l1Epoch.PChainHeight,
 	)
 	if err != nil {
 		return err

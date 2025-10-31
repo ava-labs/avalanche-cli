@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -34,7 +32,6 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -670,9 +667,9 @@ func addAsValidator(
 		return err
 	}
 	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
-	pChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, avagoconstants.PlatformChainID.String())
+	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
-		return fmt.Errorf("failure getting p-chain height: %w", err)
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
 
 	// Get L1 blockchain ID from chainSpec
@@ -705,7 +702,7 @@ func addAsValidator(
 		useACP99,
 		"",
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil {
 		return err
@@ -729,9 +726,9 @@ func addAsValidator(
 	}
 
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
-	l1PChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, chainSpec.BlockchainID)
+	l1Epoch, err := utils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
 	if err != nil {
-		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
 
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
@@ -750,7 +747,7 @@ func addAsValidator(
 		l1BlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
-		l1PChainHeight,
+		l1Epoch.PChainHeight,
 	); err != nil {
 		return err
 	}

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -29,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -422,9 +419,9 @@ func changeWeightACP99(
 		}
 	}
 	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
-	pChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, avagoconstants.PlatformChainID.String())
+	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
-		return fmt.Errorf("failure getting p-chain height: %w", err)
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
@@ -443,7 +440,7 @@ func changeWeightACP99(
 		weight,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil {
 		return err
@@ -485,9 +482,9 @@ func changeWeightACP99(
 		}
 	}
 	// Get L1's current epoch for L1ValidatorWeightMessage (signed by P-Chain, verified by L1)
-	l1PChainHeight, err := blockchainSDK.GetPChainHeight(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
-		return fmt.Errorf("failure getting L1 p-chain height: %w", err)
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
 
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
@@ -507,7 +504,7 @@ func changeWeightACP99(
 		signedMessage,
 		newWeight,
 		signatureAggregatorEndpoint,
-		l1PChainHeight,
+		l1Epoch.PChainHeight,
 	)
 	if err != nil {
 		return err
