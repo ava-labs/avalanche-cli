@@ -275,10 +275,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	if partialSync {
 		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
-
-	if network.Kind == models.Granite {
-		connectionSettings = node.GetGraniteConnectionSettings()
-	}
 	return node.StartLocalNode(
 		app,
 		clusterName,
