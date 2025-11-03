@@ -10,15 +10,11 @@
     },
     "Fuji": {
       "latest-version": "v0.8.0-fuji",
-      "minimum-version": "v0.7.1"
+      "minimum-version": "v0.8.0-fuji"
     },
     "Mainnet": {
       "latest-version": "v0.7.8",
       "minimum-version": "v0.7.1"
-    },
-    "Granite": {
-      "latest-version": "v0.8.0-fuji",
-      "minimum-version": "v0.8.0-fuji"
     }
   },
   "rpc": 44,
@@ -33,14 +29,10 @@
     },
     "Fuji": {
       "latest-version": "v1.14.0-fuji",
-      "minimum-version": "v1.13.0-fuji"
+      "minimum-version": "v1.14.0-fuji"
     },
     "Mainnet": {
       "latest-version": "v1.13.5",
-      "minimum-version": "v1.13.0"
-    },
-    "Granite": {
-      "latest-version": "v1.14.0-fuji",
       "minimum-version": "v1.13.0"
     }
   },
@@ -55,15 +47,11 @@
     },
     "Fuji": {
       "latest-version": "signature-aggregator-v0.5.1-fuji",
-      "minimum-version": ""
+      "minimum-version": "signature-aggregator-v0.5.1-fuji"
     },
     "Mainnet": {
       "latest-version": "signature-aggregator-v0.4.5",
       "minimum-version": ""
-    },
-    "Granite": {
-      "latest-version": "signature-aggregator-v0.5.1-fuji",
-      "minimum-version": "signature-aggregator-v0.5.1-fuji"
     }
   },
   "relayer":{
@@ -77,14 +65,10 @@
     },
     "Fuji": {
       "latest-version": "icm-relayer-v1.7.2-fuji",
-      "minimum-version": ""
+      "minimum-version": "icm-relayer-v1.7.2-fuji"
     },
     "Mainnet": {
       "latest-version": "icm-relayer-v1.6.7",
-      "minimum-version": ""
-    },
-    "Granite": {
-      "latest-version": "icm-relayer-v1.7.2-fuji",
       "minimum-version": ""
     }
   }
