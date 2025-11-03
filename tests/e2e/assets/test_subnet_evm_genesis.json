@@ -22,13 +22,13 @@
       "blockGasCostStep": 200000
     },
     "warpConfig": {
-        "blockTimestamp": 1607144400,
+        "blockTimestamp": 1732218331,
         "quorumNumerator": 67,
         "requirePrimaryNetworkSigners": true
     }
   },
   "nonce": "0x0",
-  "timestamp": 1607144400,
+  "timestamp": 1732218331,
   "extraData": "0x",
   "gasLimit": "0x7a1200",
   "difficulty": "0x0",
