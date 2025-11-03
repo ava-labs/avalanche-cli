@@ -65,5 +65,27 @@
       "latest-version": "signature-aggregator-v0.5.1-fuji",
       "minimum-version": "signature-aggregator-v0.5.1-fuji"
     }
+  },
+  "relayer":{
+    "Local Network": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    },
+    "DevNet": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    },
+    "Fuji": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    },
+    "Mainnet": {
+      "latest-version": "icm-relayer-v1.6.7",
+      "minimum-version": ""
+    },
+    "Granite": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    }
   }
 }
