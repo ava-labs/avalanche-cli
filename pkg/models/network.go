@@ -203,14 +203,7 @@ func (n Network) NetworkIDFlagValue() string {
 }
 
 func (n Network) ProposerVMEpochDuration() time.Duration {
-	switch n.Kind {
-	case Fuji:
-		return 5 * time.Minute
-	case Mainnet:
-		return 5 * time.Minute
-	default:
-		return 30 * time.Second
-	}
+	return 30 * time.Second
 }
 
 func (n Network) GenesisParams() *genesis.Params {

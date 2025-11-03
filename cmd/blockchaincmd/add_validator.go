@@ -711,16 +711,6 @@ func CallAddValidator(
 		}
 	}
 
-	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
-	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
-	if err != nil {
-		return fmt.Errorf("failure getting l1 current epoch: %w", err)
-	}
-	epochTime = time.Unix(l1Epoch.StartTime, 0)
-	elapsed = time.Since(epochTime)
-	if elapsed < epochDuration {
-		time.Sleep(epochDuration - elapsed)
-	}
 	client, err := evm.GetClient(validatorManagerRPCEndpoint)
 	if err != nil {
 		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
@@ -728,7 +718,7 @@ func CallAddValidator(
 	if err := client.SetupProposerVM(signer); err != nil {
 		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
 	}
-	l1Epoch, err = utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
