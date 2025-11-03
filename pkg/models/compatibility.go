@@ -19,4 +19,5 @@ type CLIDependencyMap struct {
 	SubnetEVM           map[string]NetworkVersion `json:"subnet-evm"`
 	AvalancheGo         map[string]NetworkVersion `json:"avalanchego"`
 	SignatureAggregator map[string]NetworkVersion `json:"signature-aggregator"`
+	Relayer             map[string]NetworkVersion `json:"relayer"`
 }

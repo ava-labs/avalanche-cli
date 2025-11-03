@@ -113,6 +113,7 @@ func CallStart(_ []string, flags StartFlags, network models.Network) error {
 		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
 		} else if binPath, err := relayer.DeployRelayer(
+			app,
 			flags.Version,
 			flags.BinPath,
 			app.GetICMRelayerBinDir(),
@@ -120,6 +121,7 @@ func CallStart(_ []string, flags StartFlags, network models.Network) error {
 			app.GetLocalRelayerLogPath(network.Kind),
 			app.GetLocalRelayerRunPath(network.Kind),
 			app.GetLocalRelayerStorageDir(network.Kind),
+			network,
 		); err != nil {
 			return err
 		} else if network.Kind == models.Local {
