@@ -190,6 +190,9 @@ func StartLocalMachine(
 		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
 	}
 	connectionSettings := localnet.ConnectionSettings{}
+	if network.Kind == models.Granite {
+		connectionSettings = node.GetGraniteConnectionSettings()
+	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
 		if localnet.LocalClusterExists(app, clusterName) {

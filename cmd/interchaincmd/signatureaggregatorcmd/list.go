@@ -18,6 +18,7 @@ var listNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
+	networkoptions.Granite,
 }
 
 type ListFlags struct {
