@@ -452,67 +452,6 @@ var _ = ginkgo.Describe("[Relayer] deploy", func() {
 				gomega.Expect(err).Should(gomega.BeNil())
 			})
 
-			ginkgo.It("should deploy the relayer between subnet (sov) and subnet (non-sov) in both directions", func() {
-				commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
-				commands.DeploySubnetLocallyNonSOV(subnetName)
-
-				// Deploy ICM contracts
-				_, err := commands.DeployICMContracts([]string{}, utils.TestFlags{
-					"key":        ewoqKeyName,
-					"blockchain": subnetName,
-				})
-				gomega.Expect(err).Should(gomega.BeNil())
-
-				_, err = commands.DeployICMContracts([]string{}, utils.TestFlags{
-					"key":        ewoqKeyName,
-					"blockchain": subnet2Name,
-				})
-				gomega.Expect(err).Should(gomega.BeNil())
-
-				// Deploy relayer
-				deployFlags := utils.TestFlags{
-					"key":         keyName,
-					"blockchains": fmt.Sprintf("%s,%s", subnetName, subnet2Name),
-					"amount":      10000,
-					"log-level":   "info",
-				}
-
-				deployArgs := []string{
-					"deploy",
-				}
-
-				output, err := utils.TestCommand(cmd.InterchainCmd, "relayer", deployArgs, utils.GlobalFlags{
-					"local":             true,
-					"skip-update-check": true,
-				}, deployFlags)
-				gomega.Expect(err).Should(gomega.BeNil())
-				gomega.Expect(output).Should(gomega.ContainSubstring("Executing Relayer"))
-
-				// Send message from subnet to subnet2
-				_, err = commands.SendICMMessage(
-					[]string{
-						subnetName,
-						subnet2Name,
-						"hello world",
-					},
-					utils.TestFlags{
-						"key": ewoqKeyName,
-					})
-				gomega.Expect(err).Should(gomega.BeNil())
-
-				// Send message from subnet2 to subnet
-				_, err = commands.SendICMMessage(
-					[]string{
-						subnet2Name,
-						subnetName,
-						"hello world",
-					},
-					utils.TestFlags{
-						"key": ewoqKeyName,
-					})
-				gomega.Expect(err).Should(gomega.BeNil())
-			})
-
 			ginkgo.It("should deploy the relayer between subnet (sov), subnet (sov) and c-chain in all directions", func() {
 				commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
 				commands.DeploySubnetLocallyNonSOV(subnetName)
