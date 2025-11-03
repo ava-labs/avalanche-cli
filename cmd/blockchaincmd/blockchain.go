@@ -44,12 +44,8 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(newExportCmd())
 	// blockchain import
 	cmd.AddCommand(newImportCmd())
-	// blockchain publish
-	cmd.AddCommand(newPublishCmd())
 	// blockchain upgrade
 	cmd.AddCommand(upgradecmd.NewCmd(app))
-	// blockchain stats
-	cmd.AddCommand(newStatsCmd())
 	// blockchain configure
 	cmd.AddCommand(newConfigureCmd())
 	// blockchain VMID

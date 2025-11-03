@@ -12,6 +12,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ava-labs/subnet-evm/params/extras"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -513,7 +515,10 @@ func sendMetrics(repoName, blockchainName string) error {
 	if err != nil {
 		return err
 	}
-	conf := params.GetExtra(genesis.Config).GenesisPrecompiles
+	var conf extras.Precompiles
+	params.WithTempRegisteredExtras(func() {
+		conf = params.GetExtra(genesis.Config).GenesisPrecompiles
+	})
 	precompiles := make([]string, 0, 6)
 	for precompileName := range conf {
 		precompileTag := "precompile-" + precompileName

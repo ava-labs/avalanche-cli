@@ -30,6 +30,7 @@ import (
 )
 
 var (
+	overwriteImport bool
 	blockchainIDStr string
 	subnetIDstr     string
 	useSubnetEvm    bool

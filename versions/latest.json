@@ -1,6 +1,6 @@
 {
-  "subnet-evm": "v0.7.8",
-  "rpc": 43,
+  "subnet-evm": "v0.8.0-fuji",
+  "rpc": 44,
   "avalanchego": {
     "Local Network": {
       "latest-version": "v1.13.5",
@@ -19,9 +19,9 @@
       "minimum-version": "v1.13.0"
     },
     "Granite": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v1.14.0-fuji",
       "minimum-version": "v1.13.0"
     }
   },
-  "signature-aggregator": "signature-aggregator-v0.4.5"
+  "signature-aggregator": "signature-aggregator-v0.5.0-fuji"
 }

@@ -98,7 +98,7 @@ func TmpNetCreate(
 			},
 		},
 	}
-	if err := network.EnsureDefaultConfig(log); err != nil {
+	if err := network.EnsureDefaultConfig(ctx, log); err != nil {
 		return nil, err
 	}
 	for _, node := range network.Nodes {
@@ -1134,15 +1134,7 @@ func GetTmpNetNodeURIsWithFix(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := sdkutils.GetTimedContext(10 * time.Second)
-	defer cancel()
-	uris, err := network.GetNodeURIs(
-		ctx,
-		func(_ func()) {},
-	)
-	if err != nil {
-		return nil, err
-	}
+	uris := network.GetNodeURIs()
 	return sdkutils.Map(uris, func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 

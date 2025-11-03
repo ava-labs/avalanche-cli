@@ -1175,14 +1175,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					deployRelayerFlags.CChainFundingKey = "ewoq"
 					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
 				}
-				if network.Kind == models.Granite {
-					deployRelayerFlags.BlockchainsToRelay = []string{blockchainName}
-				}
-				if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-					relayerErr = err
-					ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
-				} else {
-					ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+				if network.Kind != models.Granite {
+					if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
+						relayerErr = err
+						ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
+					} else {
+						ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+					}
 				}
 			}
 		}
