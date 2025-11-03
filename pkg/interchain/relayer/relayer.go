@@ -243,8 +243,6 @@ func InstallRelayer(app *application.Avalanche, binDir, version string, network 
 		}
 	}
 	if version == constants.LatestReleaseVersionTag {
-		// nothing given: get avago version from RPC compat using latest.json defined in
-		// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
 		version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.RelayerRepoName, network, nil)
 		if err != nil {
 			return "", err
