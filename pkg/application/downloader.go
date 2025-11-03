@@ -80,15 +80,17 @@ func (d downloader) DownloadWithCache(url string, path string, duration time.Dur
 	if err != nil {
 		// if we can't download url due to too many requests err, check our cache
 		// Check if cache file exists and is recent
-		if fileInfo, err := os.Stat(path); err == nil {
-			if time.Since(fileInfo.ModTime()) < duration {
-				// Cache is valid, read from it
-				data, err = os.ReadFile(path)
-				return data, nil
-			}
+		fileInfo, err := os.Stat(path)
+		if err != nil {
+			return nil, fmt.Errorf("unable to download or read from cache for %s", url)
+		}
+		if time.Since(fileInfo.ModTime()) < duration {
+			// Cache is valid, read from it
+			data, err = os.ReadFile(path)
 			if err != nil {
-				return nil, fmt.Errorf("unable to download or read from cache for %s", url)
+				return nil, fmt.Errorf("unable to read from cache for path %s", path)
 			}
+			return data, nil
 		}
 	}
 	// Save to cache
