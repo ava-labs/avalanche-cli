@@ -203,29 +203,45 @@ func getGenesisNativeMinterAdmin(
 	if err != nil {
 		return false, false, "", "", "", err
 	}
-	if genesis.Config != nil && params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		allowListCfg, ok := params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+	if genesis.Config == nil {
+		return false, false, "", "", "", nil
+	}
+
+	var hasNativeMinter bool
+	var foundKey bool
+	var keyName, addressStr, privKey string
+	params.WithTempRegisteredExtras(func() {
+		extra := params.GetExtra(genesis.Config)
+		if extra.GenesisPrecompiles[nativeminter.ConfigKey] == nil {
+			return
+		}
+		hasNativeMinter = true
+		allowListCfg, ok := extra.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		if !ok {
-			return false, false, "", "", "", fmt.Errorf(
+			err = fmt.Errorf(
 				"expected config of type nativeminter.AllowListConfig, but got %T",
 				allowListCfg,
 			)
+			return
 		}
 		if len(allowListCfg.AllowListConfig.AdminAddresses) == 0 {
-			return false, false, "", "", "", nil
+			return
 		}
 		for _, admin := range allowListCfg.AllowListConfig.AdminAddresses {
-			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
+			foundKey, keyName, addressStr, privKey, err = SearchForManagedKey(app, network, admin, true)
 			if err != nil {
-				return false, false, "", "", "", err
+				return
 			}
-			if found {
-				return true, true, keyName, addressStr, privKey, nil
+			if foundKey {
+				return
 			}
 		}
-		return true, false, "", allowListCfg.AllowListConfig.AdminAddresses[0].Hex(), "", nil
+		addressStr = allowListCfg.AllowListConfig.AdminAddresses[0].Hex()
+	})
+	if err != nil {
+		return false, false, "", "", "", err
 	}
-	return false, false, "", "", "", nil
+	return hasNativeMinter, foundKey, keyName, addressStr, privKey, nil
 }
 
 func getGenesisNativeMinterManager(
@@ -237,29 +253,45 @@ func getGenesisNativeMinterManager(
 	if err != nil {
 		return false, false, "", "", "", err
 	}
-	if genesis.Config != nil && params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		allowListCfg, ok := params.GetExtra(genesis.Config).GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+	if genesis.Config == nil {
+		return false, false, "", "", "", nil
+	}
+
+	var hasNativeMinter bool
+	var foundKey bool
+	var keyName, addressStr, privKey string
+	params.WithTempRegisteredExtras(func() {
+		extra := params.GetExtra(genesis.Config)
+		if extra.GenesisPrecompiles[nativeminter.ConfigKey] == nil {
+			return
+		}
+		hasNativeMinter = true
+		allowListCfg, ok := extra.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		if !ok {
-			return false, false, "", "", "", fmt.Errorf(
+			err = fmt.Errorf(
 				"expected config of type nativeminter.AllowListConfig, but got %T",
 				allowListCfg,
 			)
+			return
 		}
 		if len(allowListCfg.AllowListConfig.ManagerAddresses) == 0 {
-			return false, false, "", "", "", nil
+			return
 		}
 		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
-			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
+			foundKey, keyName, addressStr, privKey, err = SearchForManagedKey(app, network, admin, true)
 			if err != nil {
-				return false, false, "", "", "", err
+				return
 			}
-			if found {
-				return true, true, keyName, addressStr, privKey, nil
+			if foundKey {
+				return
 			}
 		}
-		return true, false, "", allowListCfg.AllowListConfig.ManagerAddresses[0].Hex(), "", nil
+		addressStr = allowListCfg.AllowListConfig.ManagerAddresses[0].Hex()
+	})
+	if err != nil {
+		return false, false, "", "", "", err
 	}
-	return false, false, "", "", "", nil
+	return hasNativeMinter, foundKey, keyName, addressStr, privKey, nil
 }
 
 func GetEVMSubnetGenesisNativeMinterAdmin(

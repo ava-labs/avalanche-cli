@@ -284,7 +284,6 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local &&
 		network.Kind != models.Devnet &&
-		network.Kind != models.Granite &&
 		!simulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
@@ -451,6 +450,7 @@ func prepareBootstrapValidators(
 			availableBalance,
 			localMachineFlags,
 			bootstrapValidatorFlags,
+			deployFlags.SigAggFlags,
 		); err != nil {
 			return err
 		} else if cancel {
@@ -507,7 +507,20 @@ func prepareBootstrapValidators(
 func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
-	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		true,
+		false,
+		networkoptions.DefaultSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt, network); err != nil {
 		return err
 	}
 
@@ -556,18 +569,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		true,
-		false,
-		networkoptions.DefaultSupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
-	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
@@ -1175,13 +1176,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					deployRelayerFlags.CChainFundingKey = "ewoq"
 					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
 				}
-				if network.Kind != models.Granite {
-					if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-						relayerErr = err
-						ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
-					} else {
-						ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
-					}
+				if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
+					relayerErr = err
+					ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
+				} else {
+					ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
 				}
 			}
 		}

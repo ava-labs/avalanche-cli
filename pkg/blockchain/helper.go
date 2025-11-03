@@ -51,6 +51,21 @@ func UpdatePChainHeight(
 	return nil
 }
 
+func WaitForNewEpoch(
+	title string,
+) error {
+	_, err := ux.TimedProgressBar(
+		30*time.Second,
+		title,
+		0,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+	return nil
+}
+
 func GetBlockchainTimestamp(network models.Network) (time.Time, error) {
 	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()

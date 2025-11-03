@@ -213,6 +213,7 @@ func GetRegisterL1ValidatorMessage(
 	initiateTxHash string,
 	registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, ids.ID, error) {
 	var (
 		validationID ids.ID
@@ -298,6 +299,7 @@ func GetRegisterL1ValidatorMessage(
 		"",
 		managerSubnetID.String(),
 		aggregatorQuorumPercentage,
+		pChainHeight,
 	)
 	if err != nil {
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
@@ -334,6 +336,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	validationID ids.ID,
 	registered bool,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, error) {
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
@@ -370,6 +373,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 		justification,
 		managerSubnetID.String(),
 		aggregatorQuorumPercentage,
+		pChainHeight,
 	)
 }
 
@@ -420,6 +424,7 @@ func InitValidatorRegistration(
 	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
+	pchainHeight uint64,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -534,7 +539,6 @@ func InitValidatorRegistration(
 			return nil, ids.Empty, nil, err
 		}
 	}
-
 	signedMessage, validationID, err := GetRegisterL1ValidatorMessage(
 		ctx,
 		rpcURL,
@@ -555,6 +559,7 @@ func InitValidatorRegistration(
 		initiateTxHash,
 		unsignedMessage,
 		signatureAggregatorEndpoint,
+		pchainHeight,
 	)
 
 	return signedMessage, validationID, nil, err
@@ -574,6 +579,7 @@ func FinishValidatorRegistration(
 	managerBlockchainID ids.ID,
 	managerAddressStr string,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -608,6 +614,7 @@ func FinishValidatorRegistration(
 		validationID,
 		true,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return nil, err

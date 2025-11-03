@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -33,7 +34,7 @@ import (
 
 var globalNetworkFlags networkoptions.NetworkFlags
 
-func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
+func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, network models.Network) error {
 	if !app.BlockchainConfigExists(blockchainName) {
 		if !skipPrompt {
 			yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName))
@@ -44,6 +45,7 @@ func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 				return fmt.Errorf("blockchain not available and not being created first")
 			}
 		}
+		createFlags.Network = networkoptions.NetworkToNetworkFlags(network)
 		return createBlockchainConfig(cmd, []string{blockchainName})
 	}
 	return nil
@@ -149,6 +151,7 @@ func StartLocalMachine(
 	availableBalance uint64,
 	localMachineFlags *flags.LocalMachineFlags,
 	bootstrapValidatorFlags *flags.BootstrapValidatorFlags,
+	sigAggFlags flags.SignatureAggregatorFlags,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local &&
@@ -187,9 +190,6 @@ func StartLocalMachine(
 		bootstrapValidatorFlags.NumBootstrapValidators = constants.DefaultNumberOfLocalMachineNodes
 	}
 	connectionSettings := localnet.ConnectionSettings{}
-	if network.Kind == models.Granite {
-		connectionSettings = node.GetGraniteConnectionSettings()
-	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if localMachineFlags.UseLocalMachine && clusterNameFlagValue == "" {
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -281,6 +281,8 @@ func StartLocalMachine(
 			return false, fmt.Errorf("too many bootstrap validators")
 		}
 		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+		// Set public IP if signature aggregator is not localhost
+		setPublicIP := !sdkutils.IsEndpointLocalhost(sigAggFlags.SignatureAggregatorEndpoint)
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
@@ -292,6 +294,7 @@ func StartLocalMachine(
 			nodeSettings,
 			avagoVersionSettings,
 			network,
+			setPublicIP,
 		); err != nil {
 			return false, err
 		}

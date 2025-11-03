@@ -631,6 +631,28 @@ func CallAddValidator(
 			}
 		}
 	}
+
+	epochDuration := 30 * time.Second
+
+	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
+	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
+	}
+	epochTime := time.Unix(pChainEpoch.StartTime, 0)
+	elapsed := time.Since(epochTime)
+	if elapsed < epochDuration {
+		time.Sleep(epochDuration - elapsed)
+	}
+	_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+	if err != nil {
+		return fmt.Errorf("could not sent dummy transfer on p-chain: %w", err)
+	}
+	pChainEpoch, err = utils.GetCurrentEpoch(network.Endpoint, "P")
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
+	}
+
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 
@@ -660,6 +682,7 @@ func CallAddValidator(
 		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil {
 		return err
@@ -688,6 +711,18 @@ func CallAddValidator(
 		}
 	}
 
+	client, err := evm.GetClient(validatorManagerRPCEndpoint)
+	if err != nil {
+		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
+	}
+	if err := client.SetupProposerVM(signer); err != nil {
+		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
+	}
+	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+	}
+
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
@@ -704,6 +739,7 @@ func CallAddValidator(
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
+		l1Epoch.PChainHeight,
 	)
 	if err != nil {
 		return err

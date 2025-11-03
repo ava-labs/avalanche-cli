@@ -66,6 +66,7 @@ func InitValidatorWeightChange(
 	weight uint64,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	managerSubnetID, err := contract.GetSubnetID(
 		app,
@@ -161,6 +162,7 @@ func InitValidatorWeightChange(
 		nonce,
 		weight,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	return signedMsg, validationID, nil, err
 }
@@ -201,6 +203,7 @@ func FinishValidatorWeightChange(
 	l1ValidatorRegistrationSignedMessage *warp.Message,
 	weight uint64,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(managerAddressStr)
 
@@ -232,6 +235,7 @@ func FinishValidatorWeightChange(
 		nonce,
 		weight,
 		signatureAggregatorEndpoint,
+		pChainHeight,
 	)
 	if err != nil {
 		return nil, err
@@ -276,6 +280,7 @@ func GetL1ValidatorWeightMessage(
 	nonce uint64,
 	weight uint64,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, error) {
 	if unsignedMessage == nil {
 		addressedCallPayload, err := warpMessage.NewL1ValidatorWeight(
@@ -310,6 +315,7 @@ func GetL1ValidatorWeightMessage(
 		"",
 		managerSubnetID.String(),
 		0,
+		pChainHeight,
 	)
 }
 
@@ -325,6 +331,7 @@ func GetPChainL1ValidatorWeightMessage(
 	nonce uint64,
 	weight uint64,
 	signatureAggregatorEndpoint string,
+	pChainHeight uint64,
 ) (*warp.Message, error) {
 	if l1SignedMessage != nil {
 		addressedCall, err := warpPayload.ParseAddressedCall(l1SignedMessage.UnsignedMessage.Payload)
@@ -370,6 +377,7 @@ func GetPChainL1ValidatorWeightMessage(
 		"",
 		managerSubnetID.String(),
 		aggregatorQuorumPercentage,
+		pChainHeight,
 	)
 }
 

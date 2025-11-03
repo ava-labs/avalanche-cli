@@ -16,6 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/mod/semver"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
@@ -33,6 +35,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
+)
+
+const (
+	graniteSignatureAggregatorVersion = "signature-aggregator-v0.5.0-fuji"
 )
 
 func NewSignatureAggregatorLogger(
@@ -68,7 +74,66 @@ func GetLatestSignatureAggregatorPreReleaseVersion() (string, error) {
 	)
 }
 
-func InstallSignatureAggregator(app *application.Avalanche, version *string) (string, error) {
+// CompareSignatureAggregatorVersions compares two signature aggregator versions
+// Returns:
+//
+//	-1 if version1 < version2
+//	 0 if version1 == version2
+//	 1 if version1 > version2
+func CompareSignatureAggregatorVersions(version1, version2 string) (int, error) {
+	// Extract semantic version from signature aggregator version strings
+	semver1, err := extractSemanticVersion(version1)
+	if err != nil {
+		return 0, fmt.Errorf("failed to extract semantic version from %s: %w", version1, err)
+	}
+
+	semver2, err := extractSemanticVersion(version2)
+	if err != nil {
+		return 0, fmt.Errorf("failed to extract semantic version from %s: %w", version2, err)
+	}
+
+	// Ensure versions have 'v' prefix for semver.Compare
+	if !strings.HasPrefix(semver1, "v") {
+		semver1 = "v" + semver1
+	}
+	if !strings.HasPrefix(semver2, "v") {
+		semver2 = "v" + semver2
+	}
+
+	// Validate that both versions are valid semantic versions
+	if !semver.IsValid(semver1) {
+		return 0, fmt.Errorf("invalid semantic version: %s", semver1)
+	}
+	if !semver.IsValid(semver2) {
+		return 0, fmt.Errorf("invalid semantic version: %s", semver2)
+	}
+
+	return semver.Compare(semver1, semver2), nil
+}
+
+// extractSemanticVersion extracts the semantic version part from signature aggregator version strings
+// Examples:
+//
+//	"signature-aggregator-v0.5.0-fuji" -> "v0.5.0-fuji"
+//	"signature-aggregator-v0.4.5" -> "v0.4.5"
+//	"v0.4.5" -> "v0.4.5" (already clean)
+func extractSemanticVersion(version string) (string, error) {
+	// Remove common prefixes
+	version = strings.TrimPrefix(version, "signature-aggregator-")
+
+	// If it doesn't start with 'v', add it
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
+	}
+
+	if version == "v" {
+		return "", fmt.Errorf("empty version after processing")
+	}
+
+	return version, nil
+}
+
+func getSignatureAggregatorVersion(app *application.Avalanche, version *string, network models.Network) (string, error) {
 	if *version == "" || *version == constants.LatestPreReleaseVersionTag {
 		var err error
 		*version, err = GetLatestSignatureAggregatorPreReleaseVersion()
@@ -78,19 +143,27 @@ func InstallSignatureAggregator(app *application.Avalanche, version *string) (st
 	}
 	if *version == constants.LatestReleaseVersionTag {
 		var err error
-		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, models.UndefinedNetwork, nil)
+		*version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SignatureAggregatorRepoName, network, nil)
 		if err != nil {
 			return "", err
 		}
 	}
-	ux.Logger.PrintToUser("Signature Aggregator version %s", *version)
-	versionBinDir := filepath.Join(app.GetSignatureAggregatorBinDir(), *version)
+	return *version, nil
+}
+
+func InstallSignatureAggregator(app *application.Avalanche, version *string, network models.Network) (string, error) {
+	sigAggVersion, err := getSignatureAggregatorVersion(app, version, network)
+	if err != nil {
+		return "", err
+	}
+	ux.Logger.PrintToUser("Signature Aggregator version %s", sigAggVersion)
+	versionBinDir := filepath.Join(app.GetSignatureAggregatorBinDir(), sigAggVersion)
 	binPath := filepath.Join(versionBinDir, constants.SignatureAggregator)
 	if utils.IsExecutable(binPath) {
 		return binPath, nil
 	}
 	ux.Logger.PrintToUser("Installing Signature Aggregator")
-	url, err := getSignatureAggregatorURL(*version)
+	url, err := getSignatureAggregatorURL(sigAggVersion)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +220,7 @@ func getSignatureAggregatorURL(version string) (string, error) {
 
 // StartSignatureAggregator starts the signature aggregator process.
 func StartSignatureAggregator(app *application.Avalanche, network models.Network, configPath string, logFile string, logger logging.Logger, version string, signatureAggregatorEndpoint string) (int, error) {
-	binPath, err := InstallSignatureAggregator(app, &version)
+	binPath, err := InstallSignatureAggregator(app, &version, network)
 	if err != nil {
 		return 0, err
 	}
@@ -279,12 +352,13 @@ func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPor
 		ManuallyTrackedPeers: make([]*basecfg.PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
+		MaxPChainLookback:    signatureAggregatorConfig.DefaultMaxPChainLookback,
 	}
 	return config
 }
 
 // WriteSignatureAggregatorConfig writes the signature aggregator configuration to a file.
-func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, configPath string) error {
+func WriteSignatureAggregatorConfig(app *application.Avalanche, config *signatureAggregatorConfig.Config, configPath, version string, network models.Network) error {
 	// Read existing config if it exists
 	existingConfig, err := readExistingConfig(configPath)
 	if err != nil {
@@ -325,12 +399,45 @@ func WriteSignatureAggregatorConfig(config *signatureAggregatorConfig.Config, co
 		config.LogLevel = existingConfig.LogLevel
 		config.SignatureCacheSize = existingConfig.SignatureCacheSize
 		config.AllowPrivateIPs = existingConfig.AllowPrivateIPs
+		if existingConfig.MaxPChainLookback > 0 {
+			config.MaxPChainLookback = existingConfig.MaxPChainLookback
+		}
 	}
 
 	// Marshal and write the config
 	configBytes, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	sigAggVersion, err := getSignatureAggregatorVersion(app, &version, network)
+	if err != nil {
+		return fmt.Errorf("failed to get signature aggregator version: %w", err)
+	}
+	// TODO: remove comparison code below once the min version supported for signature aggregator is granite version
+	comparison, err := CompareSignatureAggregatorVersions(sigAggVersion, graniteSignatureAggregatorVersion)
+	if err != nil {
+		return err
+	}
+
+	if comparison < 0 {
+		// version1 is newer than version2
+		fmt.Printf("%s is older than %s", sigAggVersion, graniteSignatureAggregatorVersion)
+
+		// Parse into a map to filter out invalid fields
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(configBytes, &configMap); err != nil {
+			return fmt.Errorf("failed to parse config for filtering: %w", err)
+		}
+
+		// Remove invalid fields that are not part of the current config schema
+		delete(configMap, "max-p-chain-lookback")
+
+		// Marshal back to JSON with proper indentation
+		configBytes, err = json.MarshalIndent(configMap, "", "    ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal filtered config: %w", err)
+		}
 	}
 
 	// Create parent directory if it doesn't exist
@@ -408,7 +515,7 @@ func CreateSignatureAggregatorInstance(app *application.Avalanche, network model
 	}
 	config := CreateSignatureAggregatorConfig(network.Endpoint, uint16(apiPort), uint16(metricsPort), sigAggFlags.AggregatorLogLevel)
 	configPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "config.json")
-	if err := WriteSignatureAggregatorConfig(config, configPath); err != nil {
+	if err := WriteSignatureAggregatorConfig(app, config, configPath, sigAggFlags.SignatureAggregatorVersion, network); err != nil {
 		return fmt.Errorf("failed to write signature aggregator config: %w", err)
 	}
 	logPath := filepath.Join(app.GetSignatureAggregatorRunDir(network.Kind), "signature-aggregator.log")
