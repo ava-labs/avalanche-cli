@@ -399,42 +399,46 @@ func printPrecompiles(genesis core.Genesis) {
 
 	warpSet := false
 	allowListSet := false
-	// Warp
-	extra := params.GetExtra(genesis.Config)
-	if extra.GenesisPrecompiles[warp.ConfigKey] != nil {
-		t.AppendRow(table.Row{"Warp", "n/a", "n/a", "n/a"})
-		warpSet = true
-	}
-	// Native Minting
-	if extra.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
-		cfg := extra.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
-		addPrecompileAllowListToTable(t, "Native Minter", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		allowListSet = true
-	}
-	// Contract allow list
-	if extra.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
-		cfg := extra.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
-		addPrecompileAllowListToTable(t, "Contract Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		allowListSet = true
-	}
-	// TX allow list
-	if extra.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
-		cfg := extra.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
-		addPrecompileAllowListToTable(t, "Tx Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		allowListSet = true
-	}
-	// Fee config allow list
-	if extra.GenesisPrecompiles[feemanager.ConfigKey] != nil {
-		cfg := extra.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
-		addPrecompileAllowListToTable(t, "Fee Config Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		allowListSet = true
-	}
-	// Reward config allow list
-	if extra.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
-		cfg := extra.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
-		addPrecompileAllowListToTable(t, "Reward Manager Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		allowListSet = true
-	}
+
+	params.WithTempRegisteredExtras(func() {
+		extra := params.GetExtra(genesis.Config)
+		// Warp
+		if extra.GenesisPrecompiles[warp.ConfigKey] != nil {
+			t.AppendRow(table.Row{"Warp", "n/a", "n/a", "n/a"})
+			warpSet = true
+		}
+		// Native Minting
+		if extra.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+			cfg := extra.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+			addPrecompileAllowListToTable(t, "Native Minter", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+			allowListSet = true
+		}
+		// Contract allow list
+		if extra.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
+			cfg := extra.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
+			addPrecompileAllowListToTable(t, "Contract Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+			allowListSet = true
+		}
+		// TX allow list
+		if extra.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
+			cfg := extra.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
+			addPrecompileAllowListToTable(t, "Tx Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+			allowListSet = true
+		}
+		// Fee config allow list
+		if extra.GenesisPrecompiles[feemanager.ConfigKey] != nil {
+			cfg := extra.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
+			addPrecompileAllowListToTable(t, "Fee Config Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+			allowListSet = true
+		}
+		// Reward config allow list
+		if extra.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
+			cfg := extra.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
+			addPrecompileAllowListToTable(t, "Reward Manager Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+			allowListSet = true
+		}
+	})
+
 	if warpSet || allowListSet {
 		ux.Logger.PrintToUser("%s", t.Render())
 		if allowListSet {

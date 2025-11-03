@@ -157,6 +157,7 @@ func MigrateANRToTmpNet(
 			if utils.FileExists(relayerConfigPath) {
 				printFunc("Restarting relayer")
 				if _, err := relayer.DeployRelayer(
+					app,
 					constants.DefaultRelayerVersion,
 					relayerBinPath,
 					app.GetICMRelayerBinDir(),
@@ -164,6 +165,7 @@ func MigrateANRToTmpNet(
 					app.GetLocalRelayerLogPath(clusterToReloadNetwork.Kind),
 					app.GetLocalRelayerRunPath(clusterToReloadNetwork.Kind),
 					app.GetLocalRelayerStorageDir(clusterToReloadNetwork.Kind),
+					clusterToReloadNetwork,
 				); err != nil {
 					return err
 				}

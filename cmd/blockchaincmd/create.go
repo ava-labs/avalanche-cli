@@ -70,7 +70,6 @@ var createNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
-	networkoptions.Granite,
 }
 
 var (
@@ -305,7 +304,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("using network %s \n", network.Name())
 
 	if vmType == models.SubnetEvm {
 		if sovereign {

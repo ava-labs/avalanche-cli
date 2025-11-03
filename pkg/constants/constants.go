@@ -69,9 +69,7 @@ const (
 	LocalBootstrapTimeout   = 2 * time.Minute
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
-	GraniteBootstrapTimeout = 15 * time.Minute
-
-	EVMEventLookupTimeout = 2 * time.Minute
+	EVMEventLookupTimeout   = 2 * time.Minute
 
 	DownloadCacheExpiration = 3 * time.Hour
 
@@ -93,7 +91,7 @@ const (
 	LatestPreReleaseVersionTag        = "latest-prerelease"
 	LatestReleaseVersionTag           = "latest"
 	DefaultAvalancheGoVersion         = LatestReleaseVersionTag
-	DefaultRelayerVersion             = LatestPreReleaseVersionTag
+	DefaultRelayerVersion             = LatestReleaseVersionTag
 	DefaultSignatureAggregatorVersion = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
@@ -105,9 +103,6 @@ const (
 	LocalNetworkNumNodes               = 2
 	LocalNetworkAvalancheGoMaxLogSize  = 1
 	LocalNetworkAvalancheGoMaxLogFiles = 2
-
-	GraniteNetworkEndpoint = "https://granite.avax-dev.network"
-	GraniteNetworkID       = 76
 
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
@@ -238,6 +233,7 @@ const (
 
 	ICMKeyName           = "cli-teleporter-deployer"
 	ICMRelayerKeyName    = "cli-awm-relayer"
+	RelayerRepoName      = "relayer"
 	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services

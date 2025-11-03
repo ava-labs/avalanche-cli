@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -276,10 +274,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	}
 	if partialSync {
 		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
-	}
-
-	if network.Kind == models.Granite {
-		connectionSettings = node.GetGraniteConnectionSettings()
 	}
 	return node.StartLocalNode(
 		app,
@@ -668,9 +662,16 @@ func addAsValidator(
 	if err != nil {
 		return err
 	}
-	pChainHeight, err := blockchainSDK.GetPChainHeight(localValidateFlags.RPC, ids.Empty.String())
+	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
+	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
-		return fmt.Errorf("failure getting p-chain height: %w", err)
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
+	}
+
+	// Get L1 blockchain ID from chainSpec
+	l1BlockchainID, err := ids.FromString(chainSpec.BlockchainID)
+	if err != nil {
+		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
@@ -692,12 +693,12 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		common.HexToAddress(rewardsRecipientAddr),
-		ids.Empty,
+		l1BlockchainID,
 		validatorManagerAddress,
 		useACP99,
 		"",
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil {
 		return err
@@ -720,6 +721,12 @@ func addAsValidator(
 		}
 	}
 
+	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
+	l1Epoch, err := utils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
+	if err != nil {
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+	}
+
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
@@ -733,10 +740,10 @@ func addAsValidator(
 		signer,
 		validationID,
 		aggregatorLogger,
-		ids.Empty,
+		l1BlockchainID,
 		validatorManagerAddress,
 		signatureAggregatorEndpoint,
-		pChainHeight,
+		l1Epoch.PChainHeight,
 	); err != nil {
 		return err
 	}

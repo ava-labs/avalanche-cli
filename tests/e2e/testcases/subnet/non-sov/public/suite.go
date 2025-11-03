@@ -160,15 +160,6 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
-
-		// this is a simulation, so app is probably saving the info in the
-		// `local network` section of the sidecar instead of the `fuji` section...
-		// ...need to manipulate the `fuji` section of the sidecar to contain the subnetID info
-		// so that the `stats` command for `fuji` can find it
-		output := commands.SimulateGetSubnetStatsFuji(subnetName, subnetID)
-		gomega.Expect(output).Should(gomega.Not(gomega.BeNil()))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))
 	})
 
 	ginkgo.It("deploy subnet with new chain id", func() {

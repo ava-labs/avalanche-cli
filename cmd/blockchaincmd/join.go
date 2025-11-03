@@ -15,10 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
 
@@ -321,25 +319,6 @@ func writeAvagoChainConfigFiles(
 	}
 
 	return nil
-}
-
-func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
-	// first check if the node is already an accepted validator on the subnet
-	nodeIDs := []ids.NodeID{nodeID}
-	ctx, cancel := sdkutils.GetAPIContext()
-	defer cancel()
-	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nodeIDs)
-	if err != nil {
-		return false, err
-	}
-	for _, v := range vals {
-		// strictly this is not needed, as we are providing the nodeID as param
-		// just a double check
-		if v.NodeID == nodeID {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func printJoinCmd(subnetID string, network models.Network, vmPath string) {

@@ -518,6 +518,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if len(configSpec.sources) > 0 && len(configSpec.destinations) > 0 {
 		// relayer fails for empty configs
 		binPath, err := relayer.DeployRelayer(
+			app,
 			flags.Version,
 			flags.BinPath,
 			app.GetICMRelayerBinDir(),
@@ -525,6 +526,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			logPath,
 			runFilePath,
 			storageDir,
+			network,
 		)
 		if err != nil {
 			if bs, err := os.ReadFile(logPath); err == nil {

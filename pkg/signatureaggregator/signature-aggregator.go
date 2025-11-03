@@ -352,6 +352,7 @@ func CreateSignatureAggregatorConfig(networkEndpoint string, apiPort, metricsPor
 		ManuallyTrackedPeers: make([]*basecfg.PeerConfig, 0),
 		APIPort:              apiPort,
 		MetricsPort:          metricsPort,
+		MaxPChainLookback:    signatureAggregatorConfig.DefaultMaxPChainLookback,
 	}
 	return config
 }
@@ -398,6 +399,9 @@ func WriteSignatureAggregatorConfig(app *application.Avalanche, config *signatur
 		config.LogLevel = existingConfig.LogLevel
 		config.SignatureCacheSize = existingConfig.SignatureCacheSize
 		config.AllowPrivateIPs = existingConfig.AllowPrivateIPs
+		if existingConfig.MaxPChainLookback > 0 {
+			config.MaxPChainLookback = existingConfig.MaxPChainLookback
+		}
 	}
 
 	// Marshal and write the config

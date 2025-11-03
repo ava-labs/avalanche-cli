@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	testSubnetEVMVersion074 = `{"subnet-evm": "v0.7.4"}`
-	testSubnetEVMVersion073 = `{"subnet-evm": "v0.7.3"}`
+	testSubnetEVMVersion074 = `{"rpc": 39, "subnet-evm": {"invalid network": {"latest-version": "v0.7.4", "minimum-version": "v0.6.0"}, "Local Network": {"latest-version": "v0.7.4", "minimum-version": "v0.6.0"}}, "avalanchego": {"invalid network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}, "Local Network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}}, "signature-aggregator": {"invalid network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}, "Local Network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}}}`
+	testSubnetEVMVersion073 = `{"rpc": 39, "subnet-evm": {"invalid network": {"latest-version": "v0.7.3", "minimum-version": "v0.6.0"}, "Local Network": {"latest-version": "v0.7.3", "minimum-version": "v0.6.0"}}, "avalanchego": {"invalid network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}, "Local Network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}}, "signature-aggregator": {"invalid network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}, "Local Network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}}}`
 )
 
 func TestPromptPermissioning(t *testing.T) {
@@ -637,7 +637,7 @@ func TestPromptUserForSubnetEVMVersion(t *testing.T) {
 			},
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock the dependency calls that happen before the prompt
-				depResponseJSON := `{"subnet-evm": "v0.7.4"}`
+				depResponseJSON := testSubnetEVMVersion074
 				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 				m.On("GetLatestPreReleaseVersion", "ava-labs", "subnet-evm", "").Return("v0.7.5-rc1", nil) // Different from release to trigger 3 options
 			},
@@ -863,7 +863,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			},
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock GetLatestCLISupportedDependencyVersion
-				depResponseJSON := `{"subnet-evm": "v0.7.5"}`
+				depResponseJSON := `{"rpc": 39, "subnet-evm": {"invalid network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}, "Local Network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}}, "avalanchego": {"invalid network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}, "Local Network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}}, "signature-aggregator": {"invalid network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}, "Local Network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}}}`
 				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 			},
 			expectedError: "",

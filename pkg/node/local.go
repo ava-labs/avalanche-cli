@@ -49,22 +49,6 @@ func setupAvalancheGo(
 	return avalancheGoBinaryPath, err
 }
 
-func GetGraniteConnectionSettings() localnet.ConnectionSettings {
-	networkID := constants.GraniteNetworkID
-	bootstrapIDs := constants.GraniteDevnetBootstrapNodeIDs
-	bootstrapIPs := constants.GraniteDevnetBootstrapIPs
-	genesis := constants.GraniteDevnetGenesisData
-	upgrade := constants.GraniteDevnetUpgradeData
-
-	return localnet.ConnectionSettings{
-		NetworkID:    uint32(networkID),
-		Genesis:      genesis,
-		Upgrade:      upgrade,
-		BootstrapIDs: bootstrapIDs,
-		BootstrapIPs: bootstrapIPs,
-	}
-}
-
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
@@ -145,8 +129,8 @@ func StartLocalNode(
 			nodeSettings,
 			[]ids.ID{},
 			network,
-			true,       // Download DB
-			true,       // Bootstrap
+			true,        // Download DB
+			true,        // Bootstrap
 			setPublicIP, // Set Public IP
 		)
 		if err != nil {

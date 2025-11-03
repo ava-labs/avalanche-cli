@@ -390,7 +390,9 @@ func promptFeeManagerParams(
 		if err != nil {
 			return false, err
 		}
-		feeConfig = &params.GetExtra(&chainConfig).FeeConfig
+		params.WithTempRegisteredExtras(func() {
+			feeConfig = &params.GetExtra(&chainConfig).FeeConfig
+		})
 	}
 	config := feemanager.NewConfig(
 		subnetevmutils.NewUint64(uint64(date.Unix())),
@@ -426,102 +428,106 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 		setGasStep                  = "Set block gas cost step"
 	)
 
-	extra := params.GetExtra(&config)
+	var err error
+	params.WithTempRegisteredExtras(func() {
+		extra := params.GetExtra(&config)
 
-	extra.FeeConfig = avalancheSDK.StarterFeeConfig
+		extra.FeeConfig = avalancheSDK.StarterFeeConfig
 
-	if useDefault {
-		extra.FeeConfig.GasLimit = vm.LowGasLimit
-		extra.FeeConfig.TargetGas = extra.FeeConfig.TargetGas.Mul(extra.FeeConfig.GasLimit, vm.NoDynamicFeesGasLimitToTargetGasFactor)
-		return config, nil
-	}
-
-	feeConfigOptions := []string{lowOption, mediumOption, highOption, customFee}
-
-	feeDefault, err := app.Prompt.CaptureList(
-		"How would you like to set fees",
-		feeConfigOptions,
-	)
-	if err != nil {
-		return config, err
-	}
-
-	useDynamicFees := false
-	if feeDefault != customFee {
-		useDynamicFees, err = app.Prompt.CaptureYesNo("Do you want to enable dynamic fees?")
-		if err != nil {
-			return config, err
+		if useDefault {
+			extra.FeeConfig.GasLimit = vm.LowGasLimit
+			extra.FeeConfig.TargetGas = extra.FeeConfig.TargetGas.Mul(extra.FeeConfig.GasLimit, vm.NoDynamicFeesGasLimitToTargetGasFactor)
+			return
 		}
-	}
 
-	switch feeDefault {
-	case lowOption:
-		vm.SetStandardGas(&extra.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
-		return config, nil
-	case mediumOption:
-		vm.SetStandardGas(&extra.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
-		return config, err
-	case highOption:
-		vm.SetStandardGas(&extra.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
-		return config, err
-	default:
-		ux.Logger.PrintToUser("Customizing fee config")
-	}
+		feeConfigOptions := []string{lowOption, mediumOption, highOption, customFee}
 
-	gasLimit, err := app.Prompt.CapturePositiveBigInt(setGasLimit)
-	if err != nil {
-		return config, err
-	}
+		var feeDefault string
+		feeDefault, err = app.Prompt.CaptureList(
+			"How would you like to set fees",
+			feeConfigOptions,
+		)
+		if err != nil {
+			return
+		}
 
-	blockRate, err := app.Prompt.CapturePositiveBigInt(setBlockRate)
-	if err != nil {
-		return config, err
-	}
+		useDynamicFees := false
+		if feeDefault != customFee {
+			useDynamicFees, err = app.Prompt.CaptureYesNo("Do you want to enable dynamic fees?")
+			if err != nil {
+				return
+			}
+		}
 
-	minBaseFee, err := app.Prompt.CapturePositiveBigInt(setMinBaseFee)
-	if err != nil {
-		return config, err
-	}
+		switch feeDefault {
+		case lowOption:
+			vm.SetStandardGas(&extra.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
+			return
+		case mediumOption:
+			vm.SetStandardGas(&extra.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
+			return
+		case highOption:
+			vm.SetStandardGas(&extra.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
+			return
+		default:
+			ux.Logger.PrintToUser("Customizing fee config")
+		}
 
-	targetGas, err := app.Prompt.CapturePositiveBigInt(setTargetGas)
-	if err != nil {
-		return config, err
-	}
+		gasLimit, err := app.Prompt.CapturePositiveBigInt(setGasLimit)
+		if err != nil {
+			return
+		}
 
-	baseDenominator, err := app.Prompt.CapturePositiveBigInt(setBaseFeeChangeDenominator)
-	if err != nil {
-		return config, err
-	}
+		blockRate, err := app.Prompt.CapturePositiveBigInt(setBlockRate)
+		if err != nil {
+			return
+		}
 
-	minBlockGas, err := app.Prompt.CapturePositiveBigInt(setMinBlockGas)
-	if err != nil {
-		return config, err
-	}
+		minBaseFee, err := app.Prompt.CapturePositiveBigInt(setMinBaseFee)
+		if err != nil {
+			return
+		}
 
-	maxBlockGas, err := app.Prompt.CapturePositiveBigInt(setMaxBlockGas)
-	if err != nil {
-		return config, err
-	}
+		targetGas, err := app.Prompt.CapturePositiveBigInt(setTargetGas)
+		if err != nil {
+			return
+		}
 
-	gasStep, err := app.Prompt.CapturePositiveBigInt(setGasStep)
-	if err != nil {
-		return config, err
-	}
+		baseDenominator, err := app.Prompt.CapturePositiveBigInt(setBaseFeeChangeDenominator)
+		if err != nil {
+			return
+		}
 
-	feeConf := commontype.FeeConfig{
-		GasLimit:                 gasLimit,
-		TargetBlockRate:          blockRate.Uint64(),
-		MinBaseFee:               minBaseFee,
-		TargetGas:                targetGas,
-		BaseFeeChangeDenominator: baseDenominator,
-		MinBlockGasCost:          minBlockGas,
-		MaxBlockGasCost:          maxBlockGas,
-		BlockGasCostStep:         gasStep,
-	}
+		minBlockGas, err := app.Prompt.CapturePositiveBigInt(setMinBlockGas)
+		if err != nil {
+			return
+		}
 
-	extra.FeeConfig = feeConf
+		maxBlockGas, err := app.Prompt.CapturePositiveBigInt(setMaxBlockGas)
+		if err != nil {
+			return
+		}
 
-	return config, nil
+		gasStep, err := app.Prompt.CapturePositiveBigInt(setGasStep)
+		if err != nil {
+			return
+		}
+
+		feeConf := commontype.FeeConfig{
+			GasLimit:                 gasLimit,
+			TargetBlockRate:          blockRate.Uint64(),
+			MinBaseFee:               minBaseFee,
+			TargetGas:                targetGas,
+			BaseFeeChangeDenominator: baseDenominator,
+			MinBlockGasCost:          minBlockGas,
+			MaxBlockGasCost:          maxBlockGas,
+			BlockGasCostStep:         gasStep,
+		}
+
+		extra.FeeConfig = feeConf
+	})
+
+	return config, err
 }
 
 func promptContractAllowListParams(

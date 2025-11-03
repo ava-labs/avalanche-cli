@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -32,8 +31,9 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabl
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], icmEnabled)
-	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
+	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
+	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion, icmEnabled)
+	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
 }
 
 func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
@@ -41,8 +41,9 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
-	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
+	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion)
+	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
 }
 
 /* #nosec G204 */
@@ -67,6 +68,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		icmFlag,
 		"--evm-token",
 		"TOK",
+		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -111,6 +113,7 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		"--icm=false",
 		"--evm-token",
 		"TOK",
+		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -179,6 +182,7 @@ func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath st
 		"--icm=false",
 		"--evm-token",
 		"TOK",
+		"--local",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -234,6 +238,7 @@ func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath strin
 		"--icm=false",
 		"--evm-token",
 		"TOK",
+		"--local",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1126,43 +1131,6 @@ func DescribeSubnet(subnetName string) (string, error) {
 		utils.PrintStdErr(err)
 	}
 	return string(output), err
-}
-
-/* #nosec G204 */
-func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
-	// Check config does already exist:
-	// We want to run stats on an existing subnet
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	// add the subnet ID to the `fuji` section so that the `stats` command
-	// can find it (as this is a simulation with a `local` network,
-	// it got written in to the `local` network section)
-	err = utils.AddSubnetIDToSidecar(subnetName, models.NewFujiNetwork(), subnetID)
-	gomega.Expect(err).Should(gomega.BeNil())
-	// run stats
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"stats",
-		subnetName,
-		"--fuji",
-		"--"+constants.SkipUpdateFlag,
-	)
-	output, err := cmd.CombinedOutput()
-	var exitErr *exec.ExitError
-	if err != nil {
-		stderr := ""
-		if errors.As(err, &exitErr) {
-			stderr = string(exitErr.Stderr)
-		}
-		fmt.Println(string(output))
-		fmt.Println(err)
-		fmt.Println(stderr)
-	}
-	gomega.Expect(exitErr).Should(gomega.BeNil())
-	return string(output)
 }
 
 /* #nosec G204 */

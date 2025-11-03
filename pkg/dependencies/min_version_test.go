@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testCLIMinVersion = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0", "minimum-version":""},"DevNet":{"latest-version":"v1.13.0", "minimum-version":""},"Fuji":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0"}}}`)
+var testCLIMinVersion = []byte(`{"rpc":39,"subnet-evm":{"Local Network":{"latest-version":"v0.7.3"},"DevNet":{"latest-version":"v0.7.3"},"Fuji":{"latest-version":"v0.7.3"},"Mainnet":{"latest-version":"v0.7.3"}},"avalanchego":{"Local Network":{"latest-version":"v1.13.0", "minimum-version":""},"DevNet":{"latest-version":"v1.13.0", "minimum-version":""},"Fuji":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0"}}}`)
 
 func TestCheckMinDependencyVersion(t *testing.T) {
 	tests := []struct {

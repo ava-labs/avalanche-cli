@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkToNetworkFlags(t *testing.T) {
@@ -28,8 +28,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   false,
 				UseFuji:     false,
 				UseMainnet:  false,
-				UseGranite:  false,
-				Endpoint:    "http://127.0.0.1:9650",
+				Endpoint:    "",
 				ClusterName: "",
 			},
 		},
@@ -46,8 +45,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   false,
 				UseFuji:     true,
 				UseMainnet:  false,
-				UseGranite:  false,
-				Endpoint:    "https://api.avax-test.network",
+				Endpoint:    "",
 				ClusterName: "",
 			},
 		},
@@ -64,8 +62,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   false,
 				UseFuji:     false,
 				UseMainnet:  true,
-				UseGranite:  false,
-				Endpoint:    "https://api.avax.network",
+				Endpoint:    "",
 				ClusterName: "",
 			},
 		},
@@ -82,26 +79,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   true,
 				UseFuji:     false,
 				UseMainnet:  false,
-				UseGranite:  false,
-				Endpoint:    "https://custom-devnet.example.com",
-				ClusterName: "",
-			},
-		},
-		{
-			name: "Granite Network",
-			network: models.Network{
-				Kind:        models.Granite,
-				ID:          76,
-				Endpoint:    "https://granite.avax-dev.network",
-				ClusterName: "",
-			},
-			expected: NetworkFlags{
-				UseLocal:    false,
-				UseDevnet:   false,
-				UseFuji:     false,
-				UseMainnet:  false,
-				UseGranite:  true,
-				Endpoint:    "https://granite.avax-dev.network",
+				Endpoint:    "",
 				ClusterName: "",
 			},
 		},
@@ -118,9 +96,8 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   true,
 				UseFuji:     false,
 				UseMainnet:  false,
-				UseGranite:  false,
-				Endpoint:    "https://cluster.example.com",
-				ClusterName: "my-cluster",
+				Endpoint:    "",
+				ClusterName: "",
 			},
 		},
 		{
@@ -136,7 +113,6 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 				UseDevnet:   false,
 				UseFuji:     false,
 				UseMainnet:  false,
-				UseGranite:  false,
 				Endpoint:    "",
 				ClusterName: "",
 			},
@@ -146,7 +122,7 @@ func TestNetworkToNetworkFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := NetworkToNetworkFlags(tt.network)
-			assert.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
