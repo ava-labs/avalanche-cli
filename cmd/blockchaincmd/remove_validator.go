@@ -492,7 +492,7 @@ func removeValidatorSOV(
 		}
 	}
 
-	epochDuration := network.ProposerVMEpochDuration()
+	epochDuration := 30 * time.Second
 
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
 	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())

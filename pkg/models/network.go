@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	sdkNetwork "github.com/ava-labs/avalanche-tooling-sdk-go/network"
@@ -200,10 +199,6 @@ func (n Network) NetworkIDFlagValue() string {
 		return "mainnet"
 	}
 	return "invalid-network"
-}
-
-func (n Network) ProposerVMEpochDuration() time.Duration {
-	return 30 * time.Second
 }
 
 func (n Network) GenesisParams() *genesis.Params {
