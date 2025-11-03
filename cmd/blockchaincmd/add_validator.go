@@ -632,7 +632,7 @@ func CallAddValidator(
 		}
 	}
 
-	epochDuration := network.ProposerVMEpochDuration()
+	epochDuration := 30 * time.Second
 
 	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
 	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
