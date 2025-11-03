@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -97,6 +99,7 @@ type relayerRunFile struct {
 }
 
 func DeployRelayer(
+	app *application.Avalanche,
 	version string,
 	binPath string,
 	binDir string,
@@ -104,13 +107,14 @@ func DeployRelayer(
 	logFilePath string,
 	runFilePath string,
 	storageDir string,
+	network models.Network,
 ) (string, error) {
 	if err := RelayerCleanup(runFilePath, logFilePath, storageDir); err != nil {
 		return "", err
 	}
 	if binPath == "" {
 		var err error
-		binPath, err = InstallRelayer(binDir, version)
+		binPath, err = InstallRelayer(app, binDir, version, network)
 		if err != nil {
 			return "", err
 		}
@@ -230,17 +234,18 @@ func GetLatestRelayerPreReleaseVersion() (string, error) {
 	)
 }
 
-func InstallRelayer(binDir, version string) (string, error) {
+func InstallRelayer(app *application.Avalanche, binDir, version string, network models.Network) (string, error) {
+	var err error
 	if version == "" || version == constants.LatestPreReleaseVersionTag {
-		var err error
 		version, err = GetLatestRelayerPreReleaseVersion()
 		if err != nil {
 			return "", err
 		}
 	}
 	if version == constants.LatestReleaseVersionTag {
-		var err error
-		version, err = GetLatestRelayerReleaseVersion()
+		// nothing given: get avago version from RPC compat using latest.json defined in
+		// https://raw.githubusercontent.com/ava-labs/avalanche-cli/control-default-version/versions/latest.json
+		version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.RelayerRepoName, network, nil)
 		if err != nil {
 			return "", err
 		}
