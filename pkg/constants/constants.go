@@ -308,8 +308,8 @@ const (
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
 	CLILatestDependencyFileName  = "latest.json"
 	CLIMinVersionFileName        = "min_cli_version.json"
-	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/" + CLILatestDependencyFileName
-	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/update-latest-dependencies/versions/" + CLIMinVersionFileName
+	CLILatestDependencyURL       = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/" + CLILatestDependencyFileName
+	CLIMinVersionURL             = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/granite/versions/" + CLIMinVersionFileName
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
