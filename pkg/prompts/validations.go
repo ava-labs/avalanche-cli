@@ -250,8 +250,6 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 		return validatePChainLocalAddress
 	case models.Devnet:
 		return validatePChainLocalAddress
-	case models.Granite:
-		return validatePChainLocalAddress
 	default:
 		return func(string) error {
 			return errors.New("unsupported network")
