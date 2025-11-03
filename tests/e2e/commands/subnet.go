@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -1132,43 +1131,6 @@ func DescribeSubnet(subnetName string) (string, error) {
 		utils.PrintStdErr(err)
 	}
 	return string(output), err
-}
-
-/* #nosec G204 */
-func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
-	// Check config does already exist:
-	// We want to run stats on an existing subnet
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	// add the subnet ID to the `fuji` section so that the `stats` command
-	// can find it (as this is a simulation with a `local` network,
-	// it got written in to the `local` network section)
-	err = utils.AddSubnetIDToSidecar(subnetName, models.NewFujiNetwork(), subnetID)
-	gomega.Expect(err).Should(gomega.BeNil())
-	// run stats
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"stats",
-		subnetName,
-		"--fuji",
-		"--"+constants.SkipUpdateFlag,
-	)
-	output, err := cmd.CombinedOutput()
-	var exitErr *exec.ExitError
-	if err != nil {
-		stderr := ""
-		if errors.As(err, &exitErr) {
-			stderr = string(exitErr.Stderr)
-		}
-		fmt.Println(string(output))
-		fmt.Println(err)
-		fmt.Println(stderr)
-	}
-	gomega.Expect(exitErr).Should(gomega.BeNil())
-	return string(output)
 }
 
 /* #nosec G204 */
