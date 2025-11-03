@@ -76,32 +76,24 @@ func (d downloader) DownloadWithTee(url string, path string) ([]byte, error) {
 }
 
 func (d downloader) DownloadWithCache(url string, path string, duration time.Duration) ([]byte, error) {
-	var data []byte
-	var useCache bool
-
-	// Check if cache file exists and is recent
-	if fileInfo, err := os.Stat(path); err == nil {
-		if time.Since(fileInfo.ModTime()) < duration {
-			// Cache is valid, read from it
-			data, err = os.ReadFile(path)
-			if err == nil {
-				useCache = true
+	data, err := d.Download(url)
+	if err != nil {
+		// if we can't download url due to too many requests err, check our cache
+		// Check if cache file exists and is recent
+		if fileInfo, err := os.Stat(path); err == nil {
+			if time.Since(fileInfo.ModTime()) < duration {
+				// Cache is valid, read from it
+				data, err = os.ReadFile(path)
+				return data, nil
+			}
+			if err != nil {
+				return nil, fmt.Errorf("unable to download or read from cache for %s", url)
 			}
 		}
 	}
-
-	// If cache is not valid or doesn't exist, download
-	if !useCache {
-		var err error
-		data, err = d.Download(url)
-		if err != nil {
-			return nil, err
-		}
-
-		// Save to cache
-		if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err == nil {
-			_ = os.WriteFile(path, data, constants.WriteReadReadPerms)
-		}
+	// Save to cache
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err == nil {
+		_ = os.WriteFile(path, data, constants.WriteReadReadPerms)
 	}
 
 	return data, nil
@@ -213,7 +205,7 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 		if resp.StatusCode != http.StatusOK {
 			// http.StatusForbidden is also obtained when hitting github API rate limits
 			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
-				if retries <= 5 {
+				if retries <= 10 {
 					retries++
 					toSleep := time.Duration(retries) * 10 * time.Second
 					time.Sleep(toSleep)
