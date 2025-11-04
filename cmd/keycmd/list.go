@@ -16,9 +16,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
 	sdkUtils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/avm"
@@ -431,16 +431,16 @@ func getLedgerIndicesInfo(
 	if err != nil {
 		return nil, err
 	}
-	addresses, err := ledgerDevice.Addresses(ledgerIndices)
+	pubKeys, err := ledgerDevice.PubKeys(ledgerIndices)
 	if err != nil {
 		return nil, err
 	}
-	if len(addresses) != len(ledgerIndices) {
-		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), len(ledgerIndices))
+	if len(pubKeys) != len(ledgerIndices) {
+		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(pubKeys), len(ledgerIndices))
 	}
 	addrInfos := []addressInfo{}
 	for i, index := range ledgerIndices {
-		addr := addresses[i]
+		addr := pubKeys[i].Address()
 		ledgerAddrInfos, err := getLedgerIndexInfo(pClients, index, networks, addr)
 		if err != nil {
 			return []addressInfo{}, err

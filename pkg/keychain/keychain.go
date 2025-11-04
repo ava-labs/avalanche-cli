@@ -13,10 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -37,17 +37,17 @@ var (
 type Keychain struct {
 	Network       models.Network
 	Keychain      keychain.Keychain
-	Ledger        keychain.Ledger
+	Ledger        ledger.Ledger
 	UsesLedger    bool
 	LedgerIndices []uint32
 }
 
-func NewKeychain(network models.Network, keychain keychain.Keychain, ledger keychain.Ledger, ledgerIndices []uint32) *Keychain {
+func NewKeychain(network models.Network, keychain keychain.Keychain, sdkLedger ledger.Ledger, ledgerIndices []uint32) *Keychain {
 	usesLedger := len(ledgerIndices) > 0
 	return &Keychain{
 		Network:       network,
 		Keychain:      keychain,
-		Ledger:        ledger,
+		Ledger:        sdkLedger,
 		UsesLedger:    usesLedger,
 		LedgerIndices: ledgerIndices,
 	}
@@ -96,7 +96,7 @@ func (kc *Keychain) AddAddresses(addresses []string) error {
 				return err
 			}
 		}
-		avagoKc, err := keychain.NewLedgerKeychainFromIndices(kc.Ledger, kc.LedgerIndices)
+		avagoKc, err := ledger.NewKeychainFromIndices(kc.Ledger, kc.LedgerIndices)
 		if err != nil {
 			return err
 		}
@@ -214,7 +214,7 @@ func GetKeychain(
 		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
 		}
-		kc, err := keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
+		kc, err := ledger.NewKeychainFromIndices(ledgerDevice, ledgerIndices)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +236,7 @@ func GetKeychain(
 	return NewKeychain(network, kc, nil, nil), nil
 }
 
-func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
+func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint32, error) {
 	addresses, err := address.ParseToIDs(addressesStr)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("failure parsing ledger addresses: %w", err)
@@ -247,12 +247,13 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	// addresses and, if so, add the index pair to indexMap, breaking the loop if
 	// all addresses were found
 	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearch; ledgerIndex++ {
-		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		pubKey, err := ledgerDevice.PubKey(ledgerIndex)
 		if err != nil {
 			return []uint32{}, err
 		}
+		ledgerAddress := pubKey.Address()
 		for addressesIndex, addr := range addresses {
-			if addr == ledgerAddress[0] {
+			if addr == ledgerAddress {
 				ux.Logger.PrintToUser("  Found index %d for address %s", ledgerIndex, addressesStr[addressesIndex])
 				indexMap[addressesIndex] = ledgerIndex
 			}
@@ -274,18 +275,19 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 }
 
 // search for a set of indices that pay a given amount
-func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.Ledger, amount uint64) ([]uint32, error) {
+func searchForFundedLedgerIndices(network models.Network, ledgerDevice ledger.Ledger, amount uint64) ([]uint32, error) {
 	ux.Logger.PrintToUser("Looking for ledger indices to pay for %.9f AVAX...", float64(amount)/float64(units.Avax))
 	pClient := platformvm.NewClient(network.Endpoint)
 	totalBalance := uint64(0)
 	ledgerIndices := []uint32{}
 	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearchForBalance; ledgerIndex++ {
-		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		pubKey, err := ledgerDevice.PubKey(ledgerIndex)
 		if err != nil {
 			return []uint32{}, err
 		}
+		ledgerAddress := pubKey.Address()
 		ctx, cancel := utils.GetAPIContext()
-		resp, err := pClient.GetBalance(ctx, ledgerAddress)
+		resp, err := pClient.GetBalance(ctx, []ids.ShortID{ledgerAddress})
 		cancel()
 		if err != nil {
 			return nil, err
@@ -306,14 +308,15 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 	return ledgerIndices, nil
 }
 
-func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, ledgerIndices []uint32) error {
+func showLedgerAddresses(network models.Network, ledgerDevice ledger.Ledger, ledgerIndices []uint32) error {
 	// get formatted addresses for ux
-	addresses, err := ledgerDevice.Addresses(ledgerIndices)
+	pubKeys, err := ledgerDevice.PubKeys(ledgerIndices)
 	if err != nil {
 		return err
 	}
 	addrStrs := []string{}
-	for _, addr := range addresses {
+	for _, pubKey := range pubKeys {
+		addr := pubKey.Address()
 		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 		if err != nil {
 			return err
