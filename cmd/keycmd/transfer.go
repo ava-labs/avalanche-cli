@@ -20,11 +20,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/units"
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
@@ -259,7 +259,7 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 		ledgerIndices := []uint32{ledgerIndex}
-		kc, err = keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
+		kc, err = ledger.NewKeychainFromIndices(ledgerDevice, ledgerIndices)
 		if err != nil {
 			return err
 		}

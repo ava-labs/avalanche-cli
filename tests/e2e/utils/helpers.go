@@ -30,11 +30,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -895,14 +895,14 @@ func GetLedgerAddress(network models.Network, index uint32) (string, error) {
 		return "", err
 	}
 	// get ledger addr
-	ledgerAddrs, err := ledgerDev.Addresses([]uint32{index})
+	pubKeys, err := ledgerDev.PubKeys([]uint32{index})
 	if err != nil {
 		return "", err
 	}
-	if len(ledgerAddrs) != 1 {
+	if len(pubKeys) != 1 {
 		return "", fmt.Errorf("no ledger addresses available")
 	}
-	ledgerAddr := ledgerAddrs[0]
+	ledgerAddr := pubKeys[0].Address()
 	hrp := key.GetHRP(network.ID)
 	ledgerAddrStr, err := address.Format("P", hrp, ledgerAddr[:])
 	if err != nil {
@@ -919,14 +919,14 @@ func FundLedgerAddress(amount uint64) error {
 	}
 
 	// get ledger addr
-	ledgerAddrs, err := ledgerDev.Addresses([]uint32{0})
+	pubKeys, err := ledgerDev.PubKeys([]uint32{0})
 	if err != nil {
 		return err
 	}
-	if len(ledgerAddrs) != 1 {
+	if len(pubKeys) != 1 {
 		return fmt.Errorf("no ledger addresses available")
 	}
-	ledgerAddr := ledgerAddrs[0]
+	ledgerAddr := pubKeys[0].Address()
 	if err := ledgerDev.Disconnect(); err != nil {
 		return err
 	}
