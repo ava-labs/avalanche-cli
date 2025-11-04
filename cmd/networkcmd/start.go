@@ -147,6 +147,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 				relayerBinPath = extraLocalNetworkData.RelayerPath
 			}
 			if relayerBinPath, err := relayer.DeployRelayer(
+				app,
 				flags.RelayerVersion,
 				relayerBinPath,
 				app.GetICMRelayerBinDir(),
@@ -154,6 +155,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 				app.GetLocalRelayerLogPath(models.Local),
 				app.GetLocalRelayerRunPath(models.Local),
 				app.GetLocalRelayerStorageDir(models.Local),
+				models.NewLocalNetwork(),
 			); err != nil {
 				return err
 			} else if err := localnet.WriteExtraLocalNetworkData(app, "", relayerBinPath, "", ""); err != nil {
@@ -235,6 +237,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			nil,
 			dependencies.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
+			false, // setPublicIP - not needed for network start command
 		); err != nil {
 			return err
 		}

@@ -69,8 +69,7 @@ const (
 	LocalBootstrapTimeout   = 2 * time.Minute
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
-
-	EVMEventLookupTimeout = 2 * time.Minute
+	EVMEventLookupTimeout   = 2 * time.Minute
 
 	DownloadCacheExpiration = 3 * time.Hour
 
@@ -234,6 +233,7 @@ const (
 
 	ICMKeyName           = "cli-teleporter-deployer"
 	ICMRelayerKeyName    = "cli-awm-relayer"
+	RelayerRepoName      = "relayer"
 	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services

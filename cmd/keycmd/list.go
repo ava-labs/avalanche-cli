@@ -162,10 +162,10 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	blockchainRPCs := map[models.Network]map[string]string{}
 	for _, network := range networks {
 		if pchain {
-			pClients[network] = platformvm.NewClient(network.Endpoint)
+			pClients[network] = *platformvm.NewClient(network.Endpoint)
 		}
 		if xchain {
-			xClients[network] = avm.NewClient(network.Endpoint, "X")
+			xClients[network] = *avm.NewClient(network.Endpoint, "X")
 		}
 		if cchain {
 			cClients[network], err = ethclient.Dial(network.CChainEndpoint())

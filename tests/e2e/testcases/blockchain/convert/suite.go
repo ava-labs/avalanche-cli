@@ -49,6 +49,7 @@ var _ = ginkgo.Describe("[Blockchain Convert]", ginkgo.Ordered, func() {
 			"icm":               false,
 			"skip-update-check": true,
 			"genesis":           utils.SubnetEvmGenesisPoaPath,
+			"local":             true,
 		}
 		_, err := utils.TestCommand(cmd.BlockchainCmd, "create", blockchainCmdArgs, nil, testFlags)
 		gomega.Expect(err).Should(gomega.BeNil())

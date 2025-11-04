@@ -11,7 +11,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -35,6 +37,7 @@ type ConnectionSettings struct {
 // If [downloadDB] is set, and network is fuji, downloads the current avalanchego DB -note: db download is not desired
 // if migrating from a network runner cluster-
 // If [bootstrap] is set, starts the nodes
+// If [setPublicIP] is set, configures nodes with the user's public IP address
 func CreateLocalCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -50,6 +53,7 @@ func CreateLocalCluster(
 	networkModel models.Network,
 	downloadDB bool,
 	bootstrap bool,
+	setPublicIP bool,
 ) (*tmpnet.Network, error) {
 	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
 		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
@@ -57,6 +61,16 @@ func CreateLocalCluster(
 	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings, trackedSubnets)
 	if err != nil {
 		return nil, err
+	}
+	if setPublicIP {
+		publicIP, err := utils.GetUserIPAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user IP address: %w", err)
+		}
+		for _, node := range nodes {
+			node.Flags[config.PublicIPKey] = publicIP
+			node.Flags[config.StakingHostKey] = "0.0.0.0"
+		}
 	}
 	var unparsedGenesis *genesis.UnparsedConfig
 	if len(connectionSettings.Genesis) > 0 {
@@ -282,7 +296,14 @@ func GetLocalClusterNetworkModel(
 	clusterName string,
 ) (models.Network, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	return GetNetworkModel(networkDir)
+	networkModel, err := GetNetworkModel(networkDir)
+	if err != nil {
+		return networkModel, err
+	}
+	if networkModel.Kind == models.Devnet {
+		networkModel.ClusterName = clusterName
+	}
+	return networkModel, nil
 }
 
 // Gets a list of clusters connected to local network that are also running
@@ -574,11 +595,16 @@ func LocalClusterTrackSubnet(
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return err
+	}
 	return TrackSubnet(
 		app,
 		printFunc,
 		blockchainName,
 		networkDir,
+		networkModel,
 		nil,
 	)
 }
@@ -595,6 +621,10 @@ func LoadLocalCluster(
 	if !LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return err
+	}
 	networkDir := GetLocalClusterDir(app, clusterName)
 	blockchains, err := GetLocalClusterManagedTrackedBlockchains(app, clusterName)
 	if err != nil {
@@ -605,12 +635,13 @@ func LoadLocalCluster(
 		if err := UpdateBlockchainConfig(
 			app,
 			networkDir,
+			networkModel,
 			blockchainName,
 		); err != nil {
 			return err
 		}
 	}
-	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	networkModel, err = GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
 	}

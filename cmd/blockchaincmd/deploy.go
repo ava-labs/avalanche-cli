@@ -450,6 +450,7 @@ func prepareBootstrapValidators(
 			availableBalance,
 			localMachineFlags,
 			bootstrapValidatorFlags,
+			deployFlags.SigAggFlags,
 		); err != nil {
 			return err
 		} else if cancel {
@@ -506,7 +507,20 @@ func prepareBootstrapValidators(
 func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
-	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		true,
+		false,
+		networkoptions.DefaultSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt, network); err != nil {
 		return err
 	}
 
@@ -555,18 +569,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		true,
-		false,
-		networkoptions.DefaultSupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
-	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)

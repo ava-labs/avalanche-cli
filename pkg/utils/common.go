@@ -21,14 +21,20 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanchego/api/connectclient"
 	"github.com/ava-labs/avalanchego/api/info"
+	pbproposervm "github.com/ava-labs/avalanchego/connectproto/pb/proposervm"
+	"github.com/ava-labs/avalanchego/connectproto/pb/proposervm/proposervmconnect"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/proposervm"
+	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 	"github.com/ava-labs/subnet-evm/core"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -356,6 +362,51 @@ func GetChainID(endpoint string, chainName string) (ids.ID, error) {
 	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
 	return client.GetBlockchainID(ctx, chainName)
+}
+
+func GetProposedHeight(endpoint string, chainAlias string) (uint64, error) {
+	client := proposervm.NewJSONRPCClient(endpoint, chainAlias)
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	return client.GetProposedHeight(ctx)
+}
+
+func GetCurrentEpoch(endpoint string, chainAlias string) (block.Epoch, error) {
+	client := proposervm.NewJSONRPCClient(endpoint, chainAlias)
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	return client.GetCurrentEpoch(ctx)
+}
+
+func GetCurrentL1Epoch(rpcURL, chainAlias string) (block.Epoch, error) {
+	endpoint, err := url.Parse(rpcURL)
+	if err != nil {
+		return block.Epoch{}, fmt.Errorf("failed to parse rpc endpoint %w", err)
+	}
+	baseURL := fmt.Sprintf("%s://%s", endpoint.Scheme, endpoint.Host)
+	proposerClient := proposervmconnect.NewProposerVMClient(
+		connectclient.New(),
+		baseURL,
+		connect.WithInterceptors(
+			connectclient.SetRouteHeaderInterceptor{
+				Route: []string{
+					chainAlias,
+					proposervm.HTTPHeaderRoute,
+				},
+			},
+		),
+	)
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	response, err := proposerClient.GetCurrentEpoch(ctx, &connect.Request[pbproposervm.GetCurrentEpochRequest]{})
+	if err != nil {
+		return block.Epoch{}, fmt.Errorf("failed to get current epoch ProposerVM %w", err)
+	}
+	return block.Epoch{
+		StartTime:    response.Msg.StartTime,
+		Number:       response.Msg.Number,
+		PChainHeight: response.Msg.PChainHeight,
+	}, nil
 }
 
 func GetChainIDs(endpoint string, chainName string) (string, string, error) {

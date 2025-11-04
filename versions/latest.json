@@ -1,23 +1,75 @@
 {
-  "subnet-evm": "v0.7.8",
-  "rpc": 43,
-  "avalanchego": {
+  "subnet-evm":{
     "Local Network": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v0.8.0-fuji",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.13.5",
+      "latest-version": "v0.8.0-fuji",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.13.5",
-      "minimum-version": "v1.13.0-fuji"
+      "latest-version": "v0.8.0-fuji",
+      "minimum-version": "v0.8.0-fuji"
+    },
+    "Mainnet": {
+      "latest-version": "v0.7.8",
+      "minimum-version": "v0.7.1"
+    }
+  },
+  "rpc": 44,
+  "avalanchego": {
+    "Local Network": {
+      "latest-version": "v1.14.0-fuji",
+      "minimum-version": ""
+    },
+    "DevNet": {
+      "latest-version": "v1.14.0-fuji",
+      "minimum-version": ""
+    },
+    "Fuji": {
+      "latest-version": "v1.14.0-fuji",
+      "minimum-version": "v1.14.0-fuji"
     },
     "Mainnet": {
       "latest-version": "v1.13.5",
       "minimum-version": "v1.13.0"
     }
   },
-  "signature-aggregator": "signature-aggregator-v0.4.5"
+  "signature-aggregator":{
+    "Local Network": {
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "minimum-version": ""
+    },
+    "DevNet": {
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "minimum-version": ""
+    },
+    "Fuji": {
+      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "minimum-version": "signature-aggregator-v0.5.1-fuji"
+    },
+    "Mainnet": {
+      "latest-version": "signature-aggregator-v0.4.5",
+      "minimum-version": ""
+    }
+  },
+  "relayer":{
+    "Local Network": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    },
+    "DevNet": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": ""
+    },
+    "Fuji": {
+      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "minimum-version": "icm-relayer-v1.7.2-fuji"
+    },
+    "Mainnet": {
+      "latest-version": "icm-relayer-v1.6.7",
+      "minimum-version": ""
+    }
+  }
 }

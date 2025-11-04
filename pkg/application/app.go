@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -33,8 +32,6 @@ type Avalanche struct {
 	Conf       *config.Config
 	Version    string
 	Prompt     prompts.Prompter
-	Apm        *apm.APM
-	ApmDir     string
 	Downloader Downloader
 	Cmd        *cobra.Command
 }

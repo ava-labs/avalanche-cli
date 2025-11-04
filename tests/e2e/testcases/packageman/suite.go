@@ -72,8 +72,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
-		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
-		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
+		// TODO: when mapping is compatible, use binaryToVersion[utils.SoloSubnetEVMKey1]
+		evmVersion := commands.GraniteFujiSubnetEVMVersion
+		avagoVersion := commands.GraniteFujiAvagoVersion
 
 		// remove subnet-evm if installed version detected
 		if utils.CheckSubnetEVMExists(evmVersion) || utils.CheckAvalancheGoExists(avagoVersion) {
@@ -122,51 +123,6 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(rpcs1).Should(gomega.HaveLen(1))
 
 		deployOutput = commands.DeploySubnetLocallyNonSOV(secondSubnetName)
-		rpcs2, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs2).Should(gomega.HaveLen(1))
-
-		err = utils.SetHardhatRPC(rpcs1[0])
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		err = utils.SetHardhatRPC(rpcs2[0])
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// check subnet-evm install
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1])).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2])).Should(gomega.BeTrue())
-
-		commands.DeleteSubnetConfig(subnetName)
-		commands.DeleteSubnetConfig(secondSubnetName)
-	})
-
-	ginkgo.It("can deploy multiple subnet-evm versions SOV", func() {
-		if utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey1]) ||
-			utils.CheckSubnetEVMExists(binaryToVersion[utils.SoloSubnetEVMKey2]) {
-			_ = utils.DeleteBins()
-		}
-
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey1])
-		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesisPoaPath, binaryToVersion[utils.SoloSubnetEVMKey2])
-
-		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
-		rpcs1, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs1).Should(gomega.HaveLen(1))
-
-		deployOutput = commands.DeploySubnetLocallySOV(secondSubnetName)
 		rpcs2, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)

@@ -128,7 +128,7 @@ func NetworkFromNetworkID(networkID uint32) Network {
 	case constants.LocalNetworkID:
 		return NewLocalNetwork()
 	}
-	return UndefinedNetwork
+	return NewDevnetNetwork("", networkID)
 }
 
 func (n Network) StandardPublicEndpoint() bool {
