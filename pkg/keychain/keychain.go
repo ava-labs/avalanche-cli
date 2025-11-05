@@ -243,19 +243,25 @@ func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint
 	}
 	// maps the indices of addresses to their corresponding ledger indices
 	indexMap := map[int]uint32{}
+	// Build list of indices to query
+	indicesToQuery := make([]uint32, numLedgerIndicesToSearch)
+	for i := uint32(0); i < numLedgerIndicesToSearch; i++ {
+		indicesToQuery[i] = i
+	}
+	// Get all public keys at once using PubKeys (which caches GetExtPubKey)
+	pubKeys, err := ledgerDevice.PubKeys(indicesToQuery)
+	if err != nil {
+		return []uint32{}, err
+	}
 	// for all ledger indices to search for, find if the ledger address belongs to the input
 	// addresses and, if so, add the index pair to indexMap, breaking the loop if
 	// all addresses were found
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearch; ledgerIndex++ {
-		pubKey, err := ledgerDevice.PubKey(ledgerIndex)
-		if err != nil {
-			return []uint32{}, err
-		}
+	for ledgerIndex, pubKey := range pubKeys {
 		ledgerAddress := pubKey.Address()
 		for addressesIndex, addr := range addresses {
 			if addr == ledgerAddress {
 				ux.Logger.PrintToUser("  Found index %d for address %s", ledgerIndex, addressesStr[addressesIndex])
-				indexMap[addressesIndex] = ledgerIndex
+				indexMap[addressesIndex] = uint32(ledgerIndex)
 			}
 		}
 		if len(indexMap) == len(addresses) {
@@ -278,13 +284,19 @@ func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint
 func searchForFundedLedgerIndices(network models.Network, ledgerDevice ledger.Ledger, amount uint64) ([]uint32, error) {
 	ux.Logger.PrintToUser("Looking for ledger indices to pay for %.9f AVAX...", float64(amount)/float64(units.Avax))
 	pClient := platformvm.NewClient(network.Endpoint)
+	// Build list of indices to query
+	indicesToQuery := make([]uint32, numLedgerIndicesToSearchForBalance)
+	for i := uint32(0); i < numLedgerIndicesToSearchForBalance; i++ {
+		indicesToQuery[i] = i
+	}
+	// Get all public keys at once using PubKeys (which caches GetExtPubKey)
+	pubKeys, err := ledgerDevice.PubKeys(indicesToQuery)
+	if err != nil {
+		return []uint32{}, err
+	}
 	totalBalance := uint64(0)
 	ledgerIndices := []uint32{}
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearchForBalance; ledgerIndex++ {
-		pubKey, err := ledgerDevice.PubKey(ledgerIndex)
-		if err != nil {
-			return []uint32{}, err
-		}
+	for ledgerIndex, pubKey := range pubKeys {
 		ledgerAddress := pubKey.Address()
 		ctx, cancel := utils.GetAPIContext()
 		resp, err := pClient.GetBalance(ctx, []ids.ShortID{ledgerAddress})
@@ -295,7 +307,7 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice ledger.Le
 		if resp.Balance > 0 {
 			ux.Logger.PrintToUser("  Found index %d with %.9f AVAX", ledgerIndex, float64(resp.Balance)/float64(units.Avax))
 			totalBalance += uint64(resp.Balance)
-			ledgerIndices = append(ledgerIndices, ledgerIndex)
+			ledgerIndices = append(ledgerIndices, uint32(ledgerIndex))
 		}
 		if totalBalance >= amount {
 			break

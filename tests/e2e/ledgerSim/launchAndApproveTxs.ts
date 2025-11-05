@@ -8,7 +8,7 @@ const rl = createInterface({
 
 const Resolve = require('path').resolve
 
-const appPath = Resolve('app_s.elf')
+const appPath = Resolve('app_s2.elf')
 const waitTimeout = 60000;
 const waitUntilClose = 1000;
 const grpcPort = 3002;
@@ -29,16 +29,17 @@ const options = {
   ...DEFAULT_START_OPTIONS,
   custom: `-s "${appSeed}"`,
   startDelay: 300000,
+  model: "nanosp",
 }
 
 async function main() {
-  const sim = new Zemu(appPath, {}, "127.0.0.1", transportPort, speculosApiPort);
+  const sim = new Zemu(appPath);
 
   await Zemu.checkAndPullImage();
   await Zemu.stopAllEmuContainers();
 
   await sim.start(options)
-  
+
   sim.startGRPCServer("localhost", grpcPort);
 
   await sim.waitForText("Avalanche", waitTimeout, true);
