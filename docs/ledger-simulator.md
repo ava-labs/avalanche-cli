@@ -8,7 +8,7 @@ It uses the `@zondax/zemu` js library to:
 
 - Download the docker image for the simulator (if needed)
 - Set the ledger seed to the default or the user-given one
-- Execute the docker container for the simulator by passing to it the avalanche app binary `app_s.elf` (ledger nano s device). That starts the simulated avalanche app.
+- Execute the docker container for the simulator by passing to it the avalanche app binary `app_s2.elf` (ledger nano s+ device). That starts the simulated avalanche app.
 - Create a rpc entry point to the simulated avalanche app so as the golang client ledger library can connect to the simulator (instead of a real device)
 - Previous steps can take some time. Once the app and rpc entry is ready, it prints a custom msg `SIMULATED LEDGER DEV READY` as a means to communicate 
   with the test code (or the user) that the simulator can start receiving requests (eg connect to it, ask for addresses, etc).
@@ -73,19 +73,19 @@ the simulator, if not, the test is expected to operate agains a real device.
 
 ## Ledger device status for avalanche-cli tests interaction
 
-Latest avalanche ledger app downloadable version `v0.7.2` (and also latest ledger live official version `v0.7.0`) can not interact with tests
-as it does not support avalanche-cli local network id 1337.
+The tests use the Avalanche Ledger app version `v1.3.7`, available as `app_s2.elf` binary (Nano S+ device).
 
-For that, currently the tests operate against a modified version of `v0.7.2`, available as `app_s.elf` binary.
+This binary must be built from source from the [ledger-avalanche](https://github.com/ava-labs/ledger-avalanche) repository:
 
-For a real ledger device to be used with the tests, it should be loaded with a supporting version, currently available on dev branch of ledger-avalanche.
+```bash
+cd /path/to/ledger-avalanche
+git checkout v1.3.7
+git submodule update --init --recursive
+make
+cp app/output/app_s2.elf /path/to/avalanche-cli/tests/e2e/ledgerSim/app_s2.elf
+```
 
-It is expected for next downloadable version to:
-
-- support network id 1337
-- provide elf binary downloads
-
-With that elements provided, CLI e2e could start downloading latest ledger app and using it on CI.
+For a real ledger device to be used with the tests, it should be loaded with v1.3.7 or a compatible version.
 
 ## How to execute the test script
 
