@@ -429,6 +429,46 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 				Should(gomega.Equal(ewoqKeyERCBalance1 - ewoqKeyERCBalance2))
 			gomega.Expect(keyBalance2 - keyERCBalance1).Should(gomega.Equal(amount))
 		})
+
+		ginkgo.It("can transfer from X-chain to X-chain with ewoq key and local key", func() {
+			amount := 0.2
+			amountStr := fmt.Sprintf("%.2f", amount)
+			amountNAvax := uint64(amount * float64(units.Avax))
+			commandArguments := []string{
+				"--local",
+				"--key",
+				ewoqKeyName,
+				"--destination-key",
+				keyName,
+				"--x-chain-sender",
+				"--x-chain-receiver",
+				"--amount",
+				amountStr,
+			}
+
+			output, err := commands.ListKeys("local", true, "", "")
+			gomega.Expect(err).Should(gomega.BeNil())
+			_, keyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, "X-Chain")
+			gomega.Expect(err).Should(gomega.BeNil())
+			_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "X-Chain")
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			output, err = commands.KeyTransferSend(commandArguments)
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			feeNAvax, err := utils.GetKeyTransferFee(output, "X-Chain")
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			output, err = commands.ListKeys("local", true, "", "")
+			gomega.Expect(err).Should(gomega.BeNil())
+			_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, "X-Chain")
+			gomega.Expect(err).Should(gomega.BeNil())
+			_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "X-Chain")
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(feeNAvax + amountNAvax).
+				Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
+			gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
+		})
 	})
 	ginkgo.Context("with invalid input", func() {
 		ginkgo.It("should fail when both key and ledger index were provided", func() {
@@ -532,25 +572,6 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 		})
 	})
 	ginkgo.Context("with unsupported paths", func() {
-		ginkgo.It("should fail when transferring from X-Chain to X-Chain", func() {
-			commandArguments := []string{
-				"--local",
-				"--key",
-				ewoqKeyName,
-				"--destination-key",
-				ewoqKeyName,
-				"--amount",
-				"0.1",
-				"--x-chain-sender",
-				"--x-chain-receiver",
-			}
-			output, err := commands.KeyTransferSend(commandArguments)
-
-			gomega.Expect(err).Should(gomega.HaveOccurred())
-			gomega.Expect(output).
-				Should(gomega.ContainSubstring("transfer from X-Chain to X-Chain is not supported"))
-		})
-
 		ginkgo.It("should fail when transferring from X-Chain to C-Chain", func() {
 			commandArguments := []string{
 				"--local",
