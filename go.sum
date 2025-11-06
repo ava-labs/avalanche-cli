@@ -47,8 +47,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c h1:uIriOOpMqG+oF7JbYKGJwYem/sXoRxLAjUoe7x3EpWU=
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c/go.mod h1:NS2385T7YN9VVdIRbM+5NpskLTF2I6ArTdts4qUFwoI=
-github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251104164521-f70fb5a5ca66 h1:Czs2TO9VLJ8jcdu8h8ZHlo/6gT7weJdv2Gq9tA1a4eQ=
-github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251104164521-f70fb5a5ca66/go.mod h1:CBQrORCol0SIWNEtL+niqUX5dqcVk2v8aJ7cADpGyg0=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251106172017-e8e6c38c0804 h1:pfZ07MQZcC1zUcbBXYmkPLYy3t/4TWbxj4+NxhFy1ag=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251106172017-e8e6c38c0804/go.mod h1:CBQrORCol0SIWNEtL+niqUX5dqcVk2v8aJ7cADpGyg0=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1 h1:/eQUKFGzK+CY2rHOypox87Cqpc9DEIOIjYgEtuRar9g=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1/go.mod h1:wEiDa5Lc3oKm9l2AxJOXmLz00Wg7b3hUttgkfzgRoDA=
 github.com/ava-labs/coreth v0.15.4-rc.4 h1:ze7/IwDptWG1u2d32uUZz9Ix9ycVUtlB8JufuSKSSS4=

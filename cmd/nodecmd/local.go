@@ -695,7 +695,6 @@ func addAsValidator(
 		common.HexToAddress(rewardsRecipientAddr),
 		l1BlockchainID,
 		validatorManagerAddress,
-		useACP99,
 		"",
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
