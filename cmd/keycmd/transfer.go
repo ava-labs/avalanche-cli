@@ -216,7 +216,7 @@ func transferF(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" || senderChainFlags.XChain {
+	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" || (senderChainFlags.XChain && !receiverChainFlags.XChain) {
 		return fmt.Errorf("transfer from %s to %s is not supported", senderDesc, receiverDesc)
 	}
 
@@ -274,7 +274,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	if destinationAddrStr == "" && senderChainFlags.PChain && (receiverChainFlags.PChain || receiverChainFlags.CChain) {
+	if destinationAddrStr == "" && ((senderChainFlags.PChain && (receiverChainFlags.PChain || receiverChainFlags.CChain)) || (senderChainFlags.XChain && receiverChainFlags.XChain)) {
 		if destinationKeyName != "" {
 			k, err := app.GetKey(destinationKeyName, network, false)
 			if err != nil {
@@ -290,10 +290,20 @@ func transferF(*cobra.Command, []string) error {
 				}
 				destinationAddrStr = addrs[0]
 			}
+			if receiverChainFlags.XChain {
+				addrs := k.X()
+				if len(addrs) == 0 {
+					return fmt.Errorf("unexpected null number of X-Chain addresses for key")
+				}
+				destinationAddrStr = addrs[0]
+			}
 		} else {
 			format := prompts.EVMFormat
 			if receiverChainFlags.PChain {
 				format = prompts.PChainFormat
+			}
+			if receiverChainFlags.XChain {
+				format = prompts.XChainFormat
 			}
 			destinationAddrStr, err = prompts.PromptAddress(
 				app.Prompt,
@@ -344,6 +354,15 @@ func transferF(*cobra.Command, []string) error {
 			network,
 			kc,
 			usingLedger,
+			amount,
+		)
+	}
+	if senderChainFlags.XChain && receiverChainFlags.XChain {
+		return xToXSend(
+			network,
+			kc,
+			usingLedger,
+			destinationAddrStr,
 			amount,
 		)
 	}
@@ -741,6 +760,76 @@ func pToXSend(
 		to,
 		usingLedger,
 	)
+}
+
+func xToXSend(
+	network models.Network,
+	kc keychain.Keychain,
+	usingLedger bool,
+	destinationAddrStr string,
+	amount uint64,
+) error {
+	ctx, cancel := sdkutils.GetTimedContext(constants.WalletCreationTimeout)
+	defer cancel()
+	ethKeychain := secp256k1fx.NewKeychain()
+	wallet, err := primary.MakeWallet(
+		ctx,
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
+	)
+	if err != nil {
+		return err
+	}
+	destinationAddr, err := address.ParseToID(destinationAddrStr)
+	if err != nil {
+		return err
+	}
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{destinationAddr},
+	}
+	output := &avax.TransferableOutput{
+		Asset: avax.Asset{ID: wallet.X().Builder().Context().AVAXAssetID},
+		Out: &secp256k1fx.TransferOutput{
+			Amt:          amount,
+			OutputOwners: to,
+		},
+	}
+	outputs := []*avax.TransferableOutput{output}
+	ux.Logger.PrintToUser("Issuing BaseTx X -> X")
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign BaseTx transaction on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.X().Builder().NewBaseTx(
+		outputs,
+	)
+	if err != nil {
+		return fmt.Errorf("error building tx: %w", err)
+	}
+	tx := avmtxs.Tx{Unsigned: unsignedTx}
+	ctx, cancel = sdkutils.GetTimedContext(constants.SignatureTimeout)
+	defer cancel()
+	if err := wallet.X().Signer().Sign(ctx, &tx); err != nil {
+		return fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel = sdkutils.GetAPIContext()
+	defer cancel()
+	err = wallet.X().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return err
+	}
+	ux.Logger.PrintToUser("X-Chain Paid fee: %.9f AVAX", float64(wallet.X().Builder().Context().BaseTxFee)/float64(units.Avax))
+	return nil
 }
 
 func exportFromP(
