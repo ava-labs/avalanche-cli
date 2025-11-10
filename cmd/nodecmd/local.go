@@ -66,7 +66,6 @@ var (
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
-	useACP99                     bool
 	httpPorts                    []uint
 	stakingPorts                 []uint
 	localValidateFlags           NodeLocalValidateFlags
@@ -388,7 +387,6 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().StringVar(&rewardsRecipientAddr, "rewards-recipient", "", "EVM address that will receive the validation rewards")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
-	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
@@ -560,11 +558,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if useACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	for _, node := range net.Nodes {
 		if err = addAsValidator(
@@ -577,7 +571,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 			balance,
 			payerPrivateKey,
 			validatorManagerAddress,
-			useACP99,
 		); err != nil {
 			return err
 		}
@@ -598,7 +591,6 @@ func addAsValidator(
 	balance uint64,
 	payerPrivateKey string,
 	validatorManagerAddress string,
-	useACP99 bool,
 ) error {
 	// get node data
 	nodeIDStr, publicKey, pop, err := utils.GetNodeID(nodeURI)

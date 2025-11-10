@@ -228,7 +228,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(kc, network)
 
-	return changeWeightACP99(
+	return changeWeight(
 		deployer,
 		network,
 		blockchainName,
@@ -239,7 +239,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	)
 }
 
-func changeWeightACP99(
+func changeWeight(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
 	blockchainName string,
