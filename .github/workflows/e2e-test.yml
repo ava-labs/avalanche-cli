@@ -91,7 +91,7 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\[Public Subnet non SOV\]') }}
+        if: ${{ (matrix.os == 'macos-14') && ((matrix.suite == '\[Public Subnet non SOV\]') || (matrix.suite == '\[Key\]')) }}
         run: |
           brew install docker
           brew install colima
