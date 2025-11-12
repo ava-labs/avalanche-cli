@@ -57,6 +57,8 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet non SOV\\]"
+          - os: macos-14
+            suite: "\\[Key\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -89,14 +91,6 @@ jobs:
           npm install -g typescript
           npm install -g ts-node
           npm install -g tsx
-
-      - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && ((matrix.suite == '\[Public Subnet non SOV\]') || (matrix.suite == '\[Key\]')) }}
-        run: |
-          brew install docker
-          brew install colima
-          colima start --vm-type vz
-          sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
 
       - name: Generate SSH token for E2E tests
         run: |
