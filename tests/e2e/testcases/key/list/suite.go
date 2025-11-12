@@ -4,6 +4,7 @@ package list
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -12,7 +13,17 @@ import (
 )
 
 const (
-	keyName = "e2eKey"
+	keyName     = "e2eKey"
+	ledger1Seed = "ledger1"
+	ledger2Seed = "ledger2"
+
+	// Expected addresses for ledger1 seed (deterministic)
+	ledger1Index0PChain = "P-custom1jkjatcy2vxfx3st0kft8p0jup6k4ucxugtzhlc"
+	ledger1Index0XChain = "X-custom1jkjatcy2vxfx3st0kft8p0jup6k4ucxugtzhlc"
+	ledger1Index0CChain = "0x90f207c2D78E871CFd23071f0545e72233B33767"
+	ledger1Index1PChain = "P-custom13wzadkyffwlk0a936u5y089dxtw3kx5fyaewc9"
+	ledger1Index1XChain = "X-custom13wzadkyffwlk0a936u5y089dxtw3kx5fyaewc9"
+	ledger1Index1CChain = "0x6235F11635BfDe6319E836e487A47D4686c4752E"
 )
 
 var _ = ginkgo.Describe("[Key] list", func() {
@@ -57,5 +68,83 @@ var _ = ginkgo.Describe("[Key] list", func() {
 		gomega.Expect(output).Should(gomega.MatchRegexp(regex3))
 		gomega.Expect(output).Should(gomega.MatchRegexp(regex4))
 		gomega.Expect(output).Should(gomega.ContainSubstring(keyName))
+	})
+
+	ginkgo.It("can list ledger addresses for multiple indices and chains", func() {
+		gomega.Expect(os.Getenv("LEDGER_SIM")).Should(gomega.Equal("true"), "ledger list test not designed for real ledgers: please set env var LEDGER_SIM to true")
+
+		// Start ledger simulator once for all tests
+		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger1Seed, false)
+
+		// Test 1: List all chains (P-Chain, C-Chain, X-Chain) for multiple indices
+		output, err := commands.ListLedgerKeys("local", []uint{0, 1}, "p,c,x", "")
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Verify output contains expected headers (case-insensitive check)
+		gomega.Expect(output).Should(gomega.ContainSubstring("KIND"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("NAME"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("SUBNET"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("ADDRESS"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("TOKEN"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("BALANCE"))
+
+		// Verify ledger indices are shown
+		gomega.Expect(output).Should(gomega.ContainSubstring("index 0"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("index 1"))
+
+		// Verify all chains are listed
+		gomega.Expect(output).Should(gomega.ContainSubstring("P-Chain"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("C-Chain"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("X-Chain"))
+
+		// Verify kind is "ledger"
+		gomega.Expect(output).Should(gomega.ContainSubstring("ledger"))
+
+		// Verify specific addresses for index 0 (deterministic with ledger1 seed)
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0PChain))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0XChain))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0CChain))
+
+		// Verify specific addresses for index 1 (deterministic with ledger1 seed)
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index1PChain))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index1XChain))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index1CChain))
+
+		// Test 2: List only P-Chain addresses
+		output, err = commands.ListLedgerKeys("local", []uint{0}, "p", "")
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(output).Should(gomega.ContainSubstring("P-Chain"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("index 0"))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0PChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("C-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("X-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0CChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0XChain))
+
+		// Test 3: List only C-Chain addresses
+		output, err = commands.ListLedgerKeys("local", []uint{0}, "c", "")
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(output).Should(gomega.ContainSubstring("C-Chain"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("index 0"))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0CChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("P-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("X-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0PChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0XChain))
+
+		// Test 4: List only X-Chain addresses
+		output, err = commands.ListLedgerKeys("local", []uint{0}, "x", "")
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(output).Should(gomega.ContainSubstring("X-Chain"))
+		gomega.Expect(output).Should(gomega.ContainSubstring("index 0"))
+		gomega.Expect(output).Should(gomega.ContainSubstring(ledger1Index0XChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("P-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring("C-Chain"))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0PChain))
+		gomega.Expect(output).ShouldNot(gomega.ContainSubstring(ledger1Index0CChain))
+
+		// Close ledger simulator
+		close(interactionEndCh)
+		<-ledgerSimEndCh
 	})
 })
