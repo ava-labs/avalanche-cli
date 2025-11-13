@@ -54,14 +54,6 @@ func InitializeValidatorRegistrationPoSNative(
 		Addresses []common.Address
 	}
 
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
-	}
-
 	balanceOwnersAux := PChainOwner{
 		Threshold: balanceOwners.Threshold,
 		Addresses: sdkutils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
