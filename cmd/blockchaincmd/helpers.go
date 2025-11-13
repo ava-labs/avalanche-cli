@@ -317,7 +317,6 @@ func CompleteValidatorManagerL1Deploy(
 	validatorManagerRPCEndpoint string,
 	proxyContractOwner string,
 	isPoS bool,
-	useACP99 bool,
 ) error {
 	if isPoS {
 		deployed, err := validatormanager.GenesisValidatorProxyHasImplementationSet(validatorManagerRPCEndpoint)
@@ -354,37 +353,25 @@ func CompleteValidatorManagerL1Deploy(
 			if err != nil {
 				return err
 			}
-			if useACP99 {
-				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
-					logger,
-					validatorManagerRPCEndpoint,
-					genesisSigner,
-					true,
-					proxyOwnerSigner,
-				)
-				if err != nil {
-					return err
-				}
-				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
-					logger,
-					validatorManagerRPCEndpoint,
-					genesisSigner,
-					true,
-					proxyOwnerSigner,
-				)
-				if err != nil {
-					return err
-				}
-			} else {
-				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
-					logger,
-					validatorManagerRPCEndpoint,
-					genesisSigner,
-					true,
-					proxyOwnerSigner,
-				); err != nil {
-					return err
-				}
+			_, err = validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+				logger,
+				validatorManagerRPCEndpoint,
+				genesisSigner,
+				true,
+				proxyOwnerSigner,
+			)
+			if err != nil {
+				return err
+			}
+			_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+				logger,
+				validatorManagerRPCEndpoint,
+				genesisSigner,
+				true,
+				proxyOwnerSigner,
+			)
+			if err != nil {
+				return err
 			}
 		}
 	}

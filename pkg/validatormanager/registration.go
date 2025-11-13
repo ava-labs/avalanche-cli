@@ -43,26 +43,16 @@ func InitializeValidatorRegistrationPoSNative(
 	signer *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	delegationFeeBips uint16,
 	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
 	rewardRecipient common.Address,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
 		Addresses []common.Address
-	}
-
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
 	}
 
 	balanceOwnersAux := PChainOwner{
@@ -78,26 +68,6 @@ func InitializeValidatorRegistrationPoSNative(
 		}),
 	}
 
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			signer,
-			managerAddress,
-			stakeAmount,
-			"initialize validator registration with stake",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,address)",
-			nodeID[:],
-			blsPublicKey,
-			balanceOwnersAux,
-			disableOwnersAux,
-			delegationFeeBips,
-			uint64(minStakeDuration.Seconds()),
-			rewardRecipient,
-		)
-	}
-
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
@@ -106,16 +76,14 @@ func InitializeValidatorRegistrationPoSNative(
 		stakeAmount,
 		"initialize validator registration with stake",
 		validatormanager.ErrorSignatureToError,
-		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
-		ValidatorRegistrationInput{
-			NodeID:                nodeID[:],
-			BlsPublicKey:          blsPublicKey,
-			RegistrationExpiry:    expiry,
-			RemainingBalanceOwner: balanceOwnersAux,
-			DisableOwner:          disableOwnersAux,
-		},
+		"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,address)",
+		nodeID[:],
+		blsPublicKey,
+		balanceOwnersAux,
+		disableOwnersAux,
 		delegationFeeBips,
 		uint64(minStakeDuration.Seconds()),
+		rewardRecipient,
 	)
 }
 
@@ -127,11 +95,9 @@ func InitializeValidatorRegistrationPoA(
 	managerOwnerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
@@ -149,30 +115,6 @@ func InitializeValidatorRegistrationPoA(
 			return common.BytesToAddress(addr[:])
 		}),
 	}
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			managerOwnerSigner,
-			managerAddress,
-			big.NewInt(0),
-			"initialize validator registration",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint64)",
-			nodeID[:],
-			blsPublicKey,
-			balanceOwnersAux,
-			disableOwnersAux,
-			weight,
-		)
-	}
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
-	}
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
@@ -181,14 +123,11 @@ func InitializeValidatorRegistrationPoA(
 		big.NewInt(0),
 		"initialize validator registration",
 		validatormanager.ErrorSignatureToError,
-		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
-		ValidatorRegistrationInput{
-			NodeID:                nodeID[:],
-			BlsPublicKey:          blsPublicKey,
-			RegistrationExpiry:    expiry,
-			RemainingBalanceOwner: balanceOwnersAux,
-			DisableOwner:          disableOwnersAux,
-		},
+		"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint64)",
+		nodeID[:],
+		blsPublicKey,
+		balanceOwnersAux,
+		disableOwnersAux,
 		weight,
 	)
 }
@@ -421,7 +360,6 @@ func InitValidatorRegistration(
 	rewardRecipient common.Address,
 	managerBlockchainID ids.ID,
 	managerAddressStr string,
-	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 	pchainHeight uint64,
@@ -483,14 +421,12 @@ func InitValidatorRegistration(
 				ownerSigner,
 				nodeID,
 				blsPublicKey,
-				expiry,
 				balanceOwners,
 				disableOwners,
 				delegationFee,
 				stakeDuration,
 				stakeAmount,
 				rewardRecipient,
-				useACP99,
 			)
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
@@ -511,11 +447,9 @@ func InitValidatorRegistration(
 				ownerSigner,
 				nodeID,
 				blsPublicKey,
-				expiry,
 				balanceOwners,
 				disableOwners,
 				weight,
-				useACP99,
 			)
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {

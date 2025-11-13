@@ -364,11 +364,8 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			} else {
 				description = "Native Token Staking Manager"
 			}
-			if sc.UseACP99 {
-				description = "ACP99 Compatible " + description
-			} else {
-				description = "v1.0.0 Compatible " + description
-			}
+			description = "v2.0.0 Compatible " + description
+
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorProxyContractAddress):
 			description = "Validator Transparent Proxy"
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorProxyAdminContractAddress):

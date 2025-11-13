@@ -381,14 +381,12 @@ func SetupPoA(
 	subnet blockchainSDK.Subnet,
 	signer *evm.Signer,
 	aggregatorLogger logging.Logger,
-	v2_0_0 bool,
 	signatureAggregatorEndpoint string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		log,
 		signer,
 		aggregatorLogger,
-		v2_0_0,
 		signatureAggregatorEndpoint,
 	)
 }
@@ -404,7 +402,6 @@ func SetupPoS(
 	signer *evm.Signer,
 	aggregatorLogger logging.Logger,
 	posParams validatormanagerSDK.PoSParams,
-	v2_0_0 bool,
 	signatureAggregatorEndpoint string,
 	nativeMinterPrecompileAdminSigner *evm.Signer,
 ) error {
@@ -413,7 +410,6 @@ func SetupPoS(
 		signer,
 		aggregatorLogger,
 		posParams,
-		v2_0_0,
 		signatureAggregatorEndpoint,
 		nativeMinterPrecompileAdminSigner,
 	)
