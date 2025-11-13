@@ -516,9 +516,7 @@ func removeValidatorSOV(
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		contract.ChainSpec{
-			BlockchainID: validatorManagerBlockchainID.String(),
-		},
+		chainSpec,
 	)
 	if err != nil {
 		return err
