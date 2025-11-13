@@ -44,7 +44,6 @@ func InitializeValidatorRegistrationPoSNative(
 	signer *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	delegationFeeBips uint16,
@@ -55,14 +54,6 @@ func InitializeValidatorRegistrationPoSNative(
 	type PChainOwner struct {
 		Threshold uint32
 		Addresses []common.Address
-	}
-
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
 	}
 
 	balanceOwnersAux := PChainOwner{
@@ -105,7 +96,6 @@ func InitializeValidatorRegistrationPoA(
 	managerOwnerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
