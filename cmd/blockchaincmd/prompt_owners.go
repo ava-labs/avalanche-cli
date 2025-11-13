@@ -206,8 +206,11 @@ func useAllKeys(network models.Network) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		existing = append(existing, k.P()...)
+		pChainAddrStr, err := k.GetNetworkChainAddress(network, "P")
+		if err != nil {
+			return nil, err
+		}
+		existing = append(existing, pChainAddrStr...)
 	}
 
 	return existing, nil

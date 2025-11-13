@@ -284,7 +284,10 @@ func transferF(*cobra.Command, []string) error {
 				destinationAddrStr = k.C()
 			}
 			if receiverChainFlags.PChain {
-				addrs := k.P()
+				addrs, err := k.GetNetworkChainAddress(network, "P")
+				if err != nil {
+					return err
+				}
 				if len(addrs) == 0 {
 					return fmt.Errorf("unexpected null number of P-Chain addresses for key")
 				}
