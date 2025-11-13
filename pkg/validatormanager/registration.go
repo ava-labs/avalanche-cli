@@ -13,8 +13,6 @@ import (
 
 	"github.com/zondax/golem/pkg/logger"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -139,6 +137,7 @@ func GetRegisterL1ValidatorMessage(
 	rpcURL string,
 	network models.Network,
 	subnetID ids.ID,
+	managerSubnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	nodeID ids.NodeID,
@@ -234,7 +233,7 @@ func GetRegisterL1ValidatorMessage(
 		sigAggParams.SignatureAggregatorEndpoint,
 		messageHexStr,
 		"",
-		subnetID.String(),
+		managerSubnetID.String(),
 		0,
 		sigAggParams.PchainHeight,
 	)
@@ -266,14 +265,11 @@ func GetPChainL1ValidatorRegistrationMessage(
 	ctx context.Context,
 	network models.Network,
 	rpcURL string,
-	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
-	managerSubnetID,
+	managerSubnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	signedMessageParams SignatureAggregatorParams,
 ) (*warp.Message, error) {
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
@@ -304,13 +300,13 @@ func GetPChainL1ValidatorRegistrationMessage(
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 	return interchain.SignMessage(
-		aggregatorLogger,
-		signatureAggregatorEndpoint,
+		signedMessageParams.AggregatorLogger,
+		signedMessageParams.SignatureAggregatorEndpoint,
 		messageHexStr,
 		justification,
 		managerSubnetID.String(),
-		aggregatorQuorumPercentage,
-		pChainHeight,
+		0,
+		signedMessageParams.PchainHeight,
 	)
 }
 
@@ -343,12 +339,14 @@ type ProofOfStakeParams struct {
 }
 
 type GetRegisterValidatorSignedMessageParams struct {
-	Network      models.Network
-	Expiry       uint64
-	SubnetID     ids.ID
-	BlockchainID ids.ID
-	SigAggParams SignatureAggregatorParams
+	Network         models.Network
+	Expiry          uint64
+	SubnetID        ids.ID
+	ManagerSubnetID ids.ID
+	BlockchainID    ids.ID
+	SigAggParams    SignatureAggregatorParams
 }
+
 type SignatureAggregatorParams struct {
 	AggregatorLogger            logging.Logger
 	SignatureAggregatorEndpoint string
@@ -481,6 +479,7 @@ func InitValidatorRegistration(
 		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		initValidatorRegistrationParams.SignedMessageParams.Network,
 		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.ManagerSubnetID,
 		initValidatorRegistrationParams.SignedMessageParams.BlockchainID,
 		managerAddress,
 		initValidatorRegistrationParams.ValidatorManager.NodeID,
@@ -500,76 +499,42 @@ func InitValidatorRegistration(
 
 func FinishValidatorRegistration(
 	ctx context.Context,
-	logger logging.Logger,
-	app *application.Avalanche,
-	network models.Network,
-	rpcURL string,
-	chainSpec contract.ChainSpec,
-	generateRawTxOnly bool,
-	ownerSigner *evm.Signer,
+	initValidatorRegistrationParams InitValidatorRegistrationParams,
+	opt InitValidatorRegistrationOptions,
 	validationID ids.ID,
-	aggregatorLogger logging.Logger,
-	managerBlockchainID ids.ID,
-	managerAddressStr string,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
 ) (*types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("obtained subnetid %s \n", subnetID.String())
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("obtained managerSubnetID %s \n", managerSubnetID.String())
-
-	managerAddress := common.HexToAddress(managerAddressStr)
+	managerAddress := common.HexToAddress(initValidatorRegistrationParams.ValidatorManager.ManagerAddressStr)
 
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
-		network,
-		rpcURL,
-		aggregatorLogger,
-		0,
-		subnetID,
-		managerSubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.Network,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
+		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.ManagerSubnetID,
 		validationID,
 		true,
-		signatureAggregatorEndpoint,
-		pChainHeight,
+		initValidatorRegistrationParams.SignedMessageParams.SigAggParams,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if isNoOp, err := ownerSigner.IsNoOp(); err != nil {
+	if isNoOp, err := initValidatorRegistrationParams.ValidatorManager.Signer.IsNoOp(); err != nil {
 		return nil, err
 	} else if !isNoOp {
-		if client, err := evm.GetClient(rpcURL); err != nil {
+		if client, err := evm.GetClient(initValidatorRegistrationParams.ValidatorManager.RPCURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
-			if err := client.SetupProposerVM(ownerSigner); err != nil {
+			if err := client.SetupProposerVM(initValidatorRegistrationParams.ValidatorManager.Signer); err != nil {
 				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
 	tx, _, err := CompleteValidatorRegistration(
-		logger,
-		rpcURL,
+		opt.Logger,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		managerAddress,
-		ownerSigner,
+		initValidatorRegistrationParams.ValidatorManager.Signer,
 		signedMessage,
 	)
 	if err != nil {
@@ -579,7 +544,7 @@ func FinishValidatorRegistration(
 			return nil, fmt.Errorf("the Validator was already fully registered on the Manager")
 		}
 	}
-	if generateRawTxOnly {
+	if opt.BuildOnly {
 		return tx, nil
 	}
 	return nil, nil
