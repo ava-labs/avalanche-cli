@@ -665,31 +665,61 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
-	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
-		ctx,
-		duallogger.NewDualLogger(true, app),
+
+	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		localValidateFlags.RPC,
-		chainSpec,
-		false,
-		signer,
-		nodeID,
-		blsInfo.PublicKey[:],
-		expiry,
-		remainingBalanceOwners,
-		disableOwners,
-		0,
-		aggregatorLogger,
-		true,
-		delegationFee,
-		time.Duration(minimumStakeDuration)*time.Second,
-		common.HexToAddress(rewardsRecipientAddr),
-		l1BlockchainID,
-		validatorManagerAddress,
-		"",
-		signatureAggregatorEndpoint,
-		pChainEpoch.PChainHeight,
+		contract.ChainSpec{
+			BlockchainID: l1BlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	validatorManagerParams := validatormanager.ValidatorManagerParams{
+		RPCURL:            localValidateFlags.RPC,
+		Signer:            signer,
+		NodeID:            nodeID,
+		BlsPublicKey:      blsInfo.PublicKey[:],
+		BalanceOwners:     remainingBalanceOwners,
+		DisableOwners:     disableOwners,
+		ManagerAddressStr: validatorManagerAddress,
+		Weight:            weight,
+	}
+
+	getRegisterValidatorSignedMessageParams := validatormanager.GetRegisterValidatorSignedMessageParams{
+		Network:      network,
+		Expiry:       expiry,
+		SubnetID:     subnetID,
+		BlockchainID: l1BlockchainID,
+		SigAggParams: validatormanager.SignatureAggregatorParams{
+			AggregatorLogger:            aggregatorLogger,
+			SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
+			PchainHeight:                pChainEpoch.PChainHeight,
+		},
+	}
+
+	initValidatorRegistrationParams := validatormanager.InitValidatorRegistrationParams{
+		ValidatorManager:    validatorManagerParams,
+		SignedMessageParams: getRegisterValidatorSignedMessageParams,
+	}
+	posParams := validatormanager.ProofOfStakeParams{
+		DelegationFee:   delegationFee,
+		StakeDuration:   time.Duration(minimumStakeDuration) * time.Second,
+		RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
+	}
+	initValidatorRegistrationParams.PoS = &posParams
+	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
+		// Execution behavior (don’t broadcast; return unsigned init tx)
+		BuildOnly: false,
+		Logger:    duallogger.NewDualLogger(true, app),
+	}
+
+	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
+		ctx,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 	)
 	if err != nil {
 		return err
@@ -717,24 +747,14 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-
+	initValidatorRegistrationParams.SignedMessageParams.SigAggParams.PchainHeight = l1Epoch.PChainHeight
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		localValidateFlags.RPC,
-		chainSpec,
-		false,
-		signer,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 		validationID,
-		aggregatorLogger,
-		l1BlockchainID,
-		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
 	); err != nil {
 		return err
 	}
