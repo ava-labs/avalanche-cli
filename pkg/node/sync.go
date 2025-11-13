@@ -64,14 +64,26 @@ func prepareSubnetPlugin(app *application.Avalanche, hosts []*models.Host, block
 	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := ssh.RunSSHCreatePlugin(host, sc); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-			}
-		}(&wgResults, host)
+	if sc.CustomVMRepoURL == "" && sc.CustomVMPath != "" {
+		for _, host := range hosts {
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host *models.Host) {
+				defer wg.Done()
+				if err := ssh.RunSSHCopyBinaryFile(host, sc); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}(&wgResults, host)
+		}
+	} else {
+		for _, host := range hosts {
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host *models.Host) {
+				defer wg.Done()
+				if err := ssh.RunSSHCreatePlugin(host, sc); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}(&wgResults, host)
+		}
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {

@@ -609,6 +609,31 @@ func RunSSHRenderAvalancheNodeConfig(
 	return host.UploadBytes(nodeConf, remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 }
 
+func RunSSHCopyBinaryFile(host *models.Host, sc models.Sidecar) error {
+	vmID, err := sc.GetVMID()
+	if err != nil {
+		return err
+	}
+	subnetVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
+	ux.Logger.Info("Building Custom VM for %s to %s", host.NodeID, subnetVMBinaryPath)
+	if err := host.Upload(
+		sc.CustomVMPath,
+		subnetVMBinaryPath,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+
+	// set execute permissions
+	cmd := fmt.Sprintf("chmod +x %s", subnetVMBinaryPath)
+	ux.Logger.Info("Setting permissions for %s on %s", subnetVMBinaryPath, host.NodeID)
+	if _, err := host.Command(cmd, nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // RunSSHCreatePlugin runs script to create plugin
 func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 	vmID, err := sc.GetVMID()
@@ -793,6 +818,52 @@ func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, load
 			CheckoutCommit: checkoutCommit, LoadTestBranch: loadTestBranch,
 		},
 	)
+}
+
+// RunSSHSetupDeployKey sets up SSH deploy key for private repository access
+func RunSSHSetupDeployKey(host *models.Host, deployKeyPath string) error {
+	// Expand tilde in the path
+	expandedPath, err := expandTilde(deployKeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to expand deploy key path: %w", err)
+	}
+
+	// Check if the deploy key file exists
+	if _, err := os.Stat(expandedPath); os.IsNotExist(err) {
+		return fmt.Errorf("deploy key file not found: %s", expandedPath)
+	}
+
+	// Upload the deploy key first
+	remoteDeployKeyPath := "/home/ubuntu/.ssh/avalanche-deploy-key"
+
+	if err := host.Upload(expandedPath, remoteDeployKeyPath, constants.SSHFileOpsTimeout); err != nil {
+		return fmt.Errorf("failed to upload deploy key: %w", err)
+	}
+
+	// Run the setup script
+	return RunOverSSH(
+		"Setup Deploy Key",
+		host,
+		constants.SSHFileOpsTimeout,
+		"shell/setupDeployKey.sh",
+		scriptInputs{},
+	)
+}
+
+// expandTilde expands ~ to the user's home directory
+func expandTilde(path string) (string, error) {
+	if strings.HasPrefix(path, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		// Handle both ~/ and ~ cases
+		if len(path) == 1 {
+			return homeDir, nil
+		}
+		return filepath.Join(homeDir, path[1:]), nil
+	}
+	return path, nil
 }
 
 func RunSSHBuildLoadTestDependencies(host *models.Host) error {

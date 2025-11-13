@@ -90,6 +90,9 @@ func CreateCustomSidecar(
 
 	sc.RPCVersion = rpcVersion
 	sc.Sovereign = sovereign
+	if vmPath != "" {
+		sc.CustomVMPath = vmPath
+	}
 	return sc, nil
 }
 
