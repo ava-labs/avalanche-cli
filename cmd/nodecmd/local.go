@@ -678,7 +678,7 @@ func addAsValidator(
 	}
 
 	validatorManagerParams := validatormanager.ValidatorManagerParams{
-		RpcURL:            localValidateFlags.RPC,
+		RPCURL:            localValidateFlags.RPC,
 		Signer:            signer,
 		NodeID:            nodeID,
 		BlsPublicKey:      blsInfo.PublicKey[:],
@@ -705,9 +705,9 @@ func addAsValidator(
 		SignedMessageParams: getRegisterValidatorSignedMessageParams,
 	}
 	posParams := validatormanager.ProofOfStakeParams{
-		delegationFee,
-		time.Duration(minimumStakeDuration) * time.Second,
-		common.HexToAddress(rewardsRecipientAddr),
+		DelegationFee:   delegationFee,
+		StakeDuration:   time.Duration(minimumStakeDuration) * time.Second,
+		RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
 	}
 	initValidatorRegistrationParams.PoS = &posParams
 	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{

@@ -664,7 +664,7 @@ func CallAddValidator(
 	}
 
 	validatorManagerParams := validatormanager.ValidatorManagerParams{
-		RpcURL:            validatorManagerRPCEndpoint,
+		RPCURL:            validatorManagerRPCEndpoint,
 		Signer:            signer,
 		NodeID:            nodeID,
 		BlsPublicKey:      blsInfo.PublicKey[:],

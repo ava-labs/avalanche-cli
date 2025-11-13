@@ -8,9 +8,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/zondax/golem/pkg/logger"
 	"math/big"
 	"time"
+
+	"github.com/zondax/golem/pkg/logger"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -355,7 +356,7 @@ type SignatureAggregatorParams struct {
 }
 
 type ValidatorManagerParams struct {
-	RpcURL            string
+	RPCURL            string
 	Signer            *evm.Signer
 	NodeID            ids.NodeID
 	BlsPublicKey      []byte
@@ -391,7 +392,7 @@ func InitValidatorRegistration(
 	managerAddress := common.HexToAddress(initValidatorRegistrationParams.ValidatorManager.ManagerAddressStr)
 	alreadyInitialized := initValidatorRegistrationParams.TxHash != ""
 	if validationID, err := validatormanager.GetValidationID(
-		initValidatorRegistrationParams.ValidatorManager.RpcURL,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		managerAddress,
 		initValidatorRegistrationParams.ValidatorManager.NodeID,
 	); err != nil {
@@ -405,7 +406,7 @@ func InitValidatorRegistration(
 		var tx *types.Transaction
 		if isPos {
 			stakeAmount, err := validatormanager.PoSWeightToValue(
-				initValidatorRegistrationParams.ValidatorManager.RpcURL,
+				initValidatorRegistrationParams.ValidatorManager.RPCURL,
 				managerAddress,
 				initValidatorRegistrationParams.ValidatorManager.Weight,
 			)
@@ -414,12 +415,12 @@ func InitValidatorRegistration(
 			}
 			opt.Logger.Info("")
 			opt.Logger.Info("Initializing validator registration with PoS validator manager")
-			opt.Logger.Info(fmt.Sprintf("Using RPC URL: %s", initValidatorRegistrationParams.ValidatorManager.RpcURL))
+			opt.Logger.Info(fmt.Sprintf("Using RPC URL: %s", initValidatorRegistrationParams.ValidatorManager.RPCURL))
 			opt.Logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", initValidatorRegistrationParams.ValidatorManager.NodeID.String(), utils.FormatAmount(stakeAmount, 18)))
 			opt.Logger.Info("")
 			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
 				opt.Logger,
-				initValidatorRegistrationParams.ValidatorManager.RpcURL,
+				initValidatorRegistrationParams.ValidatorManager.RPCURL,
 				managerAddress,
 				initValidatorRegistrationParams.ValidatorManager.Signer,
 				initValidatorRegistrationParams.ValidatorManager.NodeID,
@@ -444,7 +445,7 @@ func InitValidatorRegistration(
 		} else {
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
 				opt.Logger,
-				initValidatorRegistrationParams.ValidatorManager.RpcURL,
+				initValidatorRegistrationParams.ValidatorManager.RPCURL,
 				managerAddress,
 				initValidatorRegistrationParams.ValidatorManager.Signer,
 				initValidatorRegistrationParams.ValidatorManager.NodeID,
@@ -477,7 +478,7 @@ func InitValidatorRegistration(
 	}
 	signedMessage, validationID, err := GetRegisterL1ValidatorMessage(
 		ctx,
-		initValidatorRegistrationParams.ValidatorManager.RpcURL,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		initValidatorRegistrationParams.SignedMessageParams.Network,
 		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
 		initValidatorRegistrationParams.SignedMessageParams.BlockchainID,
