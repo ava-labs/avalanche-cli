@@ -521,7 +521,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Printf("obtained subnetid %s \n", subnetID.String())
 	managerSubnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -532,6 +532,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("obtained managerSubnetID %s \n", managerSubnetID.String())
 
 	managerAddress := common.HexToAddress(managerAddressStr)
 
