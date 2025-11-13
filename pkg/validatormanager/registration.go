@@ -12,8 +12,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -275,14 +273,10 @@ func GetPChainL1ValidatorRegistrationMessage(
 	ctx context.Context,
 	network models.Network,
 	rpcURL string,
-	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
-	managerSubnetID,
 	validationID ids.ID,
 	registered bool,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	signedMessageParams SignatureAggregatorParams,
 ) (*warp.Message, error) {
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
@@ -313,13 +307,13 @@ func GetPChainL1ValidatorRegistrationMessage(
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 	return interchain.SignMessage(
-		aggregatorLogger,
-		signatureAggregatorEndpoint,
+		signedMessageParams.AggregatorLogger,
+		signedMessageParams.SignatureAggregatorEndpoint,
 		messageHexStr,
 		justification,
-		managerSubnetID.String(),
-		aggregatorQuorumPercentage,
-		pChainHeight,
+		subnetID.String(),
+		0,
+		signedMessageParams.PchainHeight,
 	)
 }
 
@@ -511,75 +505,41 @@ func InitValidatorRegistration(
 
 func FinishValidatorRegistration(
 	ctx context.Context,
-	logger logging.Logger,
-	app *application.Avalanche,
-	network models.Network,
-	rpcURL string,
-	chainSpec contract.ChainSpec,
-	generateRawTxOnly bool,
-	ownerSigner *evm.Signer,
+	initValidatorRegistrationParams InitValidatorRegistrationParams,
+	opt InitValidatorRegistrationOptions,
 	validationID ids.ID,
-	aggregatorLogger logging.Logger,
-	managerBlockchainID ids.ID,
-	managerAddressStr string,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
 ) (*types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerAddress := common.HexToAddress(managerAddressStr)
+	managerAddress := common.HexToAddress(initValidatorRegistrationParams.ValidatorManager.ManagerAddressStr)
 
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
-		network,
-		rpcURL,
-		aggregatorLogger,
-		0,
-		subnetID,
-		managerSubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.Network,
+		initValidatorRegistrationParams.ValidatorManager.RpcURL,
+		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
 		validationID,
 		true,
-		signatureAggregatorEndpoint,
-		pChainHeight,
+		initValidatorRegistrationParams.SignedMessageParams.SigAggParams,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if isNoOp, err := ownerSigner.IsNoOp(); err != nil {
+	if isNoOp, err := initValidatorRegistrationParams.ValidatorManager.Signer.IsNoOp(); err != nil {
 		return nil, err
 	} else if !isNoOp {
-		if client, err := evm.GetClient(rpcURL); err != nil {
+		if client, err := evm.GetClient(initValidatorRegistrationParams.ValidatorManager.RpcURL); err != nil {
 			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
 		} else {
-			if err := client.SetupProposerVM(ownerSigner); err != nil {
+			if err := client.SetupProposerVM(initValidatorRegistrationParams.ValidatorManager.Signer); err != nil {
 				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
 			}
 			client.Close()
 		}
 	}
 	tx, _, err := CompleteValidatorRegistration(
-		logger,
-		rpcURL,
+		opt.Logger,
+		initValidatorRegistrationParams.ValidatorManager.RpcURL,
 		managerAddress,
-		ownerSigner,
+		initValidatorRegistrationParams.ValidatorManager.Signer,
 		signedMessage,
 	)
 	if err != nil {
@@ -589,7 +549,7 @@ func FinishValidatorRegistration(
 			return nil, fmt.Errorf("the Validator was already fully registered on the Manager")
 		}
 	}
-	if generateRawTxOnly {
+	if opt.BuildOnly {
 		return tx, nil
 	}
 	return nil, nil

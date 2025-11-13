@@ -330,52 +330,25 @@ func CompleteValidatorRemoval(
 func FinishValidatorRemoval(
 	ctx context.Context,
 	logger logging.Logger,
-	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
-	chainSpec contract.ChainSpec,
+	subnetID ids.ID,
 	generateRawTxOnly bool,
 	signer *evm.Signer,
 	validationID ids.ID,
-	aggregatorLogger logging.Logger,
-	managerBlockchainID ids.ID,
 	managerAddressStr string,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	signedMessageParams SignatureAggregatorParams,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(managerAddressStr)
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
 
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
 		rpcURL,
-		aggregatorLogger,
-		0,
 		subnetID,
-		managerSubnetID,
 		validationID,
 		false,
-		signatureAggregatorEndpoint,
-		pChainHeight,
+		signedMessageParams,
 	)
 	if err != nil {
 		return nil, err

@@ -512,21 +512,32 @@ func removeValidatorSOV(
 
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+	sigAggParams := validatormanager.SignatureAggregatorParams{
+		AggregatorLogger:            aggregatorLogger,
+		SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
+		PchainHeight:                l1Epoch.PChainHeight,
+	}
 	rawTx, err = validatormanager.FinishValidatorRemoval(
 		ctx,
 		duallogger.NewDualLogger(true, app),
-		app,
 		network,
 		validatorManagerRPCEndpoint,
-		chainSpec,
+		subnetID,
 		externalValidatorManagerOwner,
 		signer,
 		validationID,
-		aggregatorLogger,
-		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
+		sigAggParams,
 	)
 	if err != nil {
 		return err

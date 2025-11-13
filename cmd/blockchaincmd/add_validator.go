@@ -749,24 +749,14 @@ func CallAddValidator(
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-
+	initValidatorRegistrationParams.SignedMessageParams.SigAggParams.PchainHeight = l1Epoch.PChainHeight
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		validatorManagerRPCEndpoint,
-		chainSpec,
-		externalValidatorManagerOwner,
-		signer,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 		validationID,
-		aggregatorLogger,
-		validatorManagerBlockchainID,
-		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
 	)
 	if err != nil {
 		return err
@@ -1076,3 +1066,85 @@ func getWeight() (uint64, error) {
 	}
 	return weight, nil
 }
+
+//
+//func RegisterL1Validator(
+//	ctx context.Context,
+//	initValidatorRegistrationParams validatormanager.InitValidatorRegistrationParams,
+//	initValidatorRegistrationOpts validatormanager.InitValidatorRegistrationOptions,
+//) error {
+//	// Example of using the HybridLogger with SDK functions
+//	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
+//		ctx,
+//		initValidatorRegistrationParams,
+//		initValidatorRegistrationOpts,
+//	)
+//	if err != nil {
+//		return err
+//	}
+//	if rawTx != nil {
+//		dump, err := evm.TxDump("Initializing Validator Registration", rawTx)
+//		if err == nil {
+//			ux.Logger.PrintToUser("%s", dump)
+//		}
+//		return err
+//	}
+//	ux.Logger.PrintToUser("ValidationID: %s", validationID)
+//
+//	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+//	if err != nil {
+//		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
+//			return err
+//		}
+//		ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
+//	} else {
+//		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
+//		if err := blockchain.UpdatePChainHeight(
+//			"Waiting for P-Chain to update validator information ...",
+//		); err != nil {
+//			return err
+//		}
+//	}
+//
+//	client, err := evm.GetClient(validatorManagerRPCEndpoint)
+//	if err != nil {
+//		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
+//	}
+//	if err := client.SetupProposerVM(initValidatorRegistrationParams.ValidatorManager.Signer); err != nil {
+//		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
+//	}
+//	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, initValidatorRegistrationParams.SignedMessageParams.BlockchainID.String())
+//	if err != nil {
+//		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+//	}
+//
+//	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
+//	defer cancel()
+//	rawTx, err = validatormanager.FinishValidatorRegistration(
+//		ctx,
+//		duallogger.NewDualLogger(true, app),
+//		app,
+//		network,
+//		validatorManagerRPCEndpoint,
+//		chainSpec,
+//		externalValidatorManagerOwner,
+//		signer,
+//		validationID,
+//		aggregatorLogger,
+//		validatorManagerBlockchainID,
+//		validatorManagerAddress,
+//		signatureAggregatorEndpoint,
+//		l1Epoch.PChainHeight,
+//	)
+//	if err != nil {
+//		return err
+//	}
+//	if rawTx != nil {
+//		dump, err := evm.TxDump("Finish Validator Registration", rawTx)
+//		if err == nil {
+//			ux.Logger.PrintToUser("%s", dump)
+//		}
+//		return err
+//	}
+//
+//}

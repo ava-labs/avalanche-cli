@@ -747,24 +747,14 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-
+	initValidatorRegistrationParams.SignedMessageParams.SigAggParams.PchainHeight = l1Epoch.PChainHeight
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		localValidateFlags.RPC,
-		chainSpec,
-		false,
-		signer,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 		validationID,
-		aggregatorLogger,
-		l1BlockchainID,
-		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
 	); err != nil {
 		return err
 	}
