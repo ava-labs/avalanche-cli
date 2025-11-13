@@ -665,61 +665,31 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
-
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: l1BlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	validatorManagerParams := validatormanager.ValidatorManagerParams{
-		RpcURL:            localValidateFlags.RPC,
-		Signer:            signer,
-		NodeID:            nodeID,
-		BlsPublicKey:      blsInfo.PublicKey[:],
-		BalanceOwners:     remainingBalanceOwners,
-		DisableOwners:     disableOwners,
-		ManagerAddressStr: validatorManagerAddress,
-		Weight:            weight,
-	}
-
-	getRegisterValidatorSignedMessageParams := validatormanager.GetRegisterValidatorSignedMessageParams{
-		Network:      network,
-		Expiry:       expiry,
-		SubnetID:     subnetID,
-		BlockchainID: l1BlockchainID,
-		SigAggParams: validatormanager.SignatureAggregatorParams{
-			AggregatorLogger:            aggregatorLogger,
-			SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
-			PchainHeight:                pChainEpoch.PChainHeight,
-		},
-	}
-
-	initValidatorRegistrationParams := validatormanager.InitValidatorRegistrationParams{
-		ValidatorManager:    validatorManagerParams,
-		SignedMessageParams: getRegisterValidatorSignedMessageParams,
-	}
-	posParams := validatormanager.ProofOfStakeParams{
-		delegationFee,
-		time.Duration(minimumStakeDuration) * time.Second,
-		common.HexToAddress(rewardsRecipientAddr),
-	}
-	initValidatorRegistrationParams.PoS = &posParams
-	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
-		// Execution behavior (don’t broadcast; return unsigned init tx)
-		BuildOnly: false,
-		Logger:    duallogger.NewDualLogger(true, app),
-	}
-
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
-		initValidatorRegistrationParams,
-		initValidatorRegistrationOpts,
+		duallogger.NewDualLogger(true, app),
+		app,
+		network,
+		localValidateFlags.RPC,
+		chainSpec,
+		false,
+		signer,
+		nodeID,
+		blsInfo.PublicKey[:],
+		expiry,
+		remainingBalanceOwners,
+		disableOwners,
+		0,
+		aggregatorLogger,
+		true,
+		delegationFee,
+		time.Duration(minimumStakeDuration)*time.Second,
+		common.HexToAddress(rewardsRecipientAddr),
+		l1BlockchainID,
+		validatorManagerAddress,
+		"",
+		signatureAggregatorEndpoint,
+		pChainEpoch.PChainHeight,
 	)
 	if err != nil {
 		return err
