@@ -259,7 +259,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if !ok {
 			return fmt.Errorf("cluster %s does not exist", clusterName)
 		}
-		hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+		hosts := cluster.GetValidatorHosts(allHosts) // exclude api nodes
 		_, err = filterHosts(hosts, validators)
 		if err != nil {
 			return err
@@ -678,7 +678,7 @@ func checkRPCCompatibility(
 	if err != nil {
 		return err
 	}
-	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exclude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {
@@ -705,7 +705,7 @@ func waitForSubnetValidators(
 	if err != nil {
 		return err
 	}
-	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exclude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {
@@ -772,7 +772,7 @@ func waitForClusterSubnetStatus(
 	if err != nil {
 		return err
 	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := cluster.GetValidatorHosts(allHosts) // exclude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {

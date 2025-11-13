@@ -239,7 +239,7 @@ func WaitForHealthyCluster(
 	if err != nil {
 		return err
 	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := cluster.GetValidatorHosts(allHosts) // exclude api nodes
 	defer DisconnectHosts(hosts)
 	startTime := time.Now()
 	spinSession := ux.NewUserSpinner()
