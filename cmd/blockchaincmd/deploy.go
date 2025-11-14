@@ -36,7 +36,6 @@ import (
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -905,7 +904,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		validatorManagerAddressStr := validatormanagerSDK.ValidatorProxyContractAddress
 
 		var specializedValidatorManagerAddressStr string
-		if sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+		if sidecar.PoS() {
 			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
 		}
 
@@ -976,7 +975,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerAddressStr = proxy.Hex()
 			ux.Logger.PrintToUser("")
 
-			if sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake {
+			if sidecar.PoS() {
 				ux.Logger.PrintToUser("Deploying Specialized Validator Manager into %s", validatorManagerRPCEndpoint)
 				specializedValidatorManagerAddress, _, _, err := validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
 					validatorManagerRPCEndpoint,
@@ -1049,7 +1048,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
-			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
+			sidecar.ValidatorManagement,
 			vmcPrivateKey,
 			validatorManagerRPCEndpoint,
 			validatorManagerBlockchainID,

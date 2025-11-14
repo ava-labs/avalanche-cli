@@ -56,7 +56,8 @@ type CreateFlags struct {
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
 	addICMRegistryToGenesis       bool
-	proofOfStake                  bool
+	proofOfStakeNative            bool
+	proofOfStakeERC20             bool
 	proofOfAuthority              bool
 	rewardBasisPoints             uint64
 	validatorManagerOwner         string
@@ -84,7 +85,7 @@ var (
 	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
-	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
+	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake-native,--proof-of-stake-erc20 are mutually exclusive")
 	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner --proxy-contract-owner are only applicable to Subnet Only Validator (SOV) blockchains")
 )
 
@@ -116,7 +117,9 @@ configuration, pass the -f flag.`,
 	sovGroup := flags.RegisterFlagGroup(cmd, "Subnet-Only-Validators (SOV) Flags", "show-sov-flags", true, func(set *pflag.FlagSet) {
 		set.BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 		set.BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
-		set.BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
+		set.BoolVar(&createFlags.proofOfStakeNative, "proof-of-stake", false, "alias for --proof-of-stake-native")
+		set.BoolVar(&createFlags.proofOfStakeNative, "proof-of-stake-native", false, "use proof of stake with native token for validator management")
+		set.BoolVar(&createFlags.proofOfStakeERC20, "proof-of-stake-erc20", false, "use proof of stake with ERC20 token for validator management")
 		set.StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 		set.StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 		set.Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
@@ -237,16 +240,16 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if !sovereign {
-		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.validatorManagerOwner != "" || createFlags.proxyContractOwner != "" {
+		if createFlags.proofOfAuthority || createFlags.proofOfStakeNative || createFlags.proofOfStakeERC20 || createFlags.validatorManagerOwner != "" || createFlags.proxyContractOwner != "" {
 			return errSOVFlagsOnly
 		}
 	}
 	// validator management type exclusiveness
-	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStakeNative, createFlags.proofOfStakeERC20}) {
 		return errMutuallyExlusiveValidatorManagementOptions
 	}
 
-	if createFlags.rewardBasisPoints == 0 && createFlags.proofOfStake {
+	if createFlags.rewardBasisPoints == 0 && (createFlags.proofOfStakeNative || createFlags.proofOfStakeERC20) {
 		return fmt.Errorf("reward basis points cannot be zero")
 	}
 

@@ -259,6 +259,48 @@ func DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 	return posValidatorManagerAddress, nil
 }
 
+//go:embed smart_contracts/erc20_token_staking_manager_bytecode_v2.0.0.txt
+var erc20ValidatorManagerV2_0_0Bytecode []byte
+
+func DeployPoSERC20ValidatorManagerV2_0_0Contract(
+	rpcURL string,
+	signer *evm.Signer,
+	validatorMessagesAtGenesis bool,
+) (common.Address, *types.Transaction, *types.Receipt, error) {
+	return DeployValidatorManagerContract(
+		rpcURL,
+		signer,
+		validatorMessagesAtGenesis,
+		string(erc20ValidatorManagerV2_0_0Bytecode),
+	)
+}
+
+func DeployPoSERC20ValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+	logger logging.Logger,
+	rpcURL string,
+	signer *evm.Signer,
+	validatorMessagesAtGenesis bool,
+	proxyOwnerSigner *evm.Signer,
+) (common.Address, error) {
+	erc20ValidatorManagerAddress, _, _, err := DeployPoSERC20ValidatorManagerV2_0_0Contract(
+		rpcURL,
+		signer,
+		validatorMessagesAtGenesis,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, _, err := SetupGenesisSpecializationProxyImplementation(
+		logger,
+		rpcURL,
+		proxyOwnerSigner,
+		erc20ValidatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	return erc20ValidatorManagerAddress, nil
+}
+
 //go:embed smart_contracts/deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 
@@ -398,7 +440,7 @@ func SetupPoA(
 // needs the list of validators for that tx,
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
-func SetupPoS(
+func SetupPoSNative(
 	log logging.Logger,
 	subnet blockchainSDK.Subnet,
 	signer *evm.Signer,
@@ -408,7 +450,7 @@ func SetupPoS(
 	signatureAggregatorEndpoint string,
 	nativeMinterPrecompileAdminSigner *evm.Signer,
 ) error {
-	return subnet.InitializeProofOfStake(
+	return subnet.InitializeProofOfStakeNative(
 		log,
 		signer,
 		aggregatorLogger,
@@ -416,5 +458,24 @@ func SetupPoS(
 		v2_0_0,
 		signatureAggregatorEndpoint,
 		nativeMinterPrecompileAdminSigner,
+	)
+}
+
+func SetupPoSERC20(
+	log logging.Logger,
+	subnet blockchainSDK.Subnet,
+	signer *evm.Signer,
+	aggregatorLogger logging.Logger,
+	posParams validatormanagerSDK.PoSParams,
+	erc20TokenAddress common.Address,
+	signatureAggregatorEndpoint string,
+) error {
+	return subnet.InitializeProofOfStakeERC20(
+		log,
+		signer,
+		aggregatorLogger,
+		posParams,
+		erc20TokenAddress,
+		signatureAggregatorEndpoint,
 	)
 }

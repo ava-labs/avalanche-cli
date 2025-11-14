@@ -5,6 +5,7 @@ package blockchaincmd
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -24,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -310,16 +312,66 @@ func StartLocalMachine(
 	return false, nil
 }
 
+func DeployERC20StakingToken(
+	network models.Network,
+	blockchainName string,
+	validatorManagerRPCEndpoint string,
+	specializedValidatorManagerAddress string,
+) (string, error) {
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainName: blockchainName,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+	if err != nil {
+		return "", err
+	}
+	ux.Logger.PrintToUser("Deploying Mintable ERC20 Staking Token on blockchain %s ...", blockchainName)
+	erc20TokenAddress, _, _, err := contract.DeployMintableERC20(
+		validatorManagerRPCEndpoint,
+		genesisSigner,
+		constants.DefaultERC20StakingTokenName,
+		common.HexToAddress(genesisAddress),
+		big.NewInt(constants.DefaultERC20StakingTokenSupply),
+	)
+	if err != nil {
+		return "", err
+	}
+	ux.Logger.GreenCheckmarkToUser("Mintable ERC20 Staking Token deployed at: %s", erc20TokenAddress.Hex())
+
+	// Transfer ownership to the specialized validator manager so it can mint rewards
+	ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager %s ...", specializedValidatorManagerAddress)
+	err = contractSDK.TransferOwnership(
+		app.Log,
+		validatorManagerRPCEndpoint,
+		erc20TokenAddress,
+		genesisSigner,
+		common.HexToAddress(specializedValidatorManagerAddress),
+	)
+	if err != nil {
+		return "", err
+	}
+	ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
+
+	return erc20TokenAddress.Hex(), nil
+}
+
 func CompleteValidatorManagerL1Deploy(
 	logger logging.Logger,
 	network models.Network,
 	blockchainName string,
 	validatorManagerRPCEndpoint string,
 	proxyContractOwner string,
-	isPoS bool,
+	validatorManagementType validatormanagertypes.ValidatorManagementType,
 	useACP99 bool,
 ) error {
-	if isPoS {
+	if validatormanagertypes.IsPoS(validatorManagementType) {
 		deployed, err := validatormanager.GenesisValidatorProxyHasImplementationSet(validatorManagerRPCEndpoint)
 		if err != nil {
 			return err
@@ -335,7 +387,12 @@ func CompleteValidatorManagerL1Deploy(
 			if err != nil {
 				return err
 			}
-			// it is not in genesis
+
+			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+
 			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 			proxyOwnerPrivateKey, err := GetProxyOwnerPrivateKey(
 				app,
@@ -346,10 +403,7 @@ func CompleteValidatorManagerL1Deploy(
 			if err != nil {
 				return err
 			}
-			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
-			if err != nil {
-				return err
-			}
+
 			proxyOwnerSigner, err := evm.NewSignerFromPrivateKey(proxyOwnerPrivateKey)
 			if err != nil {
 				return err
@@ -365,13 +419,23 @@ func CompleteValidatorManagerL1Deploy(
 				if err != nil {
 					return err
 				}
-				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
-					logger,
-					validatorManagerRPCEndpoint,
-					genesisSigner,
-					true,
-					proxyOwnerSigner,
-				)
+				if validatormanagertypes.IsPoSERC20(validatorManagementType) {
+					_, err = validatormanager.DeployPoSERC20ValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+						logger,
+						validatorManagerRPCEndpoint,
+						genesisSigner,
+						true,
+						proxyOwnerSigner,
+					)
+				} else {
+					_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+						logger,
+						validatorManagerRPCEndpoint,
+						genesisSigner,
+						true,
+						proxyOwnerSigner,
+					)
+				}
 				if err != nil {
 					return err
 				}

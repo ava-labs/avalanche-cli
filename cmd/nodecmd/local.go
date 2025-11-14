@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -673,6 +674,18 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
+
+	// Try to get ERC20 token address if this is PoS ERC20
+	var erc20TokenAddress string
+	tokenAddr, err := validatormanagersdk.GetERC20StakingTokenAddress(
+		localValidateFlags.RPC,
+		common.HexToAddress(validatorManagerAddress),
+	)
+	if err == nil {
+		erc20TokenAddress = tokenAddr.Hex()
+	}
+	// If error, it's likely PoS Native or PoA, so erc20TokenAddress stays empty
+
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
 		duallogger.NewDualLogger(true, app),
@@ -699,6 +712,7 @@ func addAsValidator(
 		"",
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
+		erc20TokenAddress,
 	)
 	if err != nil {
 		return err

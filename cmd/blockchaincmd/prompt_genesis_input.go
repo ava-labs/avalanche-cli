@@ -65,8 +65,12 @@ func promptValidatorManagementType(
 	sidecar *models.Sidecar,
 ) error {
 	explainOption := "Explain the difference"
-	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = validatormanagertypes.ProofOfStake
+	if createFlags.proofOfStakeNative {
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfStakeNative
+		return nil
+	}
+	if createFlags.proofOfStakeERC20 {
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfStakeERC20
 		return nil
 	}
 	if createFlags.proofOfAuthority {
@@ -74,7 +78,12 @@ func promptValidatorManagementType(
 		return nil
 	}
 
-	options := []string{validatormanagertypes.ProofOfAuthority, validatormanagertypes.ProofOfStake, explainOption}
+	options := []string{
+		validatormanagertypes.ProofOfAuthority,
+		validatormanagertypes.ProofOfStakeNative,
+		validatormanagertypes.ProofOfStakeERC20,
+		explainOption,
+	}
 	for {
 		option, err := app.Prompt.CaptureList(
 			"Which validator management type would you like to use in your blockchain?",
@@ -86,9 +95,33 @@ func promptValidatorManagementType(
 		switch option {
 		case validatormanagertypes.ProofOfAuthority:
 			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
-		case validatormanagertypes.ProofOfStake:
+		case validatormanagertypes.ProofOfStakeNative:
+			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
+		case validatormanagertypes.ProofOfStakeERC20:
 			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
 		case explainOption:
+			ux.Logger.PrintToUser("Validator Management Types:")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("  • Proof Of Authority (PoA)")
+			ux.Logger.PrintToUser("    - Validators are managed by an owner/admin address")
+			ux.Logger.PrintToUser("    - Owner can add/remove validators and set their weight")
+			ux.Logger.PrintToUser("    - No staking required, fully permissioned")
+			ux.Logger.PrintToUser("    - Best for: Permissioned networks")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("  • Proof Of Stake Native")
+			ux.Logger.PrintToUser("    - Validators stake the blockchain's native token")
+			ux.Logger.PrintToUser("    - Anyone can become a validator by staking minimum amount")
+			ux.Logger.PrintToUser("    - Validator weight is based on stake amount")
+			ux.Logger.PrintToUser("    - Supports delegation and staking rewards")
+			ux.Logger.PrintToUser("    - Best for: Public networks using native token economics")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("  • Proof Of Stake ERC20")
+			ux.Logger.PrintToUser("    - Validators stake a ERC20 token")
+			ux.Logger.PrintToUser("    - Anyone can become a validator by staking minimum amount")
+			ux.Logger.PrintToUser("    - Validator weight is based on ERC20 token stake amount")
+			ux.Logger.PrintToUser("    - Supports delegation and staking rewards")
+			ux.Logger.PrintToUser("    - Best for: Networks staking existing tokens, or custom token economics")
+			ux.Logger.PrintToUser("")
 			continue
 		}
 		break

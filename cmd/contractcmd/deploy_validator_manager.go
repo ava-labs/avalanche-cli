@@ -31,7 +31,8 @@ type DeployValidatorManagerFlags struct {
 	proxy                string
 	deployProxy          bool
 	poa                  bool
-	pos                  bool
+	posNative            bool
+	posERC20             bool
 	validatorManagerPath string
 	rewardBasisPoints    uint64
 }
@@ -63,7 +64,9 @@ L1. For that, you need to call 'avalanche contract initValidatorManager'.
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.proxy, "proxy", "", "use the given proxy")
 	cmd.Flags().BoolVar(&deployValidatorManagerFlags.deployProxy, "deploy-proxy", false, "deploy a new proxy and admin for the validator manager")
 	cmd.Flags().BoolVar(&deployValidatorManagerFlags.poa, "poa", false, "deploy a v2.0.0 Proof of Authority Validator Manager")
-	cmd.Flags().BoolVar(&deployValidatorManagerFlags.pos, "pos", false, "deploy a v2.0.0 Proof of Stake Validator Manager")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.posNative, "pos", false, "alias for --pos-native")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.posNative, "pos-native", false, "deploy a v2.0.0 Native Token Proof of Stake Validator Manager")
+	cmd.Flags().BoolVar(&deployValidatorManagerFlags.posERC20, "pos-erc20", false, "deploy a v2.0.0 ERC20 Token Proof of Stake Validator Manager")
 	cmd.Flags().StringVar(&deployValidatorManagerFlags.validatorManagerPath, "validator-manager-path", "", "deploy the validator manager contained in the given path (hex encoded)")
 	cmd.Flags().Uint64Var(&deployValidatorManagerFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	return cmd
@@ -74,9 +77,14 @@ func deployValidatorManager(cmd *cobra.Command, _ []string) error {
 }
 
 func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManagerFlags) error {
-	if !flags.poa && !flags.pos && flags.validatorManagerPath == "" {
+	if !flags.poa && !flags.posNative && !flags.posERC20 && flags.validatorManagerPath == "" {
 		customOption := "Custom"
-		options := []string{validatormanagertypes.ProofOfAuthority, validatormanagertypes.ProofOfStake, customOption}
+		options := []string{
+			validatormanagertypes.ProofOfAuthority,
+			validatormanagertypes.ProofOfStakeNative,
+			validatormanagertypes.ProofOfStakeERC20,
+			customOption,
+		}
 		option, err := app.Prompt.CaptureList(
 			"Which validator manager do you want to deploy?",
 			options,
@@ -87,8 +95,10 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		switch option {
 		case validatormanagertypes.ProofOfAuthority:
 			flags.poa = true
-		case validatormanagertypes.ProofOfStake:
-			flags.pos = true
+		case validatormanagertypes.ProofOfStakeNative:
+			flags.posNative = true
+		case validatormanagertypes.ProofOfStakeERC20:
+			flags.posERC20 = true
 		case customOption:
 			flags.validatorManagerPath, err = app.Prompt.CaptureExistingFilepath("Provide filepath that contains validator manager bytecode encoded as hexa:")
 			if err != nil {
@@ -233,7 +243,7 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		if err != nil {
 			return err
 		}
-	case flags.pos:
+	case flags.posNative:
 		rewardCalculatorAddress, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
 			flags.rpcEndpoint,
 			signer,
@@ -244,6 +254,24 @@ func CallDeployValidatorManager(cmd *cobra.Command, flags DeployValidatorManager
 		}
 		ux.Logger.PrintToUser("Reward Calculator Address: %s", rewardCalculatorAddress.Hex())
 		validatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
+			flags.rpcEndpoint,
+			signer,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	case flags.posERC20:
+		rewardCalculatorAddress, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+			flags.rpcEndpoint,
+			signer,
+			flags.rewardBasisPoints,
+		)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Reward Calculator Address: %s", rewardCalculatorAddress.Hex())
+		validatorManagerAddress, _, _, err = validatormanager.DeployPoSERC20ValidatorManagerV2_0_0Contract(
 			flags.rpcEndpoint,
 			signer,
 			false,

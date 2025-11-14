@@ -261,8 +261,35 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	var erc20TokenAddress string
+	if sc.PoS() {
+		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			if sc.PoSERC20() {
+				erc20TokenAddress, err = blockchaincmd.DeployERC20StakingToken(network, blockchainName, validatorManagerRPCEndpoint, specializedValidatorManagerAddressStr)
+				if err != nil {
+					return err
+				}
+			}
+			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
+				duallogger.NewDualLogger(true, app),
+				network,
+				blockchainName,
+				validatorManagerRPCEndpoint,
+				sc.ProxyContractOwner,
+				sc.ValidatorManagement,
+				sc.UseACP99,
+			); err != nil {
+				return err
+			}
+		}
+
+		if initPOSManagerFlags.rewardCalculatorAddress == "" {
+			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
+		}
+	}
+
 	switch {
-	case sc.PoA(): // PoA
+	case sc.PoA():
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			app.Log,
@@ -275,26 +302,31 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	case sc.PoS(): // PoS
-		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
-			// we assume it is fully CLI managed
-			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
-				duallogger.NewDualLogger(true, app),
-				network,
-				blockchainName,
-				validatorManagerRPCEndpoint,
-				sc.ProxyContractOwner,
-				sc.PoS(),
-				sc.UseACP99,
-			); err != nil {
-				return err
-			}
+	case sc.PoSERC20():
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing ERC20 Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
+		if err := validatormanager.SetupPoSERC20(
+			app.Log,
+			subnetSDK,
+			signer,
+			aggregatorLogger,
+			validatormanagerSDK.PoSParams{
+				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
+				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
+				MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
+				MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,
+				WeightToValueFactor:     big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
+				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
+				UptimeBlockchainID:      blockchainID,
+			},
+			common.HexToAddress(erc20TokenAddress),
+			signatureAggregatorEndpoint,
+		); err != nil {
+			return err
 		}
-
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
-		if initPOSManagerFlags.rewardCalculatorAddress == "" {
-			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
-		}
+		ux.Logger.GreenCheckmarkToUser("ERC20 Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	case sc.PoSNative():
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
 		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
 			app,
 			network,
@@ -312,7 +344,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err := validatormanager.SetupPoS(
+		if err := validatormanager.SetupPoSNative(
 			app.Log,
 			subnetSDK,
 			signer,
@@ -334,7 +366,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	default: // unsupported
+	default:
 		return fmt.Errorf("only PoA and PoS supported")
 	}
 

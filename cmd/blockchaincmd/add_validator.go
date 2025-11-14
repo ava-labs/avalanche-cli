@@ -656,7 +656,19 @@ func CallAddValidator(
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 
-	// Example of using the HybridLogger with SDK functions
+	// Get ERC20 token address if this is PoS ERC20
+	var erc20TokenAddress string
+	if sc.PoSERC20() {
+		tokenAddr, err := validatormanagersdk.GetERC20StakingTokenAddress(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to get ERC20 token address from validator manager: %w", err)
+		}
+		erc20TokenAddress = tokenAddr.Hex()
+	}
+
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		ctx,
 		duallogger.NewDualLogger(true, app),
@@ -683,6 +695,7 @@ func CallAddValidator(
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
+		erc20TokenAddress,
 	)
 	if err != nil {
 		return err

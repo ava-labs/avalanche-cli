@@ -361,4 +361,8 @@ const (
 	// Aggregator
 	DefaultAggregatorLogLevel = "Debug"
 	SignatureAggregator       = "signature-aggregator"
+
+	// ERC20 Staking Token Defaults
+	DefaultERC20StakingTokenName   = "STAKE"
+	DefaultERC20StakingTokenSupply = 1_000_000_000
 )

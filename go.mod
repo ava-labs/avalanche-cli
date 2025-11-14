@@ -2,6 +2,8 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.24.9
 
+replace github.com/ava-labs/avalanche-tooling-sdk-go => ../avalanche-tooling-sdk-go
+
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c

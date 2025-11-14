@@ -119,6 +119,84 @@ func InitializeValidatorRegistrationPoSNative(
 	)
 }
 
+func InitializeValidatorRegistrationPoSERC20(
+	logger logging.Logger,
+	rpcURL string,
+	managerAddress common.Address,
+	erc20TokenAddress common.Address,
+	signer *evm.Signer,
+	nodeID ids.NodeID,
+	blsPublicKey []byte,
+	balanceOwners warpMessage.PChainOwner,
+	disableOwners warpMessage.PChainOwner,
+	delegationFeeBips uint16,
+	minStakeDuration time.Duration,
+	stakeAmount *big.Int,
+	rewardRecipient common.Address,
+	useACP99 bool,
+) (*types.Transaction, *types.Receipt, error) {
+	type PChainOwner struct {
+		Threshold uint32
+		Addresses []common.Address
+	}
+
+	balanceOwnersAux := PChainOwner{
+		Threshold: balanceOwners.Threshold,
+		Addresses: sdkutils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+	disableOwnersAux := PChainOwner{
+		Threshold: disableOwners.Threshold,
+		Addresses: sdkutils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+
+	// First, approve the ERC20 token spending
+	logger.Info("Approving ERC20 token spending for validator registration")
+	approveTx, _, err := contractSDK.TxToMethod(
+		logger,
+		rpcURL,
+		signer,
+		erc20TokenAddress,
+		nil,
+		"approve ERC20 spending",
+		nil,
+		"approve(address,uint256)",
+		managerAddress,
+		stakeAmount,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to approve ERC20 token spending: %w", err)
+	}
+	logger.Info("ERC20 approval successful", logging.UserString("tx", approveTx.Hash().Hex()))
+
+	// Now initiate validator registration
+	if useACP99 {
+		return contractSDK.TxToMethod(
+			logger,
+			rpcURL,
+			signer,
+			managerAddress,
+			nil, // No ETH value needed for ERC20 staking
+			"initialize validator registration with ERC20 stake",
+			validatormanager.ErrorSignatureToError,
+			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,uint256,address)",
+			nodeID[:],
+			blsPublicKey,
+			balanceOwnersAux,
+			disableOwnersAux,
+			delegationFeeBips,
+			uint64(minStakeDuration.Seconds()),
+			stakeAmount,
+			rewardRecipient,
+		)
+	}
+
+	return nil, nil, errors.New("ERC20 staking manager is only supported with ACP99 (v2.0.0)")
+}
+
 // step 1 of flow for adding a new validator
 func InitializeValidatorRegistrationPoA(
 	logger logging.Logger,
@@ -425,6 +503,7 @@ func InitValidatorRegistration(
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 	pchainHeight uint64,
+	erc20TokenAddress string, // ERC20 token address for PoS ERC20, empty for PoS Native
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -472,26 +551,52 @@ func InitValidatorRegistration(
 				return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 			}
 			logger.Info("")
-			logger.Info("Initializing validator registration with PoS validator manager")
-			logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
-			logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
-			logger.Info("")
-			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
-				logger,
-				rpcURL,
-				managerAddress,
-				ownerSigner,
-				nodeID,
-				blsPublicKey,
-				expiry,
-				balanceOwners,
-				disableOwners,
-				delegationFee,
-				stakeDuration,
-				stakeAmount,
-				rewardRecipient,
-				useACP99,
-			)
+			if erc20TokenAddress != "" {
+				// PoS ERC20
+				logger.Info("Initializing validator registration with PoS ERC20 validator manager")
+				logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
+				logger.Info(fmt.Sprintf("ERC20 Token: %s", erc20TokenAddress))
+				logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
+				logger.Info("")
+				tx, receipt, err = InitializeValidatorRegistrationPoSERC20(
+					logger,
+					rpcURL,
+					managerAddress,
+					common.HexToAddress(erc20TokenAddress),
+					ownerSigner,
+					nodeID,
+					blsPublicKey,
+					balanceOwners,
+					disableOwners,
+					delegationFee,
+					stakeDuration,
+					stakeAmount,
+					rewardRecipient,
+					useACP99,
+				)
+			} else {
+				// PoS Native
+				logger.Info("Initializing validator registration with PoS Native validator manager")
+				logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
+				logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
+				logger.Info("")
+				tx, receipt, err = InitializeValidatorRegistrationPoSNative(
+					logger,
+					rpcURL,
+					managerAddress,
+					ownerSigner,
+					nodeID,
+					blsPublicKey,
+					expiry,
+					balanceOwners,
+					disableOwners,
+					delegationFee,
+					stakeDuration,
+					stakeAmount,
+					rewardRecipient,
+					useACP99,
+				)
+			}
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
