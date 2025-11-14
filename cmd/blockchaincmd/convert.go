@@ -165,6 +165,8 @@ func InitializeValidatorManager(
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 	proofOfStakeFlags flags.POSFlags,
+	erc20TokenAddress string,
+	rewardCalculatorAddress string,
 ) (bool, error) {
 	if useACP99 {
 		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
@@ -210,10 +212,31 @@ func InitializeValidatorManager(
 		}
 	}
 
-	var erc20TokenAddress string
 	if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainName: blockchainName,
+			},
+		)
+		if err != nil {
+			return tracked, err
+		}
+
+		genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+		if err != nil {
+			return tracked, err
+		}
+
 		if validatormanagertypes.IsPoSERC20(validatorManagementType) {
-			erc20TokenAddress, err = DeployERC20StakingToken(network, blockchainName, validatorManagerRPCEndpoint, specializedValidatorManagerAddressStr)
+			erc20TokenAddress, err = DeployERC20StakingToken(
+				genesisSigner,
+				validatorManagerRPCEndpoint,
+				specializedValidatorManagerAddressStr,
+				constants.DefaultERC20StakingTokenName,
+				constants.DefaultERC20StakingTokenSupply,
+			)
 			if err != nil {
 				return tracked, err
 			}
@@ -226,6 +249,7 @@ func InitializeValidatorManager(
 			proxyOwnerAddressStr,
 			validatorManagementType,
 			useACP99,
+			genesisSigner,
 		); err != nil {
 			return tracked, err
 		}
@@ -362,7 +386,7 @@ func InitializeValidatorManager(
 				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
 				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
 				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
-				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
+				RewardCalculatorAddress: rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
 			common.HexToAddress(erc20TokenAddress),
@@ -401,7 +425,7 @@ func InitializeValidatorManager(
 				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
 				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
 				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
-				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
+				RewardCalculatorAddress: rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
 			useACP99,
@@ -778,6 +802,26 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if !convertFlags.ConvertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
+		var erc20TokenAddress string
+		var rewardCalculatorAddress string
+		isExternalValidatorManager := blockchainID != validatorManagerBlockchainID
+		if validatormanagertypes.IsPoSERC20(sidecar.ValidatorManagement) && isExternalValidatorManager {
+			// External validator manager - need token address
+			address, err := app.Prompt.CaptureAddress("Enter the ERC20 token address for staking")
+			if err != nil {
+				return err
+			}
+			erc20TokenAddress = address.Hex()
+		}
+		if validatormanagertypes.IsPoS(sidecar.ValidatorManagement) && isExternalValidatorManager {
+			// External PoS validator manager - need reward calculator address
+			address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
+			if err != nil {
+				return err
+			}
+			rewardCalculatorAddress = address.Hex()
+		}
+
 		if _, err = InitializeValidatorManager(
 			blockchainName,
 			subnetID,
@@ -796,6 +840,8 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			convertFlags.LocalMachineFlags.UseLocalMachine,
 			convertFlags.SigAggFlags,
 			convertFlags.ProofOfStakeFlags,
+			erc20TokenAddress,
+			rewardCalculatorAddress,
 		); err != nil {
 			return err
 		}

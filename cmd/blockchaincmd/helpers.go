@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	contractSDK "github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/config"
@@ -313,32 +314,20 @@ func StartLocalMachine(
 }
 
 func DeployERC20StakingToken(
-	network models.Network,
-	blockchainName string,
+	signer *evm.Signer,
 	validatorManagerRPCEndpoint string,
 	specializedValidatorManagerAddress string,
+	tokenSymbol string,
+	tokenSupply uint64,
 ) (string, error) {
-	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainName: blockchainName,
-		},
-	)
-	if err != nil {
-		return "", err
-	}
-	genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
-	if err != nil {
-		return "", err
-	}
-	ux.Logger.PrintToUser("Deploying Mintable ERC20 Staking Token on blockchain %s ...", blockchainName)
+	signerAddress := signer.Address()
+	ux.Logger.PrintToUser("Deploying Mintable ERC20 Staking Token ...")
 	erc20TokenAddress, _, _, err := contract.DeployMintableERC20(
 		validatorManagerRPCEndpoint,
-		genesisSigner,
-		constants.DefaultERC20StakingTokenName,
-		common.HexToAddress(genesisAddress),
-		big.NewInt(constants.DefaultERC20StakingTokenSupply),
+		signer,
+		tokenSymbol,
+		signerAddress,
+		new(big.Int).SetUint64(tokenSupply),
 	)
 	if err != nil {
 		return "", err
@@ -351,7 +340,7 @@ func DeployERC20StakingToken(
 		app.Log,
 		validatorManagerRPCEndpoint,
 		erc20TokenAddress,
-		genesisSigner,
+		signer,
 		common.HexToAddress(specializedValidatorManagerAddress),
 	)
 	if err != nil {
@@ -370,6 +359,7 @@ func CompleteValidatorManagerL1Deploy(
 	proxyContractOwner string,
 	validatorManagementType validatormanagertypes.ValidatorManagementType,
 	useACP99 bool,
+	genesisSigner *evm.Signer,
 ) error {
 	if validatormanagertypes.IsPoS(validatorManagementType) {
 		deployed, err := validatormanager.GenesisValidatorProxyHasImplementationSet(validatorManagerRPCEndpoint)
@@ -377,22 +367,6 @@ func CompleteValidatorManagerL1Deploy(
 			return err
 		}
 		if !deployed {
-			_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-				app,
-				network,
-				contract.ChainSpec{
-					BlockchainName: blockchainName,
-				},
-			)
-			if err != nil {
-				return err
-			}
-
-			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
-			if err != nil {
-				return err
-			}
-
 			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 			proxyOwnerPrivateKey, err := GetProxyOwnerPrivateKey(
 				app,

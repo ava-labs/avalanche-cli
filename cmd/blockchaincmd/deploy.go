@@ -34,6 +34,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	contractSDK "github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -56,6 +57,10 @@ import (
 const (
 	skipRelayerFlagName = "skip-relayer"
 	vmcAtL1FlagName     = "vmc-L1"
+
+	erc20OptionProvideOwn = "Provide my own ERC20 token address"
+	erc20OptionDeployNew  = "Deploy a new ERC20 token with unlimited mint capability"
+	erc20OptionExplain    = "Explain more"
 )
 
 var (
@@ -87,6 +92,14 @@ var (
 	vmcChainFlags      contract.ChainSpec
 	vmcPrivateKeyFlags contract.PrivateKeyFlags
 	vmcPrivateKey      string
+
+	erc20TokenAddress              string
+	erc20TokenSymbol               string
+	erc20TokenSupply               uint64
+	erc20TokenOwnerPrivateKeyFlags contract.PrivateKeyFlags
+
+	rewardCalculatorAddress string
+	rewardBasisPoints       uint64
 
 	validatorManagerRPCEndpoint           string
 	validatorManagerAddressStr            string
@@ -203,6 +216,15 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().BoolVar(&vmcAtL1, vmcAtL1FlagName, false, "deploy the Validator Manager into the L1")
 	vmcPrivateKeyFlags.SetFlagNames("vmc-private-key", "vmc-key", "vmc-genesis-key")
 	vmcPrivateKeyFlags.AddToCmd(cmd, "as Validator Manager contract deployer")
+
+	cmd.Flags().StringVar(&erc20TokenAddress, "erc20-token-address", "", "ERC20 token address for staking (required for external PoS ERC20 validator managers)")
+	cmd.Flags().StringVar(&erc20TokenSymbol, "erc20-token-symbol", "", "ERC20 token symbol when deploying a new token for staking")
+	cmd.Flags().Uint64Var(&erc20TokenSupply, "erc20-token-supply", 0, "ERC20 token initial supply when deploying a new token for staking")
+	erc20TokenOwnerPrivateKeyFlags.SetFlagNames("erc20-token-owner-private-key", "erc20-token-owner-key", "")
+	erc20TokenOwnerPrivateKeyFlags.AddToCmd(cmd, "to transfer ERC20 token ownership")
+
+	cmd.Flags().StringVar(&rewardCalculatorAddress, "reward-calculator-address", "", "reward calculator address for external PoS validator managers")
+	cmd.Flags().Uint64Var(&rewardBasisPoints, "reward-basis-points", 100, "reward basis points for PoS Reward Calculator")
 
 	return cmd
 }
@@ -976,12 +998,37 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("")
 
 			if sidecar.PoS() {
+				// Deploy reward calculator if not provided
+				if rewardCalculatorAddress == "" {
+					ux.Logger.PrintToUser("Deploying Reward Calculator into %s", validatorManagerRPCEndpoint)
+					rewardCalculatorAddr, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+						validatorManagerRPCEndpoint,
+						vmcSigner,
+						rewardBasisPoints,
+					)
+					if err != nil {
+						return err
+					}
+					rewardCalculatorAddress = rewardCalculatorAddr.Hex()
+					ux.Logger.PrintToUser("  Reward Calculator Address: %s", rewardCalculatorAddress)
+					ux.Logger.PrintToUser("")
+				}
+
 				ux.Logger.PrintToUser("Deploying Specialized Validator Manager into %s", validatorManagerRPCEndpoint)
-				specializedValidatorManagerAddress, _, _, err := validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
-					validatorManagerRPCEndpoint,
-					vmcSigner,
-					false,
-				)
+				var specializedValidatorManagerAddress common.Address
+				if sidecar.PoSERC20() {
+					specializedValidatorManagerAddress, _, _, err = validatormanager.DeployPoSERC20ValidatorManagerV2_0_0Contract(
+						validatorManagerRPCEndpoint,
+						vmcSigner,
+						false,
+					)
+				} else {
+					specializedValidatorManagerAddress, _, _, err = validatormanager.DeployPoSValidatorManagerV2_0_0Contract(
+						validatorManagerRPCEndpoint,
+						vmcSigner,
+						false,
+					)
+				}
 				if err != nil {
 					return err
 				}
@@ -999,6 +1046,161 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("  Specialized Proxy Admin Address: %s", proxyAdmin.Hex())
 				ux.Logger.PrintToUser("")
 				specializedValidatorManagerAddressStr = proxy.Hex()
+
+				// Handle ERC20 token for PoS ERC20
+				if sidecar.PoSERC20() {
+					cliDeployedToken := false
+					// Check if token address already provided via flag
+					if erc20TokenAddress == "" {
+						for {
+							option, err := app.Prompt.CaptureList(
+								"External PoS ERC20 validator managers require an ERC20 token for staking",
+								[]string{
+									erc20OptionProvideOwn,
+									erc20OptionDeployNew,
+									erc20OptionExplain,
+								},
+							)
+							if err != nil {
+								return err
+							}
+							switch option {
+							case erc20OptionProvideOwn:
+								address, err := app.Prompt.CaptureAddress(
+									"Enter the ERC20 token address",
+								)
+								if err != nil {
+									return err
+								}
+								erc20TokenAddress = address.Hex()
+							case erc20OptionDeployNew:
+								// Prompt for token details if not provided via flags
+								tokenSymbol := erc20TokenSymbol
+								if tokenSymbol == "" {
+									tokenSymbol, err = app.Prompt.CaptureString("Token symbol")
+									if err != nil {
+										return err
+									}
+								}
+
+								tokenSupply := erc20TokenSupply
+								if tokenSupply == 0 {
+									tokenSupply, err = app.Prompt.CaptureUint64("Initial token supply")
+									if err != nil {
+										return err
+									}
+								}
+
+								// DeployERC20StakingToken handles deployment AND ownership transfer
+								erc20TokenAddress, err = DeployERC20StakingToken(
+									vmcSigner,
+									validatorManagerRPCEndpoint,
+									specializedValidatorManagerAddressStr,
+									tokenSymbol,
+									tokenSupply,
+								)
+								if err != nil {
+									return err
+								}
+								cliDeployedToken = true
+							case erc20OptionExplain:
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("━━━ ERC20 Token Requirements ━━━")
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("External PoS ERC20 validator managers use an ERC20 token for staking.")
+								ux.Logger.PrintToUser("Validators must stake tokens to participate, and earn rewards paid in the same token.")
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("Token Requirements:")
+								ux.Logger.PrintToUser("  • Must support minting (to pay validator rewards)")
+								ux.Logger.PrintToUser("  • Validator manager must own the token (to mint rewards)")
+								ux.Logger.PrintToUser("  • Token needs to be on the same chain where the validator manager lives")
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("Option 1: Provide your own ERC20 token")
+								ux.Logger.PrintToUser("  ✓ Full control over token economics and features")
+								ux.Logger.PrintToUser("  ✓ Can control the origin and max cap of minting")
+								ux.Logger.PrintToUser("     (could be a pool with max cap, or have a max for total mint)")
+								ux.Logger.PrintToUser("  ✓ Can use existing token with distribution/vesting")
+								ux.Logger.PrintToUser("  ⚠ You must ensure it supports minting")
+								ux.Logger.PrintToUser("  ⚠ You need to transfer ownership to the validator manager")
+								ux.Logger.PrintToUser("     (CLI will provide help if you have the private key available)")
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("Option 2: Let CLI deploy a new token")
+								ux.Logger.PrintToUser("  ✓ Standard Mintable ERC20 with unlimited mint capability")
+								ux.Logger.PrintToUser("  ✓ CLI automatically transfers ownership to validator manager")
+								ux.Logger.PrintToUser("  ✓ Ready to use immediately")
+								ux.Logger.PrintToUser("")
+								continue
+							}
+							break
+						}
+					}
+
+					ux.Logger.PrintToUser("Using ERC20 token at: %s", erc20TokenAddress)
+
+					// Handle ownership transfer for user-provided tokens
+					// (CLI-deployed tokens already have ownership transferred in DeployERC20StakingToken)
+					if !cliDeployedToken {
+						tokenOwnerPrivateKey, err := erc20TokenOwnerPrivateKeyFlags.GetPrivateKey(app, "")
+						if err != nil {
+							return err
+						}
+
+						if tokenOwnerPrivateKey == "" {
+							ux.Logger.PrintToUser("")
+							ux.Logger.PrintToUser("The ERC20 token ownership must be transferred to the validator manager")
+							ux.Logger.PrintToUser("   so it can mint staking rewards.")
+							ux.Logger.PrintToUser("")
+							ux.Logger.PrintToUser("   Token Address: %s", erc20TokenAddress)
+							ux.Logger.PrintToUser("   Validator Manager: %s", specializedValidatorManagerAddressStr)
+							ux.Logger.PrintToUser("")
+
+							transferNow, err := app.Prompt.CaptureNoYes("Do you want the CLI to transfer ownership now? (requires token owner private key)")
+							if err != nil {
+								return err
+							}
+
+							if transferNow {
+								tokenOwnerPrivateKey, err = prompts.PromptPrivateKey(
+									app.Prompt,
+									"to transfer token ownership",
+									app.GetKeyDir(),
+									app.GetKey,
+									"",
+									"",
+								)
+								if err != nil {
+									return err
+								}
+							} else {
+								ux.Logger.PrintToUser("")
+								ux.Logger.PrintToUser("You must manually transfer token ownership later.")
+								ux.Logger.PrintToUser("   The validator manager will not be functional until ownership is transferred.")
+								ux.Logger.PrintToUser("")
+							}
+						}
+
+						if tokenOwnerPrivateKey != "" {
+							// Transfer ownership
+							tokenOwnerSigner, err := evm.NewSignerFromPrivateKey(tokenOwnerPrivateKey)
+							if err != nil {
+								return err
+							}
+
+							ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager...")
+							err = contractSDK.TransferOwnership(
+								app.Log,
+								validatorManagerRPCEndpoint,
+								common.HexToAddress(erc20TokenAddress),
+								tokenOwnerSigner,
+								common.HexToAddress(specializedValidatorManagerAddressStr),
+							)
+							if err != nil {
+								return err
+							}
+							ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
+						}
+					}
+				}
 			}
 		}
 
@@ -1060,6 +1262,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployFlags.LocalMachineFlags.UseLocalMachine,
 			deployFlags.SigAggFlags,
 			deployFlags.ProofOfStakeFlags,
+			erc20TokenAddress,
+			rewardCalculatorAddress,
 		)
 		if err != nil {
 			return err

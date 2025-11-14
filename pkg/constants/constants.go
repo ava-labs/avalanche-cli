@@ -70,6 +70,7 @@ const (
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
 	EVMEventLookupTimeout   = 2 * time.Minute
+	ProposerVMEpochDuration = 30 * time.Second
 
 	DownloadCacheExpiration = 3 * time.Hour
 

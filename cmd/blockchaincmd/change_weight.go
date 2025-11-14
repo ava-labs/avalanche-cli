@@ -5,6 +5,7 @@ package blockchaincmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -256,6 +257,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 			newWeight,
 			changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
 			initiateTxHash,
+			kc,
 		)
 	} else {
 		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
@@ -298,6 +300,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
 		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
+		kc,
 	)
 	if err != nil {
 		return err
@@ -339,6 +342,7 @@ func changeWeightACP99(
 	weight uint64,
 	signatureAggregatorEndpoint string,
 	initiateTxHash string,
+	kc *keychain.Keychain,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -418,11 +422,26 @@ func changeWeightACP99(
 			}
 		}
 	}
+
 	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
 	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
+	epochTime := time.Unix(pChainEpoch.StartTime, 0)
+	elapsed := time.Since(epochTime)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
+	}
+	_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+	if err != nil {
+		return fmt.Errorf("could not sent dummy transfer on p-chain: %w", err)
+	}
+	pChainEpoch, err = utils.GetCurrentEpoch(network.Endpoint, "P")
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
+	}
+
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
@@ -474,15 +493,30 @@ func changeWeightACP99(
 			ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Weight was already set to 0 on the P-Chain. Proceeding to the next step"))
 		} else {
 			ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-			if err := blockchain.UpdatePChainHeight(
-				"Waiting for P-Chain to update validator information ...",
-			); err != nil {
+			if err := blockchain.UpdatePChainHeight("Waiting for P-Chain to update validator information ..."); err != nil {
 				return err
 			}
 		}
 	}
+
 	// Get L1's current epoch for L1ValidatorWeightMessage (signed by P-Chain, verified by L1)
 	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+	}
+	epochTime = time.Unix(l1Epoch.StartTime, 0)
+	elapsed = time.Since(epochTime)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
+	}
+	client, err := evm.GetClient(validatorManagerRPCEndpoint)
+	if err != nil {
+		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
+	}
+	if err := client.SetupProposerVM(signer); err != nil {
+		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
+	}
+	l1Epoch, err = utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}

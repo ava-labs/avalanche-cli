@@ -224,6 +224,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
 		removeValidatorFlags.SigAggFlags.SignatureAggregatorEndpoint,
+		kc,
 	); err != nil {
 		return err
 	}
@@ -262,6 +263,7 @@ func removeValidatorSOV(
 	isBootstrapValidator bool,
 	force bool,
 	signatureAggregatorEndpoint string,
+	kc *keychain.Keychain,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -399,8 +401,22 @@ func removeValidatorSOV(
 			}
 		}
 	}
+
 	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
 	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	if err != nil {
+		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
+	}
+	epochTime := time.Unix(pChainEpoch.StartTime, 0)
+	elapsed := time.Since(epochTime)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
+	}
+	_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+	if err != nil {
+		return fmt.Errorf("could not sent dummy transfer on p-chain: %w", err)
+	}
+	pChainEpoch, err = utils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -485,24 +501,20 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-		if err := blockchain.UpdatePChainHeight(
-			"Waiting for P-Chain to update validator information ...",
-		); err != nil {
+		if err := blockchain.UpdatePChainHeight("Waiting for P-Chain to update validator information ..."); err != nil {
 			return err
 		}
 	}
-
-	epochDuration := 30 * time.Second
 
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
 	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-	epochTime := time.Unix(l1Epoch.StartTime, 0)
-	elapsed := time.Since(epochTime)
-	if elapsed < epochDuration {
-		time.Sleep(epochDuration - elapsed)
+	epochTime = time.Unix(l1Epoch.StartTime, 0)
+	elapsed = time.Since(epochTime)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
 	}
 	client, err := evm.GetClient(validatorManagerRPCEndpoint)
 	if err != nil {

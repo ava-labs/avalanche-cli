@@ -43,6 +43,7 @@ var (
 	network                   networkoptions.NetworkFlags
 	privateKeyFlags           contract.PrivateKeyFlags
 	initValidatorManagerFlags ContractInitValidatorManagerFlags
+	erc20TokenAddress         string
 )
 
 type ContractInitValidatorManagerFlags struct {
@@ -71,6 +72,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only) maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
+	cmd.Flags().StringVar(&erc20TokenAddress, "erc20-token-address", "", "ERC20 token address for staking (required for external PoS ERC20 validator managers)")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
@@ -261,11 +263,32 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	var erc20TokenAddress string
 	if sc.PoS() {
 		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+
 			if sc.PoSERC20() {
-				erc20TokenAddress, err = blockchaincmd.DeployERC20StakingToken(network, blockchainName, validatorManagerRPCEndpoint, specializedValidatorManagerAddressStr)
+				erc20TokenAddress, err = blockchaincmd.DeployERC20StakingToken(
+					genesisSigner,
+					validatorManagerRPCEndpoint,
+					specializedValidatorManagerAddressStr,
+					constants.DefaultERC20StakingTokenName,
+					constants.DefaultERC20StakingTokenSupply,
+				)
 				if err != nil {
 					return err
 				}
@@ -278,13 +301,34 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				sc.ProxyContractOwner,
 				sc.ValidatorManagement,
 				sc.UseACP99,
+				genesisSigner,
 			); err != nil {
 				return err
 			}
+		} else if sc.PoSERC20() {
+			// External validator manager - need token address
+			if erc20TokenAddress == "" {
+				address, err := app.Prompt.CaptureAddress("Enter the ERC20 token address for staking")
+				if err != nil {
+					return err
+				}
+				erc20TokenAddress = address.Hex()
+			}
 		}
 
+		isExternalValidatorManager := blockchainID != validatorManagerBlockchainID
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
-			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
+			if isExternalValidatorManager {
+				// External PoS validator manager - prompt for reward calculator address
+				address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
+				if err != nil {
+					return err
+				}
+				initPOSManagerFlags.rewardCalculatorAddress = address.Hex()
+			} else {
+				// L1-based manager - use placeholder (deployed in genesis)
+				initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
+			}
 		}
 	}
 
