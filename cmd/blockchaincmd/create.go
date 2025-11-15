@@ -385,7 +385,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				icmInfo,
 				createFlags.addICMRegistryToGenesis,
 				sc.ProxyContractOwner,
-				createFlags.rewardBasisPoints,
 				createFlags.useACP99,
 			)
 			if err != nil {

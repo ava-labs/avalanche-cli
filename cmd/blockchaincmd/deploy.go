@@ -1264,6 +1264,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployFlags.ProofOfStakeFlags,
 			erc20TokenAddress,
 			rewardCalculatorAddress,
+			rewardBasisPoints,
 		)
 		if err != nil {
 			return err

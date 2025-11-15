@@ -377,24 +377,6 @@ func AddSpecializationTransparentProxyContractToAllocations(
 	}
 }
 
-//go:embed smart_contracts/deployed_example_reward_calculator_bytecode_v2.0.0.txt
-var deployedExampleRewardCalculatorV2_0_0Bytecode []byte
-
-func AddRewardCalculatorV2_0_0ToAllocations(
-	allocs core.GenesisAlloc,
-	rewardBasisPoints uint64,
-) {
-	deployedExampleRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedExampleRewardCalculatorV2_0_0Bytecode)))
-	allocs[common.HexToAddress(validatormanagerSDK.RewardCalculatorAddress)] = core.GenesisAccount{
-		Balance: big.NewInt(0),
-		Code:    deployedExampleRewardCalculatorBytes,
-		Nonce:   1,
-		Storage: map[common.Hash]common.Hash{
-			common.HexToHash("0x0"): common.BigToHash(new(big.Int).SetUint64(rewardBasisPoints)),
-		},
-	}
-}
-
 //go:embed smart_contracts/example_reward_calculator_bytecode_v2.0.0.txt
 var exampleRewardCalculatorV2_0_0Bytecode []byte
 

@@ -316,19 +316,12 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			}
 		}
 
-		isExternalValidatorManager := blockchainID != validatorManagerBlockchainID
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
-			if isExternalValidatorManager {
-				// External PoS validator manager - prompt for reward calculator address
-				address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
-				if err != nil {
-					return err
-				}
-				initPOSManagerFlags.rewardCalculatorAddress = address.Hex()
-			} else {
-				// L1-based manager - use placeholder (deployed in genesis)
-				initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
+			address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
+			if err != nil {
+				return err
 			}
+			initPOSManagerFlags.rewardCalculatorAddress = address.Hex()
 		}
 	}
 

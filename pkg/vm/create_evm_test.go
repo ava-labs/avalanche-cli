@@ -179,7 +179,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 		icmInfo                 *icm.ICMInfo
 		addICMRegistryToGenesis bool
 		proxyOwner              string
-		rewardBasisPoints       uint64
 		useV2_0_0               bool
 		expectedError           string
 		validateGenesis         func(t *testing.T, genesisBytes []byte)
@@ -192,7 +191,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -223,7 +221,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "genesis params allocation cannot be empty",
 		},
@@ -244,7 +241,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "none of the addresses in the transaction allow list precompile have any tokens allocated to them",
 		},
@@ -268,7 +264,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 		},
@@ -283,7 +278,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but warp precompile is disabled",
 		},
@@ -298,7 +292,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but warp precompile is disabled",
 		},
@@ -312,7 +305,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but no ICM info was provided",
 		},
@@ -326,7 +318,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but no ICM info was provided",
 		},
@@ -341,7 +332,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "blockchain can not be both PoA and PoS",
 		},
@@ -355,7 +345,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -389,7 +378,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -423,7 +411,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x2222222222222222222222222222222222222222",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -448,7 +435,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x3333333333333333333333333333333333333333",
-			rewardBasisPoints:       100,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -473,7 +459,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x4444444444444444444444444444444444444444",
-			rewardBasisPoints:       0,
 			useV2_0_0:               true,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -495,7 +480,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x5555555555555555555555555555555555555555",
-			rewardBasisPoints:       200,
 			useV2_0_0:               true,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -521,7 +505,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: true,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -572,7 +555,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
 			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
@@ -604,7 +586,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 				tt.icmInfo,
 				tt.addICMRegistryToGenesis,
 				tt.proxyOwner,
-				tt.rewardBasisPoints,
 				tt.useV2_0_0,
 			)
 
