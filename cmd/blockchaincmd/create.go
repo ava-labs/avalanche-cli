@@ -59,7 +59,6 @@ type CreateFlags struct {
 	proofOfStakeNative            bool
 	proofOfStakeERC20             bool
 	proofOfAuthority              bool
-	rewardBasisPoints             uint64
 	validatorManagerOwner         string
 	proxyContractOwner            string
 	enableDebugging               bool
@@ -122,7 +121,6 @@ configuration, pass the -f flag.`,
 		set.BoolVar(&createFlags.proofOfStakeERC20, "proof-of-stake-erc20", false, "use proof of stake with ERC20 token for validator management")
 		set.StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 		set.StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
-		set.Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 		set.BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	})
 
@@ -247,10 +245,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// validator management type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStakeNative, createFlags.proofOfStakeERC20}) {
 		return errMutuallyExlusiveValidatorManagementOptions
-	}
-
-	if createFlags.rewardBasisPoints == 0 && (createFlags.proofOfStakeNative || createFlags.proofOfStakeERC20) {
-		return fmt.Errorf("reward basis points cannot be zero")
 	}
 
 	// clean up all blockchain info to start over

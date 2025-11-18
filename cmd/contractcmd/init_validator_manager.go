@@ -30,6 +30,7 @@ import (
 
 type POSManagerSpecFlags struct {
 	rewardCalculatorAddress string
+	rewardBasisPoints       uint64
 	minimumStakeAmount      uint64 // big.Int
 	maximumStakeAmount      uint64 // big.Int
 	minimumStakeDuration    uint64
@@ -66,6 +67,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &initValidatorManagerFlags.SigAggFlags)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.rewardBasisPoints, "pos-reward-basis-points", 100, "(PoS only) reward basis points (100 = 1%)")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "(PoS only) maximum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "(PoS only) minimum stake duration (in seconds)")
@@ -304,6 +306,21 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				genesisSigner,
 			); err != nil {
 				return err
+			}
+
+			if initPOSManagerFlags.rewardCalculatorAddress == "" {
+				ux.Logger.PrintToUser("Deploying Reward Calculator into %s", validatorManagerRPCEndpoint)
+				rewardCalculatorAddr, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+					validatorManagerRPCEndpoint,
+					genesisSigner,
+					initPOSManagerFlags.rewardBasisPoints,
+				)
+				if err != nil {
+					return err
+				}
+				initPOSManagerFlags.rewardCalculatorAddress = rewardCalculatorAddr.Hex()
+				ux.Logger.PrintToUser("  Reward Calculator Address: %s", initPOSManagerFlags.rewardCalculatorAddress)
+				ux.Logger.PrintToUser("")
 			}
 		} else if sc.PoSERC20() {
 			// External validator manager - need token address
