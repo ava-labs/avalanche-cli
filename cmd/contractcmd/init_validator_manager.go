@@ -41,12 +41,12 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	initPOSManagerFlags              POSManagerSpecFlags
-	network                          networkoptions.NetworkFlags
-	privateKeyFlags                  contract.PrivateKeyFlags
-	initValidatorManagerFlags        ContractInitValidatorManagerFlags
-	erc20TokenAddress                string
-	erc20TokenOwnerPrivateKeyFlags   contract.PrivateKeyFlags
+	initPOSManagerFlags            POSManagerSpecFlags
+	network                        networkoptions.NetworkFlags
+	privateKeyFlags                contract.PrivateKeyFlags
+	initValidatorManagerFlags      ContractInitValidatorManagerFlags
+	erc20TokenAddress              string
+	erc20TokenOwnerPrivateKeyFlags contract.PrivateKeyFlags
 )
 
 type ContractInitValidatorManagerFlags struct {
