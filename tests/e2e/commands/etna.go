@@ -26,8 +26,8 @@ const (
 	PoSString = "proof-of-stake"
 	PoAString = "proof-of-authority"
 	// TODO: when mapping is compatible, remove these constants
-	GraniteFujiAvagoVersion     = "v1.14.0-fuji"
-	GraniteFujiSubnetEVMVersion = "v0.8.0-fuji"
+	GraniteFujiAvagoVersion     = "v1.14.0"
+	GraniteFujiSubnetEVMVersion = "v0.8.0"
 )
 
 func CreateEtnaSubnetEvmConfig(
