@@ -7,8 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -1029,7 +1027,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			)
 
 			// Call the function under test
-			result, err := PromptSubnetEVMVersion(app, tt.subnetEVMVersion, models.NewLocalNetwork())
+			result, err := PromptSubnetEVMVersion(app, tt.subnetEVMVersion)
 
 			// Assertions
 			if tt.expectedError != "" {
