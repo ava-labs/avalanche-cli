@@ -18,7 +18,7 @@ var EvmNonDebugConfig []byte
 
 var (
 	// current avacloud settings
-	LowGasLimit     = big.NewInt(8_000_000)
+	LowGasLimit     = big.NewInt(12_000_000)
 	MediumGasLimit  = big.NewInt(15_000_000) // C-Chain value
 	HighGasLimit    = big.NewInt(20_000_000)
 	LowTargetGas    = big.NewInt(25_000_000) // ~ 2.1x of gas limit
