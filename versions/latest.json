@@ -1,20 +1,20 @@
 {
   "subnet-evm":{
     "Local Network": {
-      "latest-version": "v1.14.0",
+      "latest-version": "v0.8.0",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.14.0",
+      "latest-version": "v0.8.0",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.14.0",
-      "minimum-version": "v1.14.0"
+      "latest-version": "v0.8.0",
+      "minimum-version": "v0.8.0"
     },
     "Mainnet": {
-      "latest-version": "v1.14.0",
-      "minimum-version": "v1.14.0"
+      "latest-version": "v0.8.0",
+      "minimum-version": "v0.8.0"
     }
   },
   "rpc": 44,
