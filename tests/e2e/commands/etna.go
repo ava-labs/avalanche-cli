@@ -25,7 +25,6 @@ const (
 const (
 	PoSString = "proof-of-stake"
 	PoAString = "proof-of-authority"
-	// TODO: when mapping is compatible, remove these constants
 )
 
 func CreateEtnaSubnetEvmConfig(
