@@ -1,75 +1,75 @@
 {
   "subnet-evm":{
     "Local Network": {
-      "latest-version": "v0.8.0-fuji",
+      "latest-version": "v1.14.0",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v0.8.0-fuji",
+      "latest-version": "v1.14.0",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v0.8.0-fuji",
-      "minimum-version": "v0.8.0-fuji"
+      "latest-version": "v1.14.0",
+      "minimum-version": "v1.14.0"
     },
     "Mainnet": {
-      "latest-version": "v0.7.8",
-      "minimum-version": "v0.7.1"
+      "latest-version": "v1.14.0",
+      "minimum-version": "v1.14.0"
     }
   },
   "rpc": 44,
   "avalanchego": {
     "Local Network": {
-      "latest-version": "v1.14.0-fuji",
+      "latest-version": "v1.14.0",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "v1.14.0-fuji",
+      "latest-version": "v1.14.0",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "v1.14.0-fuji",
-      "minimum-version": "v1.14.0-fuji"
+      "latest-version": "v1.14.0",
+      "minimum-version": "v1.14.0"
     },
     "Mainnet": {
-      "latest-version": "v1.13.5",
-      "minimum-version": "v1.13.0"
+      "latest-version": "v1.14.0",
+      "minimum-version": "v1.14.0"
     }
   },
   "signature-aggregator":{
     "Local Network": {
-      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "latest-version": "signature-aggregator-v0.5.3",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "signature-aggregator-v0.5.1-fuji",
+      "latest-version": "signature-aggregator-v0.5.3",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "signature-aggregator-v0.5.1-fuji",
-      "minimum-version": "signature-aggregator-v0.5.1-fuji"
+      "latest-version": "signature-aggregator-v0.5.3",
+      "minimum-version": "signature-aggregator-v0.5.3"
     },
     "Mainnet": {
-      "latest-version": "signature-aggregator-v0.4.5",
-      "minimum-version": ""
+      "latest-version": "signature-aggregator-v0.5.3",
+      "minimum-version": "signature-aggregator-v0.5.3"
     }
   },
   "relayer":{
     "Local Network": {
-      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "latest-version": "icm-relayer-v1.7.4",
       "minimum-version": ""
     },
     "DevNet": {
-      "latest-version": "icm-relayer-v1.7.2-fuji",
+      "latest-version": "icm-relayer-v1.7.4",
       "minimum-version": ""
     },
     "Fuji": {
-      "latest-version": "icm-relayer-v1.7.2-fuji",
-      "minimum-version": "icm-relayer-v1.7.2-fuji"
+      "latest-version": "icm-relayer-v1.7.4",
+      "minimum-version": "icm-relayer-v1.7.4"
     },
     "Mainnet": {
-      "latest-version": "icm-relayer-v1.6.7",
-      "minimum-version": ""
+      "latest-version": "icm-relayer-v1.7.4",
+      "minimum-version": "icm-relayer-v1.7.4"
     }
   }
 }
