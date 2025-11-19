@@ -4,7 +4,7 @@ go 1.24.9
 
 require (
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251119170027-aae8a7c8517b
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251119180006-58ce7491e250
 	github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1
 	github.com/ava-labs/coreth v0.15.4-rc.4
 	github.com/ava-labs/icm-services v1.4.1-0.20251021221544-ae1d7d5a81f3
