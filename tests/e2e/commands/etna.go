@@ -28,8 +28,8 @@ const (
 	PoSNativeString = "proof-of-stake-native"
 	PoSERC20String  = "proof-of-stake-erc20"
 	// TODO: when mapping is compatible, remove these constants
-	GraniteFujiAvagoVersion     = "v1.14.0-fuji"
-	GraniteFujiSubnetEVMVersion = "v0.8.0-fuji"
+	GraniteFujiAvagoVersion     = "v1.14.0"
+	GraniteFujiSubnetEVMVersion = "v0.8.0"
 )
 
 func CreateEtnaSubnetEvmConfig(
@@ -351,6 +351,8 @@ func InitValidatorManager(
 			cmd.Args,
 			"--erc20-token-address",
 			erc20TokenAddress,
+			"--erc20-token-owner-key",
+			"ewoq",
 		)
 	}
 	if rewardCalculatorAddress != "" {

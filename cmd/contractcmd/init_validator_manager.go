@@ -336,65 +336,78 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				erc20TokenAddress = address.Hex()
 			}
 
-			// Handle ownership transfer for external tokens
-			tokenOwnerPrivateKey, err := erc20TokenOwnerPrivateKeyFlags.GetPrivateKey(app, "")
+			// Check if the validator manager is already the owner
+			currentOwner, err := contractSDK.GetContractOwner(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(erc20TokenAddress),
+			)
 			if err != nil {
 				return err
 			}
 
-			if tokenOwnerPrivateKey == "" {
-				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser("The ERC20 token ownership must be transferred to the validator manager")
-				ux.Logger.PrintToUser("   so it can mint staking rewards.")
-				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser("   Token Address: %s", erc20TokenAddress)
-				ux.Logger.PrintToUser("   Validator Manager: %s", specializedValidatorManagerAddressStr)
-				ux.Logger.PrintToUser("")
-
-				transferNow, err := app.Prompt.CaptureNoYes("Do you want the CLI to transfer ownership now? (requires token owner private key)")
+			if currentOwner == common.HexToAddress(specializedValidatorManagerAddressStr) {
+				ux.Logger.PrintToUser("ERC20 token is already owned by the validator manager")
+			} else {
+				// Handle ownership transfer for external tokens
+				tokenOwnerPrivateKey, err := erc20TokenOwnerPrivateKeyFlags.GetPrivateKey(app, "")
 				if err != nil {
 					return err
 				}
 
-				if transferNow {
-					tokenOwnerPrivateKey, err = prompts.PromptPrivateKey(
-						app.Prompt,
-						"to transfer token ownership",
-						app.GetKeyDir(),
-						app.GetKey,
-						"",
-						"",
+				if tokenOwnerPrivateKey == "" {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("The ERC20 token ownership must be transferred to the validator manager")
+					ux.Logger.PrintToUser("   so it can mint staking rewards.")
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("   Token Address: %s", erc20TokenAddress)
+					ux.Logger.PrintToUser("   Validator Manager: %s", specializedValidatorManagerAddressStr)
+					ux.Logger.PrintToUser("")
+
+					transferNow, err := app.Prompt.CaptureNoYes("Do you want the CLI to transfer ownership now? (requires token owner private key)")
+					if err != nil {
+						return err
+					}
+
+					if transferNow {
+						tokenOwnerPrivateKey, err = prompts.PromptPrivateKey(
+							app.Prompt,
+							"to transfer token ownership",
+							app.GetKeyDir(),
+							app.GetKey,
+							"",
+							"",
+						)
+						if err != nil {
+							return err
+						}
+					} else {
+						ux.Logger.PrintToUser("")
+						ux.Logger.PrintToUser("You must manually transfer token ownership later.")
+						ux.Logger.PrintToUser("   The validator manager will not be functional until ownership is transferred.")
+						ux.Logger.PrintToUser("")
+					}
+				}
+
+				if tokenOwnerPrivateKey != "" {
+					// Transfer ownership
+					tokenOwnerSigner, err := evm.NewSignerFromPrivateKey(tokenOwnerPrivateKey)
+					if err != nil {
+						return err
+					}
+
+					ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager...")
+					err = contractSDK.TransferOwnership(
+						app.Log,
+						validatorManagerRPCEndpoint,
+						common.HexToAddress(erc20TokenAddress),
+						tokenOwnerSigner,
+						common.HexToAddress(specializedValidatorManagerAddressStr),
 					)
 					if err != nil {
 						return err
 					}
-				} else {
-					ux.Logger.PrintToUser("")
-					ux.Logger.PrintToUser("You must manually transfer token ownership later.")
-					ux.Logger.PrintToUser("   The validator manager will not be functional until ownership is transferred.")
-					ux.Logger.PrintToUser("")
+					ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
 				}
-			}
-
-			if tokenOwnerPrivateKey != "" {
-				// Transfer ownership
-				tokenOwnerSigner, err := evm.NewSignerFromPrivateKey(tokenOwnerPrivateKey)
-				if err != nil {
-					return err
-				}
-
-				ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager...")
-				err = contractSDK.TransferOwnership(
-					app.Log,
-					validatorManagerRPCEndpoint,
-					common.HexToAddress(erc20TokenAddress),
-					tokenOwnerSigner,
-					common.HexToAddress(specializedValidatorManagerAddressStr),
-				)
-				if err != nil {
-					return err
-				}
-				ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
 			}
 		}
 

@@ -63,7 +63,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	exists, err = utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
-	return "v1.14.0-fuji"
+	return "v1.14.0"
 }
 
 func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
