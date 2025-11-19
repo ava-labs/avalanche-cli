@@ -26,8 +26,6 @@ const (
 	PoSString = "proof-of-stake"
 	PoAString = "proof-of-authority"
 	// TODO: when mapping is compatible, remove these constants
-	GraniteFujiAvagoVersion     = "v1.14.0-fuji"
-	GraniteFujiSubnetEVMVersion = "v0.8.0-fuji"
 )
 
 func CreateEtnaSubnetEvmConfig(
@@ -63,7 +61,6 @@ func CreateEtnaSubnetEvmConfig(
 		"--evm-token=TOK",
 		"--icm=false",
 		"--"+constants.SkipUpdateFlag,
-		"--local",
 	)
 	if rewardBasisPoints != "" {
 		cmd.Args = append(cmd.Args, rewardBasisPoints)
@@ -87,7 +84,7 @@ func CreateEtnaSubnetEvmConfig(
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// TODO: when compatible, return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
-	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
 func CreateLocalEtnaNode(
