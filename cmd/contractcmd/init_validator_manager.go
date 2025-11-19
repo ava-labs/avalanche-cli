@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	contractSDK "github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -40,11 +41,12 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	initPOSManagerFlags       POSManagerSpecFlags
-	network                   networkoptions.NetworkFlags
-	privateKeyFlags           contract.PrivateKeyFlags
-	initValidatorManagerFlags ContractInitValidatorManagerFlags
-	erc20TokenAddress         string
+	initPOSManagerFlags              POSManagerSpecFlags
+	network                          networkoptions.NetworkFlags
+	privateKeyFlags                  contract.PrivateKeyFlags
+	initValidatorManagerFlags        ContractInitValidatorManagerFlags
+	erc20TokenAddress                string
+	erc20TokenOwnerPrivateKeyFlags   contract.PrivateKeyFlags
 )
 
 type ContractInitValidatorManagerFlags struct {
@@ -75,6 +77,8 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only) maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
 	cmd.Flags().StringVar(&erc20TokenAddress, "erc20-token-address", "", "ERC20 token address for staking (required for external PoS ERC20 validator managers)")
+	erc20TokenOwnerPrivateKeyFlags.SetFlagNames("erc20-token-owner-private-key", "erc20-token-owner-key", "erc20-token-owner-genesis-key")
+	erc20TokenOwnerPrivateKeyFlags.AddToCmd(cmd, "to transfer ERC20 token ownership")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
@@ -330,6 +334,67 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 					return err
 				}
 				erc20TokenAddress = address.Hex()
+			}
+
+			// Handle ownership transfer for external tokens
+			tokenOwnerPrivateKey, err := erc20TokenOwnerPrivateKeyFlags.GetPrivateKey(app, "")
+			if err != nil {
+				return err
+			}
+
+			if tokenOwnerPrivateKey == "" {
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("The ERC20 token ownership must be transferred to the validator manager")
+				ux.Logger.PrintToUser("   so it can mint staking rewards.")
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("   Token Address: %s", erc20TokenAddress)
+				ux.Logger.PrintToUser("   Validator Manager: %s", specializedValidatorManagerAddressStr)
+				ux.Logger.PrintToUser("")
+
+				transferNow, err := app.Prompt.CaptureNoYes("Do you want the CLI to transfer ownership now? (requires token owner private key)")
+				if err != nil {
+					return err
+				}
+
+				if transferNow {
+					tokenOwnerPrivateKey, err = prompts.PromptPrivateKey(
+						app.Prompt,
+						"to transfer token ownership",
+						app.GetKeyDir(),
+						app.GetKey,
+						"",
+						"",
+					)
+					if err != nil {
+						return err
+					}
+				} else {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("You must manually transfer token ownership later.")
+					ux.Logger.PrintToUser("   The validator manager will not be functional until ownership is transferred.")
+					ux.Logger.PrintToUser("")
+				}
+			}
+
+			if tokenOwnerPrivateKey != "" {
+				// Transfer ownership
+				tokenOwnerSigner, err := evm.NewSignerFromPrivateKey(tokenOwnerPrivateKey)
+				if err != nil {
+					return err
+				}
+
+				ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager...")
+				err = contractSDK.TransferOwnership(
+					app.Log,
+					validatorManagerRPCEndpoint,
+					common.HexToAddress(erc20TokenAddress),
+					tokenOwnerSigner,
+					common.HexToAddress(specializedValidatorManagerAddressStr),
+				)
+				if err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
 			}
 		}
 

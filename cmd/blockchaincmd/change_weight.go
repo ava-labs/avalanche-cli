@@ -424,7 +424,7 @@ func changeWeightACP99(
 	}
 
 	// Get P-Chain's current epoch for SetL1ValidatorWeightMessage (signed by L1, verified by P-Chain)
-	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err := sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -437,7 +437,7 @@ func changeWeightACP99(
 	if err != nil {
 		return fmt.Errorf("could not sent dummy transfer on p-chain: %w", err)
 	}
-	pChainEpoch, err = utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err = sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -500,7 +500,7 @@ func changeWeightACP99(
 	}
 
 	// Get L1's current epoch for L1ValidatorWeightMessage (signed by P-Chain, verified by L1)
-	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err := sdkutils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
@@ -516,7 +516,7 @@ func changeWeightACP99(
 	if err := client.SetupProposerVM(signer); err != nil {
 		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
 	}
-	l1Epoch, err = utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err = sdkutils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}

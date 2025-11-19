@@ -664,7 +664,7 @@ func addAsValidator(
 		return err
 	}
 	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
-	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err := sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -736,7 +736,7 @@ func addAsValidator(
 	}
 
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
-	l1Epoch, err := utils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
+	l1Epoch, err := sdkutils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
