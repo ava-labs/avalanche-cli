@@ -74,8 +74,8 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
-		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
-		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
+		evmVersion := binaryToVersion[utils.LatestEVM2AvagoKey]
+		avagoVersion := binaryToVersion[utils.LatestAvago2EVMKey]
 
 		// remove subnet-evm if installed version detected
 		if utils.CheckSubnetEVMExists(evmVersion) || utils.CheckAvalancheGoExists(avagoVersion) {
