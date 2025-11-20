@@ -861,7 +861,7 @@ func TestPromptSubnetEVMVersion(t *testing.T) {
 			},
 			mockDownloader: func(m *mocks.Downloader) {
 				// Mock GetLatestCLISupportedDependencyVersion
-				depResponseJSON := `{"rpc": 39, "subnet-evm": {"invalid network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}, "Local Network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}}, "avalanchego": {"invalid network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}, "Local Network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}}, "signature-aggregator": {"invalid network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}, "Local Network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}}}`
+				depResponseJSON := `{"rpc": 39, "subnet-evm": {"invalid network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}, "Local Network": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}, "Fuji": {"latest-version": "v0.7.5", "minimum-version": "v0.6.0"}}, "avalanchego": {"invalid network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}, "Local Network": {"latest-version": "v1.13.0", "minimum-version": "v1.12.0"}}, "signature-aggregator": {"invalid network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}, "Local Network": {"latest-version": "v0.4.4", "minimum-version": "v0.4.0"}}}`
 				m.On("DownloadWithCache", mock.AnythingOfType("string"), mock.Anything, mock.Anything).Return([]byte(depResponseJSON), nil)
 			},
 			expectedError: "",

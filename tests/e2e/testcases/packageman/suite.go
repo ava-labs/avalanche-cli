@@ -26,7 +26,9 @@ var (
 var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
 		mapper := utils.NewVersionMapper()
+		fmt.Printf("mapper %s \n", mapper)
 		binaryToVersion, err = utils.GetVersionMapping(mapper)
+		fmt.Printf("binaryToVersion %s \n", binaryToVersion)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.BeforeEach(func() {
