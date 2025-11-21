@@ -878,11 +878,11 @@ func promptPermissioning(
 func PromptSubnetEVMVersion(
 	app *application.Avalanche,
 	subnetEVMVersion string,
-	network models.Network,
 ) (string, error) {
+	// TODO: we removed network selection in blockchain create command, so network will default to fuji for all networks
 	switch subnetEVMVersion {
 	case latest:
-		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, network, nil)
+		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.NewFujiNetwork(), nil)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,

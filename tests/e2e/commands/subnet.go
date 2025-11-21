@@ -31,9 +31,8 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabl
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
-	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion, icmEnabled)
-	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
+	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], icmEnabled)
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
 func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
@@ -41,9 +40,8 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	// TODO: when mapping is compatible, use mapping[utils.LatestEVM2AvagoKey] and return mapping[utils.LatestAvago2EVMKey]
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, GraniteFujiSubnetEVMVersion)
-	return mapping[utils.LatestEVM2AvagoKey], GraniteFujiAvagoVersion
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
 /* #nosec G204 */
@@ -68,7 +66,6 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		icmFlag,
 		"--evm-token",
 		"TOK",
-		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -113,7 +110,6 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		"--icm=false",
 		"--evm-token",
 		"TOK",
-		"--local",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -182,7 +178,6 @@ func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath st
 		"--icm=false",
 		"--evm-token",
 		"TOK",
-		"--local",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -238,7 +233,6 @@ func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath strin
 		"--icm=false",
 		"--evm-token",
 		"TOK",
-		"--local",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

@@ -26,7 +26,9 @@ var (
 var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
 		mapper := utils.NewVersionMapper()
+		fmt.Printf("mapper %s \n", mapper)
 		binaryToVersion, err = utils.GetVersionMapping(mapper)
+		fmt.Printf("binaryToVersion %s \n", binaryToVersion)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.BeforeEach(func() {
@@ -72,9 +74,8 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
-		// TODO: when mapping is compatible, use binaryToVersion[utils.SoloSubnetEVMKey1]
-		evmVersion := commands.GraniteFujiSubnetEVMVersion
-		avagoVersion := commands.GraniteFujiAvagoVersion
+		evmVersion := binaryToVersion[utils.LatestEVM2AvagoKey]
+		avagoVersion := binaryToVersion[utils.LatestAvago2EVMKey]
 
 		// remove subnet-evm if installed version detected
 		if utils.CheckSubnetEVMExists(evmVersion) || utils.CheckAvalancheGoExists(avagoVersion) {
