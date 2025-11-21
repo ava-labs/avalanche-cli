@@ -39,14 +39,14 @@ type ClustersConfig struct {
 	GCPConfig GCPConfig                // stores GCP project name and filepath to service account JSON key
 }
 
-// GetAPINodes returns a filtered list of API nodes based on the ClusterConfig and given hosts.
+// GetAPIHosts returns a filtered list of API hosts based on the ClusterConfig and given hosts.
 func (cc *ClusterConfig) GetAPIHosts(hosts []*Host) []*Host {
 	return utils.Filter(hosts, func(h *Host) bool {
 		return slices.Contains(cc.APINodes, h.NodeID)
 	})
 }
 
-// GetValidatorNodes returns the validator nodes from the ClusterConfig.
+// GetValidatorHosts returns the non-API hosts from the given hosts based on the ClusterConfig.
 func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
 	return utils.Filter(hosts, func(h *Host) bool {
 		return !slices.Contains(cc.APINodes, h.GetCloudID())
