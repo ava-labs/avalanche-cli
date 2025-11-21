@@ -15,12 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	repoOrURL   string
-	subnetAlias string
-	branch      string
-)
-
 // avalanche blockchain import file
 func newImportFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,13 +22,12 @@ func newImportFileCmd() *cobra.Command {
 		Short: "Import an existing blockchain config",
 		RunE:  importFile,
 		Args:  cobrautils.MaximumNArgs(1),
-		Long: `The blockchain import command will import a blockchain configuration from a file or a git repository.
+		Long: `The blockchain import file command will import a blockchain configuration from a file.
 
-To import from a file, you can optionally provide the path as a command-line argument.
+You can optionally provide the path as a command-line argument.
 Alternatively, running the command without any arguments triggers an interactive wizard.
-To import from a repository, go through the wizard. By default, an imported Blockchain doesn't
-overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
-flag.`,
+By default, an imported blockchain doesn't overwrite an existing blockchain with the same name.
+To allow overwrites, provide the --force flag.`,
 	}
 	cmd.Flags().BoolVarP(
 		&overwriteImport,
@@ -42,24 +35,6 @@ flag.`,
 		"f",
 		false,
 		"overwrite the existing configuration if one exists",
-	)
-	cmd.Flags().StringVar(
-		&repoOrURL,
-		"repo",
-		"",
-		"the repo to import (ex: ava-labs/avalanche-plugins-core) or url to download the repo from",
-	)
-	cmd.Flags().StringVar(
-		&branch,
-		"branch",
-		"",
-		"the repo branch to use if downloading a new repo",
-	)
-	cmd.Flags().StringVar(
-		&subnetAlias,
-		"blockchain",
-		"",
-		"the blockchain configuration to import from the provided repo",
 	)
 	return cmd
 }
