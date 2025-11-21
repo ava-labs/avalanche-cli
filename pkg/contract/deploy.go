@@ -15,6 +15,9 @@ import (
 //go:embed contracts/bin/Token.bin
 var tokenBin []byte
 
+//go:embed contracts/bin/MintableERC20.bin
+var mintableERC20Bin []byte
+
 func DeployERC20(
 	rpcURL string,
 	signer *evm.Signer,
@@ -26,6 +29,24 @@ func DeployERC20(
 		rpcURL,
 		signer,
 		tokenBin,
+		"(string, address, uint256)",
+		symbol,
+		funded,
+		supply,
+	)
+}
+
+func DeployMintableERC20(
+	rpcURL string,
+	signer *evm.Signer,
+	symbol string,
+	funded common.Address,
+	supply *big.Int,
+) (common.Address, *types.Transaction, *types.Receipt, error) {
+	return contract.DeployContract(
+		rpcURL,
+		signer,
+		mintableERC20Bin,
 		"(string, address, uint256)",
 		symbol,
 		funded,

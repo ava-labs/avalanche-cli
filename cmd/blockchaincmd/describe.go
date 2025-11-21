@@ -359,10 +359,13 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress):
 			description = "Validator Messages Lib"
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorContractAddress):
-			if sc.PoA() {
+			switch {
+			case sc.PoA():
 				description = "PoA Validator Manager"
-			} else {
+			case sc.PoSNative():
 				description = "Native Token Staking Manager"
+			case sc.PoSERC20():
+				description = "ERC20 Token Staking Manager"
 			}
 			if sc.UseACP99 {
 				description = "ACP99 Compatible " + description
@@ -378,8 +381,6 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			description = "Validator Specialization Transparent Proxy"
 		case address == common.HexToAddress(validatorManagerSDK.SpecializationProxyAdminContractAddress):
 			description = "Validator Specialization Proxy Admin"
-		case address == common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress):
-			description = "Reward Calculator"
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}

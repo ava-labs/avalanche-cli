@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -212,7 +213,7 @@ func GetBlockchainEndpoints(
 		if err != nil {
 			return "", "", err
 		}
-		cChainID, err := utils.GetChainID(network.Endpoint, "C")
+		cChainID, err := sdkutils.GetChainID(network.Endpoint, "C")
 		if err != nil {
 			return "", "", err
 		}
@@ -255,13 +256,13 @@ func GetBlockchainID(
 		blockchainID, err = ids.FromString(chainSpec.BlockchainID)
 		if err != nil {
 			// it should be an alias at this point
-			blockchainID, err = utils.GetChainID(network.Endpoint, chainSpec.BlockchainID)
+			blockchainID, err = sdkutils.GetChainID(network.Endpoint, chainSpec.BlockchainID)
 			if err != nil {
 				return ids.Empty, err
 			}
 		}
 	case chainSpec.CChain:
-		chainID, err := utils.GetChainID(network.Endpoint, "C")
+		chainID, err := sdkutils.GetChainID(network.Endpoint, "C")
 		if err != nil {
 			return ids.Empty, err
 		}
@@ -427,7 +428,7 @@ func PromptChain(
 		chainID, err := ids.FromString(blockchainID)
 		if err != nil {
 			// map from alias to blockchain ID (or identity)
-			chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
+			chainID, err = sdkutils.GetChainID(network.Endpoint, blockchainID)
 			if err != nil {
 				return cancel, err
 			}

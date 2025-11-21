@@ -19,6 +19,8 @@ or importing from blockchains running public networks
 (e.g. created manually or with the deprecated subnet-cli)`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
+	// blockchain import file
+	cmd.AddCommand(newImportFileCmd())
 	// blockchain import public
 	cmd.AddCommand(newImportPublicCmd())
 	return cmd

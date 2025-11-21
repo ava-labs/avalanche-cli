@@ -25,6 +25,7 @@ type DeployERC20Flags struct {
 	funded          string
 	supply          uint64
 	rpcEndpoint     string
+	mintable        bool
 }
 
 var deployERC20Flags DeployERC20Flags
@@ -47,6 +48,7 @@ func newDeployERC20Cmd() *cobra.Command {
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
 	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
 	cmd.Flags().StringVar(&deployERC20Flags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
+	cmd.Flags().BoolVar(&deployERC20Flags.mintable, "mintable", false, "deploy a mintable ERC20 token with unlimited mint capability (usable on ERC20 validator managers)")
 	return cmd
 }
 
@@ -154,13 +156,25 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	address, _, _, err := contract.DeployERC20(
-		deployERC20Flags.rpcEndpoint,
-		signer,
-		deployERC20Flags.symbol,
-		common.HexToAddress(deployERC20Flags.funded),
-		supply,
-	)
+
+	var address common.Address
+	if deployERC20Flags.mintable {
+		address, _, _, err = contract.DeployMintableERC20(
+			deployERC20Flags.rpcEndpoint,
+			signer,
+			deployERC20Flags.symbol,
+			common.HexToAddress(deployERC20Flags.funded),
+			supply,
+		)
+	} else {
+		address, _, _, err = contract.DeployERC20(
+			deployERC20Flags.rpcEndpoint,
+			signer,
+			deployERC20Flags.symbol,
+			common.HexToAddress(deployERC20Flags.funded),
+			supply,
+		)
+	}
 	if err != nil {
 		return err
 	}

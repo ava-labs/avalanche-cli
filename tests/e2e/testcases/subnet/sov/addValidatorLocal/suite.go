@@ -26,7 +26,7 @@ var _ = ginkgo.Describe("[Add Validator SOV L1 Manager Local]", func() {
 		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.BlockchainName,
 			ewoqEVMAddress,
-			commands.PoS,
+			commands.PoSNative,
 		)
 	})
 	ginkgo.It("Can deploy blockchain to localhost and upsize it", func() {
@@ -39,6 +39,8 @@ var _ = ginkgo.Describe("[Add Validator SOV L1 Manager Local]", func() {
 			ewoqPChainAddress,
 			false, // convertOnly
 			false, // externalManager
+			"",    // erc20TokenAddress
+			0,     // rewardBasisPoints (L1 Manager: reward calculator deployed during initValidatorManager)
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

@@ -67,6 +67,8 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			ewoqPChainAddress,
 			true,  // convertOnly
 			false, // externalManager
+			"",    // erc20TokenAddress
+			0,     // rewardBasisPoints (PoA doesn't use rewards)
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -95,6 +97,9 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			utils.TestLocalNodeName,
 			"",
 			blockchainID,
+			0,  // PoA doesn't use rewards
+			"", // erc20TokenAddress (not used for PoA)
+			"", // rewardCalculatorAddress (not used for PoA)
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -154,6 +159,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			localClusterUris[2],
 			keyName,
 			0,
+			true, // bootstrap validator, needs force
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -166,6 +172,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV L1 Manager PoA]", func() {
 			localClusterUris[5],
 			keyName,
 			0,
+			true, // PoA always needs force
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -227,6 +234,8 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			ewoqPChainAddress,
 			true, // convertOnly
 			true, // externalManager
+			"",   // erc20TokenAddress
+			0,    // rewardBasisPoints (PoA doesn't use rewards)
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -255,6 +264,9 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			utils.TestLocalNodeName,
 			"",
 			blockchainID,
+			0,  // PoA doesn't use rewards
+			"", // erc20TokenAddress (not used for PoA)
+			"", // rewardCalculatorAddress (not used for PoA)
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -314,6 +326,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			localClusterUris[2],
 			keyName,
 			0,
+			true, // bootstrap validator, needs force
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -326,6 +339,7 @@ var _ = ginkgo.Describe("[AddRemove Validator SOV External Manager PoA]", func()
 			localClusterUris[5],
 			keyName,
 			0,
+			true, // PoA always needs force
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

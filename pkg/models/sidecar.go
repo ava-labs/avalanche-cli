@@ -83,7 +83,15 @@ func (sc Sidecar) PoA() bool {
 }
 
 func (sc Sidecar) PoS() bool {
-	return sc.ValidatorManagement == validatormanagertypes.ProofOfStake
+	return validatormanagertypes.IsPoS(sc.ValidatorManagement)
+}
+
+func (sc Sidecar) PoSNative() bool {
+	return validatormanagertypes.IsPoSNative(sc.ValidatorManagement)
+}
+
+func (sc Sidecar) PoSERC20() bool {
+	return validatormanagertypes.IsPoSERC20(sc.ValidatorManagement)
 }
 
 func (sc *Sidecar) UpdateValidatorManagerAddress(

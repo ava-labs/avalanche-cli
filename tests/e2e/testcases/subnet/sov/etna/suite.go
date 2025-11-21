@@ -47,7 +47,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
 	} else if pos {
-		cmdArgs = append(cmdArgs, "--proof-of-stake")
+		cmdArgs = append(cmdArgs, "--proof-of-stake-native")
 	}
 
 	cmd := exec.Command(CLIBinary, cmdArgs...)
@@ -89,7 +89,7 @@ func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
 	} else if pos {
-		cmdArgs = append(cmdArgs, "--proof-of-stake")
+		cmdArgs = append(cmdArgs, "--proof-of-stake-native")
 	}
 
 	cmd := exec.Command(CLIBinary, cmdArgs...)
@@ -132,7 +132,7 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
 	} else if pos {
-		cmdArgs = append(cmdArgs, "--proof-of-stake")
+		cmdArgs = append(cmdArgs, "--proof-of-stake-native")
 	}
 
 	cmd := exec.Command(CLIBinary, cmdArgs...)
@@ -175,7 +175,7 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
 	} else if pos {
-		cmdArgs = append(cmdArgs, "--proof-of-stake")
+		cmdArgs = append(cmdArgs, "--proof-of-stake-native")
 	}
 
 	cmd := exec.Command(CLIBinary, cmdArgs...)
