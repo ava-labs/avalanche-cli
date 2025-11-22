@@ -190,13 +190,15 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	if err == contractSDK.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTxTrace(sourceRPCEndpoint, txHash)
-		if err != nil {
-			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
-			ux.Logger.PrintToUser("")
-		} else {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("trace: %#v", trace)
+		simErr := evm.SimulateTransaction(sourceRPCEndpoint, txHash)
+		if simErr != nil {
+			// Try to extract Solidity error details from the simulation error
+			if errorSelector, extractErr := contractSDK.GetErrorSelectorFromRPCError(simErr); extractErr == nil {
+				ux.Logger.PrintToUser("error selector: %s", errorSelector)
+			}
+			if revertData, extractErr := contractSDK.GetRevertDataFromRPCError(simErr); extractErr == nil {
+				ux.Logger.PrintToUser("revert data: %s", revertData)
+			}
 			ux.Logger.PrintToUser("")
 		}
 		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
