@@ -249,7 +249,7 @@ func PromptSubnetEVMGenesisParams(
 	return params, tokenSymbol, nil
 }
 
-// prompts for wether to use a remote or native gas token
+// prompts for whether to use a remote or native gas token
 func promptGasTokenKind(
 	app *application.Avalanche,
 	defaultsKind DefaultsKind,
@@ -292,7 +292,7 @@ func promptGasTokenKind(
 	return params, nil
 }
 
-// prompts for wether to use defaults to build the config
+// prompts for whether to use defaults to build the config
 func PromptDefaults(
 	app *application.Avalanche,
 	defaultsKind DefaultsKind,
@@ -746,7 +746,7 @@ func promptFeeConfig(
 // if useICM is defined, will enable/disable ICM based on it
 // is useDefaults is true, will enable ICM
 // if using external gas token, will assume ICM to be enabled
-// if other cases, prompts the user for wether to enable ICM
+// if other cases, prompts the user for whether to enable ICM
 func PromptInterop(
 	app *application.Avalanche,
 	useICMFlag *bool,
