@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -29,13 +30,14 @@ import (
 )
 
 var (
-	loadTestRepoURL    string
-	loadTestBuildCmd   string
-	loadTestCmd        string
-	loadTestRepoCommit string
-	repoDirName        string
-	loadTestHostRegion string
-	loadTestBranch     string
+	loadTestRepoURL       string
+	loadTestBuildCmd      string
+	loadTestCmd           string
+	loadTestRepoCommit    string
+	repoDirName           string
+	loadTestHostRegion    string
+	loadTestBranch        string
+	loadTestDeployKeyPath string
 )
 
 type clusterInfo struct {
@@ -80,6 +82,7 @@ The command will then run the load test binary based on the provided load test r
 	cmd.Flags().StringVar(&loadTestCmd, "load-test-cmd", "", "command to run load test")
 	cmd.Flags().StringVar(&loadTestHostRegion, "region", "", "create load test node in a given region")
 	cmd.Flags().StringVar(&loadTestBranch, "load-test-branch", "", "load test branch or commit")
+	cmd.Flags().StringVar(&loadTestDeployKeyPath, "load-test-deploy-key", "", "path to SSH deploy key for private repository access")
 	return cmd
 }
 
@@ -357,6 +360,20 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
+
+	// Setup deploy key for private repository access if provided
+	if loadTestDeployKeyPath != "" {
+		ux.Logger.PrintToUser("%s Setting up deploy key for private repository", logging.Green.Wrap(">"))
+		if err := ssh.RunSSHSetupDeployKey(currentLoadTestHost[0], loadTestDeployKeyPath); err != nil {
+			return fmt.Errorf("failed to setup deploy key for private repository: %w", err)
+		}
+
+		// Update repository URL to use SSH config if it's a GitHub SSH URL
+		if strings.HasPrefix(loadTestRepoURL, "git@github.com:") {
+			loadTestRepoURL = strings.Replace(loadTestRepoURL, "git@github.com:", "git@github.com-avalanche:", 1)
+		}
+	}
+
 	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
 	if err := ssh.RunSSHBuildLoadTestCode(currentLoadTestHost[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, loadTestBranch, checkoutCommit); err != nil {
 		return err
@@ -485,7 +502,7 @@ func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
-		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
+		if err := validateRepositoryURL(loadTestRepoURL); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
 		}
@@ -533,4 +550,24 @@ func getExistingLoadTestInstance(clusterName, loadTestName string) (string, erro
 		}
 	}
 	return "", nil
+}
+
+// validateRepositoryURL validates both HTTP and SSH repository URLs
+func validateRepositoryURL(url string) error {
+	// Check if it's an SSH URL (git@host:path format)
+	if strings.HasPrefix(url, "git@") && strings.Contains(url, ":") {
+		// Basic SSH URL validation
+		parts := strings.Split(url, ":")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid SSH URL format")
+		}
+		hostPart := strings.TrimPrefix(parts[0], "git@")
+		if hostPart == "" || parts[1] == "" {
+			return fmt.Errorf("invalid SSH URL format")
+		}
+		return nil
+	}
+
+	// For HTTP/HTTPS URLs, use the existing validation
+	return prompts.ValidateURL(url)
 }
