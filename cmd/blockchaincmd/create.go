@@ -62,7 +62,6 @@ type CreateFlags struct {
 	validatorManagerOwner         string
 	proxyContractOwner            string
 	enableDebugging               bool
-	useACP99                      bool
 	Network                       networkoptions.NetworkFlags
 }
 
@@ -107,7 +106,6 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 
 	sovGroup := flags.RegisterFlagGroup(cmd, "Subnet-Only-Validators (SOV) Flags", "show-sov-flags", true, func(set *pflag.FlagSet) {
-		set.BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 		set.BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
 		set.BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
 		set.StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
@@ -363,7 +361,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				createFlags.addICMRegistryToGenesis,
 				sc.ProxyContractOwner,
 				createFlags.rewardBasisPoints,
-				createFlags.useACP99,
 			)
 			if err != nil {
 				return err
@@ -377,7 +374,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			tokenSymbol,
 			true,
 			sovereign,
-			createFlags.useACP99,
 		); err != nil {
 			return err
 		}
