@@ -301,11 +301,6 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 	}
 	queryLedger := len(ledgerIndices) > 0
-	if queryLedger {
-		pchain = true
-		cchain = false
-		xchain = false
-	}
 	if sdkUtils.Belongs(tokenAddresses, "Native") || sdkUtils.Belongs(tokenAddresses, "native") {
 		showNativeToken = true
 	}
@@ -319,7 +314,7 @@ func listKeys(*cobra.Command, []string) error {
 		for _, index := range ledgerIndices {
 			ledgerIndicesU32 = append(ledgerIndicesU32, uint32(index))
 		}
-		addrInfos, err = getLedgerIndicesInfo(clients.p, ledgerIndicesU32, networks)
+		addrInfos, err = getLedgerIndicesInfo(clients, networks, ledgerIndicesU32)
 		if err != nil {
 			return err
 		}
@@ -423,9 +418,9 @@ func getStoredKeyInfo(
 }
 
 func getLedgerIndicesInfo(
-	pClients map[models.Network]platformvm.Client,
-	ledgerIndices []uint32,
+	clients *Clients,
 	networks []models.Network,
+	ledgerIndices []uint32,
 ) ([]addressInfo, error) {
 	ledgerDevice, err := ledger.New()
 	if err != nil {
@@ -441,7 +436,8 @@ func getLedgerIndicesInfo(
 	addrInfos := []addressInfo{}
 	for i, index := range ledgerIndices {
 		addr := pubKeys[i].Address()
-		ledgerAddrInfos, err := getLedgerIndexInfo(pClients, index, networks, addr)
+		evmAddr := pubKeys[i].EthAddress()
+		ledgerAddrInfos, err := getLedgerIndexInfo(clients, networks, index, addr, evmAddr)
 		if err != nil {
 			return []addressInfo{}, err
 		}
@@ -451,10 +447,11 @@ func getLedgerIndicesInfo(
 }
 
 func getLedgerIndexInfo(
-	pClients map[models.Network]platformvm.Client,
-	index uint32,
+	clients *Clients,
 	networks []models.Network,
+	index uint32,
 	addr ids.ShortID,
+	evmAddr common.Address,
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
@@ -462,17 +459,75 @@ func getLedgerIndexInfo(
 		if err != nil {
 			return nil, err
 		}
-		addrInfo, err := getPChainAddrInfo(
-			pClients,
-			network,
-			pChainAddr,
-			"ledger",
-			fmt.Sprintf("index %d", index),
-		)
-		if err != nil {
-			return nil, err
+		if _, ok := clients.p[network]; ok {
+			addrInfo, err := getPChainAddrInfo(
+				clients.p,
+				network,
+				pChainAddr,
+				"ledger",
+				fmt.Sprintf("index %d", index),
+			)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
 		}
-		addrInfos = append(addrInfos, addrInfo)
+		if _, ok := clients.x[network]; ok {
+			xChainAddr, err := address.Format("X", key.GetHRP(network.ID), addr[:])
+			if err != nil {
+				return nil, err
+			}
+			addrInfo, err := getXChainAddrInfo(
+				clients.x,
+				network,
+				xChainAddr,
+				"ledger",
+				fmt.Sprintf("index %d", index),
+			)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
+		}
+		if _, ok := clients.c[network]; ok {
+			addrInfosAux, err := getEvmBasedChainAddrInfo(
+				"C-Chain",
+				"AVAX",
+				clients.c[network],
+				clients.cEndpoint[network],
+				network,
+				evmAddr.Hex(),
+				"ledger",
+				fmt.Sprintf("index %d", index),
+			)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfosAux...)
+		}
+		if _, ok := clients.evm[network]; ok {
+			for subnetName := range clients.evm[network] {
+				addrInfo, err := getEvmBasedChainAddrInfo(
+					subnetName,
+					subnetToken,
+					clients.evm[network][subnetName],
+					clients.evmEndpoint[network][subnetName],
+					network,
+					evmAddr.Hex(),
+					"ledger",
+					fmt.Sprintf("index %d", index),
+				)
+				if err != nil {
+					ux.Logger.RedXToUser(
+						"failure obtaining info for blockchain %s on url %s",
+						subnetName,
+						clients.blockchainRPC[network][subnetName],
+					)
+					continue
+				}
+				addrInfos = append(addrInfos, addrInfo...)
+			}
+		}
 	}
 	return addrInfos, nil
 }

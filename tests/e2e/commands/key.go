@@ -159,6 +159,28 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
+func ListLedgerKeys(network string, ledgerIndices []uint, subnets string, chains string) (string, error) {
+	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
+	for _, idx := range ledgerIndices {
+		args = append(args, "--ledger", fmt.Sprintf("%d", idx))
+	}
+	if subnets != "" {
+		args = append(args, "--subnets", subnets)
+	}
+	if chains != "" {
+		args = append(args, "--blockchains", chains)
+	}
+	cmd := exec.Command(CLIBinary, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(out))
+		utils.PrintStdErr(err)
+	}
+	return string(out), err
+}
+
+/* #nosec G204 */
 func KeyTransferSend(
 	args []string,
 ) (string, error) {

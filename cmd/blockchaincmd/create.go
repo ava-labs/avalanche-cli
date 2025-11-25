@@ -65,12 +65,6 @@ type CreateFlags struct {
 	Network                       networkoptions.NetworkFlags
 }
 
-var createNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 var (
 	createFlags CreateFlags
 	forceCreate bool
@@ -107,7 +101,6 @@ configuration, pass the -f flag.`,
 		RunE:              createBlockchainConfig,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &createFlags.Network, true, createNetworkOptions)
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&forceCreate, forceFlag, false, "overwrite the existing configuration if one exists")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
@@ -290,19 +283,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		createFlags.Network,
-		false,
-		false,
-		createNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
-	}
-
 	if vmType == models.SubnetEvm {
 		if sovereign {
 			if err := setSidecarValidatorManageOwner(sc, createFlags); err != nil {
@@ -329,7 +309,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if vmVersion != latest && vmVersion != preRelease && vmVersion != "" && !semver.IsValid(vmVersion) {
 			return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 		}
-		vmVersion, err = vm.PromptSubnetEVMVersion(app, vmVersion, network)
+		vmVersion, err = vm.PromptSubnetEVMVersion(app, vmVersion)
 		if err != nil {
 			return err
 		}
