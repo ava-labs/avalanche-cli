@@ -44,7 +44,6 @@ func TestExportImportSubnet(t *testing.T) {
 		testSubnet,
 		vmVersion,
 		"Test",
-		false,
 		true,
 		true,
 	)
