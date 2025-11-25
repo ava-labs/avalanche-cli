@@ -703,9 +703,9 @@ func CallAddValidator(
 	}
 	if pos {
 		posParams := validatormanager.ProofOfStakeParams{
-			delegationFee,
-			duration,
-			common.HexToAddress(rewardsRecipientAddr),
+			DelegationFee:   delegationFee,
+			StakeDuration:   duration,
+			RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
 		}
 		initValidatorRegistrationParams.PoS = &posParams
 	}
