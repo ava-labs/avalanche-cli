@@ -339,11 +339,7 @@ func removeValidatorSOV(
 		}
 	}
 
-	if sc.UseACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	if !sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), validatorManagerOwner)
@@ -424,7 +420,6 @@ func removeValidatorSOV(
 		isBootstrapValidator || force,
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
@@ -457,7 +452,6 @@ func removeValidatorSOV(
 			true, // force
 			validatorManagerBlockchainID,
 			validatorManagerAddress,
-			sc.UseACP99,
 			initiateTxHash,
 			signatureAggregatorEndpoint,
 			pChainEpoch.PChainHeight,
@@ -531,7 +525,6 @@ func removeValidatorSOV(
 		aggregatorLogger,
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		sc.UseACP99,
 		signatureAggregatorEndpoint,
 		l1Epoch.PChainHeight,
 	)

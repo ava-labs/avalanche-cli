@@ -605,7 +605,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 				tt.addICMRegistryToGenesis,
 				tt.proxyOwner,
 				tt.rewardBasisPoints,
-				tt.useV2_0_0,
 			)
 
 			if tt.expectedError != "" {
@@ -790,7 +789,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 				require.Equal(t, "TEST", sidecar.TokenSymbol)
 				require.Equal(t, "TEST Token", sidecar.TokenName)
 				require.True(t, sidecar.Sovereign)
-				require.False(t, sidecar.UseACP99)
 			},
 		},
 		{
@@ -833,7 +831,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 				require.Equal(t, "NEW", sidecar.TokenSymbol) // Should be overwritten
 				require.Equal(t, "NEW Token", sidecar.TokenName)
 				require.False(t, sidecar.Sovereign)
-				require.True(t, sidecar.UseACP99)
 			},
 		},
 		{
@@ -949,7 +946,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 				require.Equal(t, "SOV", sidecar.TokenSymbol)
 				require.Equal(t, "SOV Token", sidecar.TokenName)
 				require.True(t, sidecar.Sovereign)
-				require.True(t, sidecar.UseACP99)
 			},
 		},
 		{
@@ -982,7 +978,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 				require.Equal(t, "", sidecar.TokenSymbol)
 				require.Equal(t, " Token", sidecar.TokenName) // Empty symbol + " Token"
 				require.False(t, sidecar.Sovereign)
-				require.False(t, sidecar.UseACP99)
 			},
 		},
 	}
@@ -1005,7 +1000,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 				tt.tokenSymbol,
 				tt.getRPCVersionFromBinary,
 				tt.sovereign,
-				tt.useV2_0_0,
 			)
 
 			// Check error expectation

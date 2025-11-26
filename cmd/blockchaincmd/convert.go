@@ -159,16 +159,11 @@ func InitializeValidatorManager(
 	validatorManagerOwnerAddressStr string,
 	specializedValidatorManagerAddressStr string,
 	proxyOwnerAddressStr string,
-	useACP99 bool,
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 	proofOfStakeFlags flags.POSFlags,
 ) (bool, error) {
-	if useACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	var err error
 	clusterName := clusterNameFlagValue
@@ -217,14 +212,13 @@ func InitializeValidatorManager(
 			validatorManagerRPCEndpoint,
 			proxyOwnerAddressStr,
 			pos,
-			useACP99,
 		); err != nil {
 			return tracked, err
 		}
 	}
 
 	if specializedValidatorManagerAddressStr == "" {
-		if useACP99 && pos {
+		if pos {
 			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
 			if err != nil {
 				return tracked, err
@@ -373,7 +367,6 @@ func InitializeValidatorManager(
 				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			useACP99,
 			signatureAggregatorEndpoint,
 			nativeMinterSigner,
 		); err != nil {
@@ -386,7 +379,6 @@ func InitializeValidatorManager(
 			app.Log,
 			signer,
 			aggregatorLogger,
-			useACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
 			return tracked, err
@@ -761,7 +753,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ValidatorManagerOwner,
 			specializedValidatorManagerAddressStr,
 			sidecar.ProxyContractOwner,
-			sidecar.UseACP99,
 			convertFlags.LocalMachineFlags.UseLocalMachine,
 			convertFlags.SigAggFlags,
 			convertFlags.ProofOfStakeFlags,

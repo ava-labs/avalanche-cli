@@ -543,11 +543,7 @@ func CallAddValidator(
 		}
 	}
 
-	if sc.UseACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	if !pos {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
@@ -679,7 +675,6 @@ func CallAddValidator(
 		common.HexToAddress(rewardsRecipientAddr),
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
