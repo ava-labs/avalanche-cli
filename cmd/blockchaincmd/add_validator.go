@@ -652,32 +652,74 @@ func CallAddValidator(
 	ctx, cancel := sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	validatorManagerParams := validatormanager.ValidatorManagerParams{
+		RPCURL:            validatorManagerRPCEndpoint,
+		Signer:            signer,
+		NodeID:            nodeID,
+		BlsPublicKey:      blsInfo.PublicKey[:],
+		BalanceOwners:     remainingBalanceOwners,
+		DisableOwners:     disableOwners,
+		ManagerAddressStr: validatorManagerAddress,
+		Weight:            weight,
+	}
+
+	getRegisterValidatorSignedMessageParams := validatormanager.GetRegisterValidatorSignedMessageParams{
+		Network:         network,
+		Expiry:          expiry,
+		SubnetID:        subnetID,
+		ManagerSubnetID: managerSubnetID,
+		BlockchainID:    validatorManagerBlockchainID,
+		SigAggParams: validatormanager.SignatureAggregatorParams{
+			AggregatorLogger:            aggregatorLogger,
+			SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
+			PchainHeight:                pChainEpoch.PChainHeight,
+		},
+	}
+
+	initValidatorRegistrationParams := validatormanager.InitValidatorRegistrationParams{
+		ValidatorManager:    validatorManagerParams,
+		SignedMessageParams: getRegisterValidatorSignedMessageParams,
+		TxHash:              initiateTxHash,
+	}
+	if pos {
+		posParams := validatormanager.ProofOfStakeParams{
+			DelegationFee:   delegationFee,
+			StakeDuration:   duration,
+			RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
+		}
+		initValidatorRegistrationParams.PoS = &posParams
+	}
+	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
+		// Execution behavior (don’t broadcast; return unsigned init tx)
+		BuildOnly: externalValidatorManagerOwner,
+		Logger:    duallogger.NewDualLogger(true, app),
+	}
+
 	// Example of using the HybridLogger with SDK functions
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		validatorManagerRPCEndpoint,
-		chainSpec,
-		externalValidatorManagerOwner,
-		signer,
-		nodeID,
-		blsInfo.PublicKey[:],
-		expiry,
-		remainingBalanceOwners,
-		disableOwners,
-		weight,
-		aggregatorLogger,
-		pos,
-		delegationFee,
-		duration,
-		common.HexToAddress(rewardsRecipientAddr),
-		validatorManagerBlockchainID,
-		validatorManagerAddress,
-		initiateTxHash,
-		signatureAggregatorEndpoint,
-		pChainEpoch.PChainHeight,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 	)
 	if err != nil {
 		return err
@@ -717,24 +759,14 @@ func CallAddValidator(
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-
+	initValidatorRegistrationParams.SignedMessageParams.SigAggParams.PchainHeight = l1Epoch.PChainHeight
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	rawTx, err = validatormanager.FinishValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		validatorManagerRPCEndpoint,
-		chainSpec,
-		externalValidatorManagerOwner,
-		signer,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 		validationID,
-		aggregatorLogger,
-		validatorManagerBlockchainID,
-		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
 	)
 	if err != nil {
 		return err
