@@ -341,11 +341,7 @@ func removeValidatorSOV(
 		}
 	}
 
-	if sc.UseACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	if !sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), validatorManagerOwner)
@@ -440,7 +436,6 @@ func removeValidatorSOV(
 		isBootstrapValidator || force,
 		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		sc.UseACP99,
 		initiateTxHash,
 		signatureAggregatorEndpoint,
 		pChainEpoch.PChainHeight,
@@ -473,7 +468,6 @@ func removeValidatorSOV(
 			true, // force
 			validatorManagerBlockchainID,
 			validatorManagerAddress,
-			sc.UseACP99,
 			initiateTxHash,
 			signatureAggregatorEndpoint,
 			pChainEpoch.PChainHeight,
@@ -530,22 +524,42 @@ func removeValidatorSOV(
 
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
+
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	managerSubnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: validatorManagerBlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+	sigAggParams := validatormanager.SignatureAggregatorParams{
+		AggregatorLogger:            aggregatorLogger,
+		SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
+		PchainHeight:                l1Epoch.PChainHeight,
+	}
 	rawTx, err = validatormanager.FinishValidatorRemoval(
 		ctx,
 		duallogger.NewDualLogger(true, app),
-		app,
 		network,
 		validatorManagerRPCEndpoint,
-		chainSpec,
+		subnetID,
+		managerSubnetID,
 		externalValidatorManagerOwner,
 		signer,
 		validationID,
-		aggregatorLogger,
-		validatorManagerBlockchainID,
 		validatorManagerAddress,
-		sc.UseACP99,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
+		sigAggParams,
 	)
 	if err != nil {
 		return err

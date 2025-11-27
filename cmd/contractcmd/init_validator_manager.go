@@ -178,7 +178,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if specializedValidatorManagerAddressStr == "" && sc.UseACP99 && sc.PoS() {
+	if specializedValidatorManagerAddressStr == "" && sc.PoS() {
 		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
 			// assumed to be managed by CLI
 			specializedValidatorManagerAddressStr = validatormanagerSDK.SpecializationProxyContractAddress
@@ -306,7 +306,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				validatorManagerRPCEndpoint,
 				sc.ProxyContractOwner,
 				sc.ValidatorManagement,
-				sc.UseACP99,
 				genesisSigner,
 			); err != nil {
 				return err
@@ -428,7 +427,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			subnetSDK,
 			signer,
 			aggregatorLogger,
-			sc.UseACP99,
 			signatureAggregatorEndpoint,
 		); err != nil {
 			return err
@@ -491,7 +489,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
-			sc.UseACP99,
 			signatureAggregatorEndpoint,
 			nativeMinterSigner,
 		); err != nil {

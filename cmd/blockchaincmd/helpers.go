@@ -358,7 +358,6 @@ func CompleteValidatorManagerL1Deploy(
 	validatorManagerRPCEndpoint string,
 	proxyContractOwner string,
 	validatorManagementType validatormanagertypes.ValidatorManagementType,
-	useACP99 bool,
 	genesisSigner *evm.Signer,
 ) error {
 	if validatormanagertypes.IsPoS(validatorManagementType) {
@@ -382,47 +381,35 @@ func CompleteValidatorManagerL1Deploy(
 			if err != nil {
 				return err
 			}
-			if useACP99 {
-				_, err := validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+			_, err = validatormanager.DeployValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
+				logger,
+				validatorManagerRPCEndpoint,
+				genesisSigner,
+				true,
+				proxyOwnerSigner,
+			)
+			if err != nil {
+				return err
+			}
+			if validatormanagertypes.IsPoSERC20(validatorManagementType) {
+				_, err = validatormanager.DeployPoSERC20ValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					logger,
 					validatorManagerRPCEndpoint,
 					genesisSigner,
 					true,
 					proxyOwnerSigner,
 				)
-				if err != nil {
-					return err
-				}
-				if validatormanagertypes.IsPoSERC20(validatorManagementType) {
-					_, err = validatormanager.DeployPoSERC20ValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
-						logger,
-						validatorManagerRPCEndpoint,
-						genesisSigner,
-						true,
-						proxyOwnerSigner,
-					)
-				} else {
-					_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
-						logger,
-						validatorManagerRPCEndpoint,
-						genesisSigner,
-						true,
-						proxyOwnerSigner,
-					)
-				}
-				if err != nil {
-					return err
-				}
 			} else {
-				if _, err := validatormanager.DeployPoSValidatorManagerV1_0_0ContractAndRegisterAtGenesisProxy(
+				_, err = validatormanager.DeployPoSValidatorManagerV2_0_0ContractAndRegisterAtGenesisProxy(
 					logger,
 					validatorManagerRPCEndpoint,
 					genesisSigner,
 					true,
 					proxyOwnerSigner,
-				); err != nil {
-					return err
-				}
+				)
+			}
+			if err != nil {
+				return err
 			}
 		}
 	}

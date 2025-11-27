@@ -1258,7 +1258,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ValidatorManagerOwner,
 			specializedValidatorManagerAddressStr,
 			sidecar.ProxyContractOwner,
-			sidecar.UseACP99,
 			deployFlags.LocalMachineFlags.UseLocalMachine,
 			deployFlags.SigAggFlags,
 			deployFlags.ProofOfStakeFlags,

@@ -11,8 +11,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -43,26 +41,16 @@ func InitializeValidatorRegistrationPoSNative(
 	signer *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	delegationFeeBips uint16,
 	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
 	rewardRecipient common.Address,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
 		Addresses []common.Address
-	}
-
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
 	}
 
 	balanceOwnersAux := PChainOwner{
@@ -78,26 +66,6 @@ func InitializeValidatorRegistrationPoSNative(
 		}),
 	}
 
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			signer,
-			managerAddress,
-			stakeAmount,
-			"initialize validator registration with stake",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,address)",
-			nodeID[:],
-			blsPublicKey,
-			balanceOwnersAux,
-			disableOwnersAux,
-			delegationFeeBips,
-			uint64(minStakeDuration.Seconds()),
-			rewardRecipient,
-		)
-	}
-
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
@@ -106,16 +74,14 @@ func InitializeValidatorRegistrationPoSNative(
 		stakeAmount,
 		"initialize validator registration with stake",
 		validatormanager.ErrorSignatureToError,
-		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
-		ValidatorRegistrationInput{
-			NodeID:                nodeID[:],
-			BlsPublicKey:          blsPublicKey,
-			RegistrationExpiry:    expiry,
-			RemainingBalanceOwner: balanceOwnersAux,
-			DisableOwner:          disableOwnersAux,
-		},
+		"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,address)",
+		nodeID[:],
+		blsPublicKey,
+		balanceOwnersAux,
+		disableOwnersAux,
 		delegationFeeBips,
 		uint64(minStakeDuration.Seconds()),
+		rewardRecipient,
 	)
 }
 
@@ -133,7 +99,6 @@ func InitializeValidatorRegistrationPoSERC20(
 	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
 	rewardRecipient common.Address,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
@@ -172,29 +137,25 @@ func InitializeValidatorRegistrationPoSERC20(
 	}
 	logger.Info("ERC20 approval successful", logging.UserString("tx", approveTx.Hash().Hex()))
 
-	// Now initiate validator registration
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			signer,
-			managerAddress,
-			nil, // No ETH value needed for ERC20 staking
-			"initialize validator registration with ERC20 stake",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,uint256,address)",
-			nodeID[:],
-			blsPublicKey,
-			balanceOwnersAux,
-			disableOwnersAux,
-			delegationFeeBips,
-			uint64(minStakeDuration.Seconds()),
-			stakeAmount,
-			rewardRecipient,
-		)
-	}
-
-	return nil, nil, errors.New("ERC20 staking manager is only supported with ACP99 (v2.0.0)")
+	// Initiate validator registration (ACP99/v2.0.0)
+	return contractSDK.TxToMethod(
+		logger,
+		rpcURL,
+		signer,
+		managerAddress,
+		nil, // No ETH value needed for ERC20 staking
+		"initialize validator registration with ERC20 stake",
+		validatormanager.ErrorSignatureToError,
+		"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint16,uint64,uint256,address)",
+		nodeID[:],
+		blsPublicKey,
+		balanceOwnersAux,
+		disableOwnersAux,
+		delegationFeeBips,
+		uint64(minStakeDuration.Seconds()),
+		stakeAmount,
+		rewardRecipient,
+	)
 }
 
 // step 1 of flow for adding a new validator
@@ -205,11 +166,9 @@ func InitializeValidatorRegistrationPoA(
 	managerOwnerSigner *evm.Signer,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
-	expiry uint64,
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
@@ -227,30 +186,6 @@ func InitializeValidatorRegistrationPoA(
 			return common.BytesToAddress(addr[:])
 		}),
 	}
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			managerOwnerSigner,
-			managerAddress,
-			big.NewInt(0),
-			"initialize validator registration",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint64)",
-			nodeID[:],
-			blsPublicKey,
-			balanceOwnersAux,
-			disableOwnersAux,
-			weight,
-		)
-	}
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
-	}
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
@@ -259,14 +194,11 @@ func InitializeValidatorRegistrationPoA(
 		big.NewInt(0),
 		"initialize validator registration",
 		validatormanager.ErrorSignatureToError,
-		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
-		ValidatorRegistrationInput{
-			NodeID:                nodeID[:],
-			BlsPublicKey:          blsPublicKey,
-			RegistrationExpiry:    expiry,
-			RemainingBalanceOwner: balanceOwnersAux,
-			DisableOwner:          disableOwnersAux,
-		},
+		"initiateValidatorRegistration(bytes,bytes,(uint32,[address]),(uint32,[address]),uint64)",
+		nodeID[:],
+		blsPublicKey,
+		balanceOwnersAux,
+		disableOwnersAux,
 		weight,
 	)
 }
@@ -275,8 +207,6 @@ func GetRegisterL1ValidatorMessage(
 	ctx context.Context,
 	rpcURL string,
 	network models.Network,
-	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
 	managerSubnetID ids.ID,
 	managerBlockchainID ids.ID,
@@ -290,8 +220,7 @@ func GetRegisterL1ValidatorMessage(
 	alreadyInitialized bool,
 	initiateTxHash string,
 	registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	sigAggParams SignatureAggregatorParams,
 ) (*warp.Message, ids.ID, error) {
 	var (
 		validationID ids.ID
@@ -371,13 +300,13 @@ func GetRegisterL1ValidatorMessage(
 
 	messageHexStr := hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes())
 	signedMessage, err := interchain.SignMessage(
-		aggregatorLogger,
-		signatureAggregatorEndpoint,
+		sigAggParams.AggregatorLogger,
+		sigAggParams.SignatureAggregatorEndpoint,
 		messageHexStr,
 		"",
 		managerSubnetID.String(),
-		aggregatorQuorumPercentage,
-		pChainHeight,
+		0,
+		sigAggParams.PchainHeight,
 	)
 	if err != nil {
 		return nil, ids.Empty, fmt.Errorf("failed to get signed message: %w", err)
@@ -407,14 +336,11 @@ func GetPChainL1ValidatorRegistrationMessage(
 	ctx context.Context,
 	network models.Network,
 	rpcURL string,
-	aggregatorLogger logging.Logger,
-	aggregatorQuorumPercentage uint64,
 	subnetID ids.ID,
-	managerSubnetID,
+	managerSubnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	signedMessageParams SignatureAggregatorParams,
 ) (*warp.Message, error) {
 	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
@@ -445,13 +371,13 @@ func GetPChainL1ValidatorRegistrationMessage(
 	justification := hex.EncodeToString(justificationBytes)
 	messageHexStr := hex.EncodeToString(subnetConversionUnsignedMessage.Bytes())
 	return interchain.SignMessage(
-		aggregatorLogger,
-		signatureAggregatorEndpoint,
+		signedMessageParams.AggregatorLogger,
+		signedMessageParams.SignatureAggregatorEndpoint,
 		messageHexStr,
 		justification,
 		managerSubnetID.String(),
-		aggregatorQuorumPercentage,
-		pChainHeight,
+		0,
+		signedMessageParams.PchainHeight,
 	)
 }
 
@@ -477,164 +403,165 @@ func CompleteValidatorRegistration(
 	)
 }
 
+type ProofOfStakeParams struct {
+	DelegationFee     uint16
+	StakeDuration     time.Duration
+	RewardRecipient   common.Address
+	ERC20TokenAddress string // ERC20 token address for PoS ERC20, empty for PoS Native
+}
+
+type GetRegisterValidatorSignedMessageParams struct {
+	Network         models.Network
+	Expiry          uint64
+	SubnetID        ids.ID
+	ManagerSubnetID ids.ID
+	BlockchainID    ids.ID
+	SigAggParams    SignatureAggregatorParams
+}
+
+type SignatureAggregatorParams struct {
+	AggregatorLogger            logging.Logger
+	SignatureAggregatorEndpoint string
+	PchainHeight                uint64
+}
+
+type ValidatorManagerParams struct {
+	RPCURL            string
+	Signer            *evm.Signer
+	NodeID            ids.NodeID
+	BlsPublicKey      []byte
+	BalanceOwners     warpMessage.PChainOwner
+	DisableOwners     warpMessage.PChainOwner
+	ManagerAddressStr string
+	Weight            uint64
+}
+
+type InitValidatorRegistrationParams struct {
+	// Domain intent
+	ValidatorManager ValidatorManagerParams
+	// nil => PoA; non-nil => PoS
+	PoS *ProofOfStakeParams
+	// Inputs needed to derive the signed warp message
+	SignedMessageParams GetRegisterValidatorSignedMessageParams
+	// Optional: if you already have an init tx to resume from
+	TxHash string
+}
+
+type InitValidatorRegistrationOptions struct {
+	// Execution behavior (don’t broadcast; return unsigned init tx)
+	BuildOnly bool
+	Logger    logging.Logger
+}
+
 func InitValidatorRegistration(
 	ctx context.Context,
-	logger logging.Logger,
-	app *application.Avalanche,
-	network models.Network,
-	rpcURL string,
-	chainSpec contract.ChainSpec,
-	generateRawTxOnly bool,
-	ownerSigner *evm.Signer,
-	nodeID ids.NodeID,
-	blsPublicKey []byte,
-	expiry uint64,
-	balanceOwners warpMessage.PChainOwner,
-	disableOwners warpMessage.PChainOwner,
-	weight uint64,
-	aggregatorLogger logging.Logger,
-	isPos bool,
-	delegationFee uint16,
-	stakeDuration time.Duration,
-	rewardRecipient common.Address,
-	managerBlockchainID ids.ID,
-	managerAddressStr string,
-	useACP99 bool,
-	initiateTxHash string,
-	signatureAggregatorEndpoint string,
-	pchainHeight uint64,
-	erc20TokenAddress string, // ERC20 token address for PoS ERC20, empty for PoS Native
+	initValidatorRegistrationParams InitValidatorRegistrationParams,
+	opt InitValidatorRegistrationOptions,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, ids.Empty, nil, err
-	}
-
-	managerAddress := common.HexToAddress(managerAddressStr)
-
-	alreadyInitialized := initiateTxHash != ""
+	var err error
+	managerAddress := common.HexToAddress(initValidatorRegistrationParams.ValidatorManager.ManagerAddressStr)
+	alreadyInitialized := initValidatorRegistrationParams.TxHash != ""
 	if validationID, err := validatormanager.GetValidationID(
-		rpcURL,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		managerAddress,
-		nodeID,
+		initValidatorRegistrationParams.ValidatorManager.NodeID,
 	); err != nil {
 		return nil, ids.Empty, nil, err
 	} else if validationID != ids.Empty {
 		alreadyInitialized = true
 	}
-
+	isPos := initValidatorRegistrationParams.PoS != nil
 	var receipt *types.Receipt
 	if !alreadyInitialized {
 		var tx *types.Transaction
 		if isPos {
 			stakeAmount, err := validatormanager.PoSWeightToValue(
-				rpcURL,
+				initValidatorRegistrationParams.ValidatorManager.RPCURL,
 				managerAddress,
-				weight,
+				initValidatorRegistrationParams.ValidatorManager.Weight,
 			)
 			if err != nil {
 				return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 			}
-			logger.Info("")
-			if erc20TokenAddress != "" {
+			opt.Logger.Info("")
+			if initValidatorRegistrationParams.PoS.ERC20TokenAddress != "" {
 				// PoS ERC20
-				logger.Info("Initializing validator registration with PoS ERC20 validator manager")
-				logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
-				logger.Info(fmt.Sprintf("ERC20 Token: %s", erc20TokenAddress))
-				logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
-				logger.Info("")
+				opt.Logger.Info("Initializing validator registration with PoS ERC20 validator manager")
+				opt.Logger.Info(fmt.Sprintf("Using RPC URL: %s", initValidatorRegistrationParams.ValidatorManager.RPCURL))
+				opt.Logger.Info(fmt.Sprintf("ERC20 Token: %s", initValidatorRegistrationParams.PoS.ERC20TokenAddress))
+				opt.Logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", initValidatorRegistrationParams.ValidatorManager.NodeID.String(), utils.FormatAmount(stakeAmount, 18)))
+				opt.Logger.Info("")
 				tx, receipt, err = InitializeValidatorRegistrationPoSERC20(
-					logger,
-					rpcURL,
+					opt.Logger,
+					initValidatorRegistrationParams.ValidatorManager.RPCURL,
 					managerAddress,
-					common.HexToAddress(erc20TokenAddress),
-					ownerSigner,
-					nodeID,
-					blsPublicKey,
-					balanceOwners,
-					disableOwners,
-					delegationFee,
-					stakeDuration,
+					common.HexToAddress(initValidatorRegistrationParams.PoS.ERC20TokenAddress),
+					initValidatorRegistrationParams.ValidatorManager.Signer,
+					initValidatorRegistrationParams.ValidatorManager.NodeID,
+					initValidatorRegistrationParams.ValidatorManager.BlsPublicKey,
+					initValidatorRegistrationParams.ValidatorManager.BalanceOwners,
+					initValidatorRegistrationParams.ValidatorManager.DisableOwners,
+					initValidatorRegistrationParams.PoS.DelegationFee,
+					initValidatorRegistrationParams.PoS.StakeDuration,
 					stakeAmount,
-					rewardRecipient,
-					useACP99,
+					initValidatorRegistrationParams.PoS.RewardRecipient,
 				)
 			} else {
 				// PoS Native
-				logger.Info("Initializing validator registration with PoS Native validator manager")
-				logger.Info(fmt.Sprintf("Using RPC URL: %s", rpcURL))
-				logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", nodeID.String(), utils.FormatAmount(stakeAmount, 18)))
-				logger.Info("")
+				opt.Logger.Info("Initializing validator registration with PoS Native validator manager")
+				opt.Logger.Info(fmt.Sprintf("Using RPC URL: %s", initValidatorRegistrationParams.ValidatorManager.RPCURL))
+				opt.Logger.Info(fmt.Sprintf("NodeID: %s staking %s tokens", initValidatorRegistrationParams.ValidatorManager.NodeID.String(), utils.FormatAmount(stakeAmount, 18)))
+				opt.Logger.Info("")
 				tx, receipt, err = InitializeValidatorRegistrationPoSNative(
-					logger,
-					rpcURL,
+					opt.Logger,
+					initValidatorRegistrationParams.ValidatorManager.RPCURL,
 					managerAddress,
-					ownerSigner,
-					nodeID,
-					blsPublicKey,
-					expiry,
-					balanceOwners,
-					disableOwners,
-					delegationFee,
-					stakeDuration,
+					initValidatorRegistrationParams.ValidatorManager.Signer,
+					initValidatorRegistrationParams.ValidatorManager.NodeID,
+					initValidatorRegistrationParams.ValidatorManager.BlsPublicKey,
+					initValidatorRegistrationParams.ValidatorManager.BalanceOwners,
+					initValidatorRegistrationParams.ValidatorManager.DisableOwners,
+					initValidatorRegistrationParams.PoS.DelegationFee,
+					initValidatorRegistrationParams.PoS.StakeDuration,
 					stakeAmount,
-					rewardRecipient,
-					useACP99,
+					initValidatorRegistrationParams.PoS.RewardRecipient,
 				)
 			}
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				opt.Logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
 			} else {
-				logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
+				opt.Logger.Info(fmt.Sprintf("Validator registration initialized. InitiateTxHash: %s", tx.Hash()))
 			}
 			ux.Logger.PrintToUser("%s", fmt.Sprintf("Validator staked amount: %s", utils.FormatAmount(stakeAmount, 18)))
 		} else {
-			managerAddress = common.HexToAddress(managerAddressStr)
 			tx, receipt, err = InitializeValidatorRegistrationPoA(
-				logger,
-				rpcURL,
+				opt.Logger,
+				initValidatorRegistrationParams.ValidatorManager.RPCURL,
 				managerAddress,
-				ownerSigner,
-				nodeID,
-				blsPublicKey,
-				expiry,
-				balanceOwners,
-				disableOwners,
-				weight,
-				useACP99,
+				initValidatorRegistrationParams.ValidatorManager.Signer,
+				initValidatorRegistrationParams.ValidatorManager.NodeID,
+				initValidatorRegistrationParams.ValidatorManager.BlsPublicKey,
+				initValidatorRegistrationParams.ValidatorManager.BalanceOwners,
+				initValidatorRegistrationParams.ValidatorManager.DisableOwners,
+				initValidatorRegistrationParams.ValidatorManager.Weight,
 			)
 			if err != nil {
 				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 				}
-				logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				opt.Logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 				alreadyInitialized = true
-			} else if generateRawTxOnly {
+			} else if opt.BuildOnly {
 				return nil, ids.Empty, tx, nil
 			}
-			logger.Info(fmt.Sprintf("Validator weight: %d", weight))
+			opt.Logger.Info(fmt.Sprintf("Validator weight: %d", initValidatorRegistrationParams.ValidatorManager.Weight))
 		}
 	} else {
-		logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+		opt.Logger.Info(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 	}
 
 	var unsignedMessage *warp.UnsignedMessage
@@ -646,25 +573,22 @@ func InitValidatorRegistration(
 	}
 	signedMessage, validationID, err := GetRegisterL1ValidatorMessage(
 		ctx,
-		rpcURL,
-		network,
-		aggregatorLogger,
-		0,
-		subnetID,
-		managerSubnetID,
-		managerBlockchainID,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
+		initValidatorRegistrationParams.SignedMessageParams.Network,
+		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.ManagerSubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.BlockchainID,
 		managerAddress,
-		nodeID,
-		[48]byte(blsPublicKey),
-		expiry,
-		balanceOwners,
-		disableOwners,
-		weight,
+		initValidatorRegistrationParams.ValidatorManager.NodeID,
+		[48]byte(initValidatorRegistrationParams.ValidatorManager.BlsPublicKey),
+		initValidatorRegistrationParams.SignedMessageParams.Expiry,
+		initValidatorRegistrationParams.ValidatorManager.BalanceOwners,
+		initValidatorRegistrationParams.ValidatorManager.DisableOwners,
+		initValidatorRegistrationParams.ValidatorManager.Weight,
 		alreadyInitialized,
-		initiateTxHash,
+		initValidatorRegistrationParams.TxHash,
 		unsignedMessage,
-		signatureAggregatorEndpoint,
-		pchainHeight,
+		initValidatorRegistrationParams.SignedMessageParams.SigAggParams,
 	)
 
 	return signedMessage, validationID, nil, err
@@ -672,63 +596,30 @@ func InitValidatorRegistration(
 
 func FinishValidatorRegistration(
 	ctx context.Context,
-	logger logging.Logger,
-	app *application.Avalanche,
-	network models.Network,
-	rpcURL string,
-	chainSpec contract.ChainSpec,
-	generateRawTxOnly bool,
-	ownerSigner *evm.Signer,
+	initValidatorRegistrationParams InitValidatorRegistrationParams,
+	opt InitValidatorRegistrationOptions,
 	validationID ids.ID,
-	aggregatorLogger logging.Logger,
-	managerBlockchainID ids.ID,
-	managerAddressStr string,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
 ) (*types.Transaction, error) {
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerAddress := common.HexToAddress(managerAddressStr)
+	managerAddress := common.HexToAddress(initValidatorRegistrationParams.ValidatorManager.ManagerAddressStr)
 
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
-		network,
-		rpcURL,
-		aggregatorLogger,
-		0,
-		subnetID,
-		managerSubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.Network,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
+		initValidatorRegistrationParams.SignedMessageParams.SubnetID,
+		initValidatorRegistrationParams.SignedMessageParams.ManagerSubnetID,
 		validationID,
 		true,
-		signatureAggregatorEndpoint,
-		pChainHeight,
+		initValidatorRegistrationParams.SignedMessageParams.SigAggParams,
 	)
 	if err != nil {
 		return nil, err
 	}
 	tx, _, err := CompleteValidatorRegistration(
-		logger,
-		rpcURL,
+		opt.Logger,
+		initValidatorRegistrationParams.ValidatorManager.RPCURL,
 		managerAddress,
-		ownerSigner,
+		initValidatorRegistrationParams.ValidatorManager.Signer,
 		signedMessage,
 	)
 	if err != nil {
@@ -738,7 +629,7 @@ func FinishValidatorRegistration(
 			return nil, fmt.Errorf("the Validator was already fully registered on the Manager")
 		}
 	}
-	if generateRawTxOnly {
+	if opt.BuildOnly {
 		return tx, nil
 	}
 	return nil, nil

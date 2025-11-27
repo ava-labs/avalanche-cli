@@ -42,7 +42,6 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
-		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
@@ -63,7 +62,12 @@ func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	exists, err = utils.SubnetConfigExists(utils.BlockchainName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
-	return "v1.14.0"
+
+	// return binary versions for this conf
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return mapping[utils.LatestAvago2EVMKey]
 }
 
 func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
@@ -84,7 +88,6 @@ func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
-		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
@@ -127,7 +130,6 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
-		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")
@@ -170,7 +172,6 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
 		"--evm-token=TOK",
 		"--icm=false",
 		"--" + constants.SkipUpdateFlag,
-		"--local",
 	}
 	if poa {
 		cmdArgs = append(cmdArgs, "--proof-of-authority")

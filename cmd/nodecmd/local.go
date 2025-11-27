@@ -67,7 +67,6 @@ var (
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
-	useACP99                     bool
 	httpPorts                    []uint
 	stakingPorts                 []uint
 	localValidateFlags           NodeLocalValidateFlags
@@ -389,7 +388,6 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().StringVar(&rewardsRecipientAddr, "rewards-recipient", "", "EVM address that will receive the validation rewards")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
-	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
@@ -561,11 +559,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if useACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
+	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
 	for _, node := range net.Nodes {
 		if err = addAsValidator(
@@ -578,7 +572,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 			balance,
 			payerPrivateKey,
 			validatorManagerAddress,
-			useACP99,
 		); err != nil {
 			return err
 		}
@@ -599,7 +592,6 @@ func addAsValidator(
 	balance uint64,
 	payerPrivateKey string,
 	validatorManagerAddress string,
-	useACP99 bool,
 ) error {
 	// get node data
 	nodeIDStr, publicKey, pop, err := utils.GetNodeID(nodeURI)
@@ -675,6 +667,17 @@ func addAsValidator(
 		return fmt.Errorf("failure parsing blockchain ID: %w", err)
 	}
 
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		contract.ChainSpec{
+			BlockchainID: l1BlockchainID.String(),
+		},
+	)
+	if err != nil {
+		return err
+	}
+
 	// Try to get ERC20 token address if this is PoS ERC20
 	var erc20TokenAddress string
 	tokenAddr, err := validatormanagersdk.GetERC20StakingTokenAddress(
@@ -686,33 +689,50 @@ func addAsValidator(
 	}
 	// If error, it's likely PoS Native or PoA, so erc20TokenAddress stays empty
 
+	validatorManagerParams := validatormanager.ValidatorManagerParams{
+		RPCURL:            localValidateFlags.RPC,
+		Signer:            signer,
+		NodeID:            nodeID,
+		BlsPublicKey:      blsInfo.PublicKey[:],
+		BalanceOwners:     remainingBalanceOwners,
+		DisableOwners:     disableOwners,
+		ManagerAddressStr: validatorManagerAddress,
+		Weight:            weight,
+	}
+
+	getRegisterValidatorSignedMessageParams := validatormanager.GetRegisterValidatorSignedMessageParams{
+		Network:      network,
+		Expiry:       expiry,
+		SubnetID:     subnetID,
+		BlockchainID: l1BlockchainID,
+		SigAggParams: validatormanager.SignatureAggregatorParams{
+			AggregatorLogger:            aggregatorLogger,
+			SignatureAggregatorEndpoint: signatureAggregatorEndpoint,
+			PchainHeight:                pChainEpoch.PChainHeight,
+		},
+	}
+
+	initValidatorRegistrationParams := validatormanager.InitValidatorRegistrationParams{
+		ValidatorManager:    validatorManagerParams,
+		SignedMessageParams: getRegisterValidatorSignedMessageParams,
+	}
+	posParams := validatormanager.ProofOfStakeParams{
+		DelegationFee:     delegationFee,
+		StakeDuration:     time.Duration(minimumStakeDuration) * time.Second,
+		RewardRecipient:   common.HexToAddress(rewardsRecipientAddr),
+		ERC20TokenAddress: erc20TokenAddress,
+	}
+	initValidatorRegistrationParams.PoS = &posParams
+	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
+		// Execution behavior (don't broadcast; return unsigned init tx)
+		BuildOnly: false,
+		Logger:    duallogger.NewDualLogger(true, app),
+	}
+
 	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		localValidateFlags.RPC,
-		chainSpec,
-		false,
-		signer,
-		nodeID,
-		blsInfo.PublicKey[:],
-		expiry,
-		remainingBalanceOwners,
-		disableOwners,
-		0,
-		aggregatorLogger,
-		true,
-		delegationFee,
-		time.Duration(minimumStakeDuration)*time.Second,
-		common.HexToAddress(rewardsRecipientAddr),
-		l1BlockchainID,
-		validatorManagerAddress,
-		useACP99,
-		"",
-		signatureAggregatorEndpoint,
-		pChainEpoch.PChainHeight,
-		erc20TokenAddress,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 	)
 	if err != nil {
 		return err
@@ -740,24 +760,14 @@ func addAsValidator(
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
-
+	initValidatorRegistrationParams.SignedMessageParams.SigAggParams.PchainHeight = l1Epoch.PChainHeight
 	ctx, cancel = sdkutils.GetTimedContext(constants.EVMEventLookupTimeout)
 	defer cancel()
 	if _, err := validatormanager.FinishValidatorRegistration(
 		ctx,
-		duallogger.NewDualLogger(true, app),
-		app,
-		network,
-		localValidateFlags.RPC,
-		chainSpec,
-		false,
-		signer,
+		initValidatorRegistrationParams,
+		initValidatorRegistrationOpts,
 		validationID,
-		aggregatorLogger,
-		l1BlockchainID,
-		validatorManagerAddress,
-		signatureAggregatorEndpoint,
-		l1Epoch.PChainHeight,
 	); err != nil {
 		return err
 	}

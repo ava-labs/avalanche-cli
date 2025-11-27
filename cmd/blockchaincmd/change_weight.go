@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -28,11 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-tooling-sdk-go/validator"
 	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/utils/formatting"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/libevm/common"
 
@@ -216,19 +211,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 			return nil
 		}
 
-		if !sc.UseACP99 {
-			if float64(validatorInfo.Weight) > allowedChange {
-				return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
-			}
-			allowedChange = float64((currentWeightInfo.TotalWeight-validatorInfo.Weight)*uint64(currentWeightInfo.MaximumPercentage)) / 100.0
-			allowedWeightFunction = func(v uint64) error {
-				if v > uint64(allowedChange) {
-					return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
-				}
-				return nil
-			}
-		}
-
 		if newWeight == 0 {
 			ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
 			newWeight, err = app.Prompt.CaptureWeight(
@@ -247,94 +229,19 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(kc, network)
 
-	if sc.UseACP99 {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
-		return changeWeightACP99(
-			deployer,
-			network,
-			blockchainName,
-			nodeID,
-			newWeight,
-			changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
-			initiateTxHash,
-			kc,
-		)
-	} else {
-		ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
-	}
-
-	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(validatorInfo.PublicKey))
-	if err != nil {
-		return err
-	}
-
-	if pop == "" {
-		_, pop, err = promptProofOfPossession(false, true)
-		if err != nil {
-			return err
-		}
-	}
-
-	var remainingBalanceOwnerAddr, disableOwnerAddr string
-	hrp := key.GetHRP(network.ID)
-	if validatorInfo.RemainingBalanceOwner != nil && len(validatorInfo.RemainingBalanceOwner.Addrs) > 0 {
-		remainingBalanceOwnerAddr, err = address.Format("P", hrp, validatorInfo.RemainingBalanceOwner.Addrs[0][:])
-		if err != nil {
-			return err
-		}
-	}
-	if validatorInfo.DeactivationOwner != nil && len(validatorInfo.DeactivationOwner.Addrs) > 0 {
-		disableOwnerAddr, err = address.Format("P", hrp, validatorInfo.DeactivationOwner.Addrs[0][:])
-		if err != nil {
-			return err
-		}
-	}
-
-	// first remove the validator from subnet
-	err = removeValidatorSOV(
+	return changeWeight(
 		deployer,
 		network,
 		blockchainName,
 		nodeID,
-		0, // automatic uptime
-		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
-		false, // don't force
-		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
-		kc,
-	)
-	if err != nil {
-		return err
-	}
-
-	balance := validatorInfo.Balance
-	if validatorInfo.RemainingBalanceOwner != nil && len(validatorInfo.RemainingBalanceOwner.Addrs) > 0 {
-		availableBalance, err := utils.GetNetworkBalance([]ids.ShortID{validatorInfo.RemainingBalanceOwner.Addrs[0]}, network.Endpoint)
-		if err != nil {
-			ux.Logger.RedXToUser("failure checking remaining balance of validator: %s. continuing with default value", err)
-		} else if availableBalance < balance {
-			balance = availableBalance
-		}
-	}
-
-	// add back validator to subnet with updated weight
-	return CallAddValidator(
-		deployer,
-		network,
-		kc,
-		blockchainName,
-		nodeID.String(),
-		publicKey,
-		pop,
 		newWeight,
-		float64(balance)/float64(units.Avax),
-		remainingBalanceOwnerAddr,
-		disableOwnerAddr,
-		sc,
 		changeWeightFlags.SigAggFlags.SignatureAggregatorEndpoint,
+		initiateTxHash,
+		kc,
 	)
 }
 
-func changeWeightACP99(
+func changeWeight(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
 	blockchainName string,

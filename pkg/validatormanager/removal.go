@@ -36,66 +36,33 @@ func InitializeValidatorRemoval(
 	isPoS bool,
 	uptimeProofSignedMessage *warp.Message,
 	force bool,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
-		if useACP99 {
-			validatorInfo, err := validatormanager.GetValidator(rpcURL, managerAddress, validationID)
-			if err != nil {
+		validatorInfo, err := validatormanager.GetValidator(rpcURL, managerAddress, validationID)
+		if err != nil {
+			return nil, nil, err
+		}
+		stakingValidatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if stakingValidatorInfo.MinStakeDuration != 0 {
+			// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
+			if signer.Address() != stakingValidatorInfo.Owner {
+				return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", signer.Address(), stakingValidatorInfo.Owner)
+			}
+			startTime := time.Unix(int64(validatorInfo.StartTime), 0)
+			endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
+			endTimeStr := endTime.Format("2006-01-02 15:04:05")
+			if !time.Now().After(endTime) {
+				return nil, nil, fmt.Errorf("can't remove validator before %s", endTimeStr)
+			}
+			// Ensure blockchain timestamp has also passed the min stake duration
+			// eth_estimateGas uses current block timestamp, so we need to make sure
+			// that timestamp is past the threshold, not just system time
+			if err := ensureBlockchainTimestampPassed(logger, rpcURL, signer, validatorInfo.StartTime, stakingValidatorInfo.MinStakeDuration); err != nil {
 				return nil, nil, err
 			}
-			stakingValidatorInfo, err := validatormanager.GetStakingValidator(rpcURL, managerAddress, validationID)
-			if err != nil {
-				return nil, nil, err
-			}
-			if stakingValidatorInfo.MinStakeDuration != 0 {
-				// proper PoS validator (it may be bootstrap PoS or non bootstrap PoA previous to a migration)
-				if signer.Address() != stakingValidatorInfo.Owner {
-					return nil, nil, fmt.Errorf("%s doesn't have authorization to remove the validator, should be %s", signer.Address(), stakingValidatorInfo.Owner)
-				}
-				startTime := time.Unix(int64(validatorInfo.StartTime), 0)
-				endTime := startTime.Add(time.Second * time.Duration(stakingValidatorInfo.MinStakeDuration))
-				endTimeStr := endTime.Format("2006-01-02 15:04:05")
-				if !time.Now().After(endTime) {
-					return nil, nil, fmt.Errorf("can't remove validator before %s", endTimeStr)
-				}
-				// Ensure blockchain timestamp has also passed the min stake duration
-				// eth_estimateGas uses current block timestamp, so we need to make sure
-				// that timestamp is past the threshold, not just system time
-				if err := ensureBlockchainTimestampPassed(logger, rpcURL, signer, validatorInfo.StartTime, stakingValidatorInfo.MinStakeDuration); err != nil {
-					return nil, nil, err
-				}
-			}
-			if force {
-				return contractSDK.TxToMethod(
-					logger,
-					rpcURL,
-					signer,
-					managerAddress,
-					big.NewInt(0),
-					"force POS validator removal",
-					validatormanager.ErrorSignatureToError,
-					"forceInitiateValidatorRemoval(bytes32,bool,uint32)",
-					validationID,
-					false, // no uptime proof if force
-					uint32(0),
-				)
-			}
-			// remove PoS validator with uptime proof
-			return contractSDK.TxToMethodWithWarpMessage(
-				logger,
-				rpcURL,
-				signer,
-				managerAddress,
-				uptimeProofSignedMessage,
-				big.NewInt(0),
-				"POS validator removal with uptime proof",
-				validatormanager.ErrorSignatureToError,
-				"initiateValidatorRemoval(bytes32,bool,uint32)",
-				validationID,
-				true, // submit uptime proof
-				uint32(0),
-			)
 		}
 		if force {
 			return contractSDK.TxToMethod(
@@ -106,7 +73,7 @@ func InitializeValidatorRemoval(
 				big.NewInt(0),
 				"force POS validator removal",
 				validatormanager.ErrorSignatureToError,
-				"forceInitializeEndValidation(bytes32,bool,uint32)",
+				"forceInitiateValidatorRemoval(bytes32,bool,uint32)",
 				validationID,
 				false, // no uptime proof if force
 				uint32(0),
@@ -122,26 +89,13 @@ func InitializeValidatorRemoval(
 			big.NewInt(0),
 			"POS validator removal with uptime proof",
 			validatormanager.ErrorSignatureToError,
-			"initializeEndValidation(bytes32,bool,uint32)",
+			"initiateValidatorRemoval(bytes32,bool,uint32)",
 			validationID,
 			true, // submit uptime proof
 			uint32(0),
 		)
 	}
 	// PoA case
-	if useACP99 {
-		return contractSDK.TxToMethod(
-			logger,
-			rpcURL,
-			signer,
-			managerAddress,
-			big.NewInt(0),
-			"POA validator removal initialization",
-			validatormanager.ErrorSignatureToError,
-			"initiateValidatorRemoval(bytes32)",
-			validationID,
-		)
-	}
 	return contractSDK.TxToMethod(
 		logger,
 		rpcURL,
@@ -150,7 +104,7 @@ func InitializeValidatorRemoval(
 		big.NewInt(0),
 		"POA validator removal initialization",
 		validatormanager.ErrorSignatureToError,
-		"initializeEndValidation(bytes32)",
+		"initiateValidatorRemoval(bytes32)",
 		validationID,
 	)
 }
@@ -212,7 +166,6 @@ func InitValidatorRemoval(
 	force bool,
 	managerBlockchainID ids.ID,
 	managerAddressStr string,
-	useACP99 bool,
 	initiateTxHash string,
 	signatureAggregatorEndpoint string,
 	pChainHeight uint64,
@@ -312,7 +265,6 @@ func InitValidatorRemoval(
 			isPoS,
 			signedUptimeProof, // is empty for non-PoS
 			force,
-			useACP99,
 		)
 		switch {
 		case err != nil:
@@ -366,22 +318,7 @@ func CompleteValidatorRemoval(
 	managerAddress common.Address,
 	signer *evm.Signer, // not need to be owner atm
 	subnetValidatorRegistrationSignedMessage *warp.Message,
-	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
-	if useACP99 {
-		return contractSDK.TxToMethodWithWarpMessage(
-			logger,
-			rpcURL,
-			signer,
-			managerAddress,
-			subnetValidatorRegistrationSignedMessage,
-			big.NewInt(0),
-			"complete validator removal",
-			validatormanager.ErrorSignatureToError,
-			"completeValidatorRemoval(uint32)",
-			uint32(0),
-		)
-	}
 	return contractSDK.TxToMethodWithWarpMessage(
 		logger,
 		rpcURL,
@@ -391,7 +328,7 @@ func CompleteValidatorRemoval(
 		big.NewInt(0),
 		"complete validator removal",
 		validatormanager.ErrorSignatureToError,
-		"completeEndValidation(uint32)",
+		"completeValidatorRemoval(uint32)",
 		uint32(0),
 	)
 }
@@ -399,53 +336,27 @@ func CompleteValidatorRemoval(
 func FinishValidatorRemoval(
 	ctx context.Context,
 	logger logging.Logger,
-	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
-	chainSpec contract.ChainSpec,
+	subnetID ids.ID,
+	managerSubnetID ids.ID,
 	generateRawTxOnly bool,
 	signer *evm.Signer,
 	validationID ids.ID,
-	aggregatorLogger logging.Logger,
-	managerBlockchainID ids.ID,
 	managerAddressStr string,
-	useACP99 bool,
-	signatureAggregatorEndpoint string,
-	pChainHeight uint64,
+	signedMessageParams SignatureAggregatorParams,
 ) (*types.Transaction, error) {
 	managerAddress := common.HexToAddress(managerAddressStr)
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	managerSubnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		contract.ChainSpec{
-			BlockchainID: managerBlockchainID.String(),
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
 
 	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
 		rpcURL,
-		aggregatorLogger,
-		0,
 		subnetID,
 		managerSubnetID,
 		validationID,
 		false,
-		signatureAggregatorEndpoint,
-		pChainHeight,
+		signedMessageParams,
 	)
 	if err != nil {
 		return nil, err
@@ -456,7 +367,6 @@ func FinishValidatorRemoval(
 		managerAddress,
 		signer,
 		signedMessage,
-		useACP99,
 	)
 	if err != nil {
 		return nil, evm.TransactionError(tx, err, "failure completing validator removal")
