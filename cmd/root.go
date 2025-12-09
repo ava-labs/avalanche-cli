@@ -146,6 +146,12 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := checkForUpdates(cmd, app); err != nil {
 		return err
 	}
+	// Skip version check for update command to avoid catch-22 situation
+	// where user can't update because their version is too old
+	commandList := strings.Fields(cmd.CommandPath())
+	if len(commandList) > 1 && commandList[1] == "update" {
+		return nil
+	}
 	if err := version.CheckCLIVersionIsOverMin(app, app.GetVersion()); err != nil {
 		return err
 	}
