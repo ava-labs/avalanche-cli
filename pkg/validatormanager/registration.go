@@ -321,6 +321,7 @@ func PoSWeightToValue(
 ) (*big.Int, error) {
 	out, err := contractSDK.CallToMethod(
 		rpcURL,
+		common.Address{},
 		managerAddress,
 		"weightToValue(uint64)->(uint256)",
 		nil,

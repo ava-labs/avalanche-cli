@@ -52,6 +52,7 @@ func ERC20TokenHomeGetTokenAddress(
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"token()->(address)",
 		nil,
@@ -68,6 +69,7 @@ func NativeTokenHomeGetTokenAddress(
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"wrappedToken()->(address)",
 		nil,
@@ -84,6 +86,7 @@ func TokenRemoteIsCollateralized(
 ) (bool, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"isCollateralized()->(bool)",
 		nil,
@@ -100,6 +103,7 @@ func TokenHomeGetDecimals(
 ) (uint8, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"tokenDecimals()->(uint8)",
 		nil,
@@ -125,6 +129,7 @@ func TokenHomeGetRegisteredRemote(
 ) (RegisteredRemote, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"registeredRemotes(bytes32, address)->(bool,uint256,uint256,bool)",
 		nil,
@@ -166,6 +171,7 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"tokenHomeAddress()->(address)",
 		nil,
@@ -182,6 +188,7 @@ func NativeTokenRemoteGetTotalNativeAssetSupply(
 ) (*big.Int, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"totalNativeAssetSupply()->(uint256)",
 		nil,

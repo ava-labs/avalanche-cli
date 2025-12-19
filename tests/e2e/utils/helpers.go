@@ -1375,6 +1375,7 @@ func GetERC20TokenAddressFromStakingManager(rpcEndpoint string, stakingManagerAd
 	managerAddr := common.HexToAddress(stakingManagerAddress)
 	out, err := contract.CallToMethod(
 		rpcEndpoint,
+		common.Address{},
 		managerAddr,
 		"erc20()->(address)",
 		nil,
