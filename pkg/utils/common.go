@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ava-labs/subnet-evm/params"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
@@ -405,7 +406,10 @@ func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, 
 
 func ByteSliceToSubnetEvmGenesis(bs []byte) (core.Genesis, error) {
 	var gen core.Genesis
-	err := json.Unmarshal(bs, &gen)
+	var err error
+	params.WithTempRegisteredExtras(func() {
+		err = json.Unmarshal(bs, &gen)
+	})
 	return gen, err
 }
 
