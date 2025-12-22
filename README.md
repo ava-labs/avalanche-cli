@@ -1,5 +1,14 @@
 # Avalanche-CLI
 
+> **Maintenance Mode Notice**
+>
+> As of December 2025, Avalanche CLI has entered maintenance mode. This means:
+> - No new features will be developed by the Ava Labs team
+> - Only security patches and critical bug fixes will be addressed
+> - GitHub issues are expected to be addressed by community members
+>
+> **External contributions are very much welcome!** PRs will be reviewed but may not be prioritized. We encourage the community to continue building and improving this project.
+
 Avalanche CLI is a command line tool that gives developers access to everything Avalanche. This release specializes in helping developers develop and test L1s.
 
 ## Installation
