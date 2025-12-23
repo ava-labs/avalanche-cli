@@ -57,6 +57,12 @@ func InitializeValidatorRemoval(
 			if !time.Now().After(endTime) {
 				return nil, nil, fmt.Errorf("can't remove validator before %s", endTimeStr)
 			}
+			// Ensure blockchain timestamp has also passed the min stake duration
+			// eth_estimateGas uses current block timestamp, so we need to make sure
+			// that timestamp is past the threshold, not just system time
+			if err := ensureBlockchainTimestampPassed(logger, rpcURL, signer, validatorInfo.StartTime, stakingValidatorInfo.MinStakeDuration); err != nil {
+				return nil, nil, err
+			}
 		}
 		if force {
 			return contractSDK.TxToMethod(
@@ -355,18 +361,6 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
-	if isNoOp, err := signer.IsNoOp(); err != nil {
-		return nil, err
-	} else if !isNoOp {
-		if client, err := evm.GetClient(rpcURL); err != nil {
-			logger.Error(fmt.Sprintf("failure connecting to L1 to setup proposer VM: %s", err))
-		} else {
-			if err := client.SetupProposerVM(signer); err != nil {
-				logger.Error(fmt.Sprintf("failure setting proposer VM on L1: %s", err))
-			}
-			client.Close()
-		}
-	}
 	tx, _, err := CompleteValidatorRemoval(
 		logger,
 		rpcURL,
@@ -381,4 +375,69 @@ func FinishValidatorRemoval(
 		return tx, nil
 	}
 	return nil, nil
+}
+
+// ensureBlockchainTimestampPassed checks if the current blockchain timestamp
+// has passed the validator start time + min stake duration. If not, it creates
+// a dummy block to advance the timestamp. This is necessary because eth_estimateGas
+// uses the current block timestamp, not the future block timestamp.
+func ensureBlockchainTimestampPassed(
+	logger logging.Logger,
+	rpcURL string,
+	signer *evm.Signer,
+	validatorStartTime uint64,
+	minStakeDuration uint64,
+) error {
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to get client: %w", err)
+	}
+	defer client.Close()
+
+	// Get the current block to check its timestamp
+	currentBlock, err := client.BlockNumber()
+	if err != nil {
+		return fmt.Errorf("failed to get current block number: %w", err)
+	}
+
+	block, err := client.BlockByNumber(big.NewInt(int64(currentBlock)))
+	if err != nil {
+		return fmt.Errorf("failed to get current block: %w", err)
+	}
+
+	requiredTimestamp := validatorStartTime + minStakeDuration
+	currentTimestamp := block.Time()
+
+	if currentTimestamp >= requiredTimestamp {
+		// Blockchain timestamp is already past the threshold
+		return nil
+	}
+
+	// Need to create a dummy block to advance the timestamp
+	secondsNeeded := requiredTimestamp - currentTimestamp
+	logger.Info(fmt.Sprintf("Current block timestamp (%d) is %d seconds before required timestamp (%d)",
+		currentTimestamp, secondsNeeded, requiredTimestamp))
+	logger.Info("Creating a dummy block to advance blockchain timestamp...")
+
+	// Send a minimal self-transfer to trigger block creation
+	receipt, err := client.FundAddress(signer, signer.Address().Hex(), big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("failed to create dummy block: %w", err)
+	}
+
+	logger.Info(fmt.Sprintf("Dummy block created with transaction %s", receipt.TxHash))
+
+	// Verify the new block timestamp
+	newBlock, err := client.BlockByNumber(nil) // nil means latest block
+	if err != nil {
+		return fmt.Errorf("failed to get new block: %w", err)
+	}
+
+	newTimestamp := newBlock.Time()
+	if newTimestamp < requiredTimestamp {
+		return fmt.Errorf("new block timestamp (%d) is still before required timestamp (%d)", newTimestamp, requiredTimestamp)
+	}
+
+	logger.Info(fmt.Sprintf("New block timestamp (%d) is now past required timestamp (%d)", newTimestamp, requiredTimestamp))
+	return nil
 }

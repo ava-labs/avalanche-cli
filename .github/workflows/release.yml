@@ -20,6 +20,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Put Go caches on /mnt
+        run: |
+          sudo mkdir -p /mnt/go-cache /mnt/go-modcache
+          sudo chown -R "$USER":"$USER" /mnt/go-cache /mnt/go-modcache
+          echo "GOCACHE=/mnt/go-cache" >> $GITHUB_ENV
+          echo "GOMODCACHE=/mnt/go-modcache" >> $GITHUB_ENV
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:

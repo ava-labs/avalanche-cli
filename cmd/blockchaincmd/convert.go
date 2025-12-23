@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
@@ -79,7 +80,9 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	bootstrapValidatorGroup := flags.AddBootstrapValidatorFlagsToCmd(cmd, &convertFlags.BootstrapValidatorFlags)
 
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
-	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStakeNative, "proof-of-stake", false, "alias for --proof-of-stake-native")
+	cmd.Flags().BoolVar(&createFlags.proofOfStakeNative, "proof-of-stake-native", false, "use proof of stake with native token for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStakeERC20, "proof-of-stake-erc20", false, "use proof of stake with ERC20 token for validator management")
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 	cmd.Flags().StringVar(&validatorManagerRPCEndpoint, "validator-manager-rpc", "", "RPC to use to access to the validator manager")
 	cmd.Flags().StringVar(&validatorManagerBlockchainIDStr, "validator-manager-blockchain-id", "", "validator manager blockchain ID")
@@ -151,7 +154,7 @@ func InitializeValidatorManager(
 	blockchainID ids.ID,
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
-	pos bool,
+	validatorManagementType validatormanagertypes.ValidatorManagementType,
 	privateKey string,
 	validatorManagerRPCEndpoint string,
 	validatorManagerBlockchainID ids.ID,
@@ -162,6 +165,9 @@ func InitializeValidatorManager(
 	useLocalMachine bool,
 	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 	proofOfStakeFlags flags.POSFlags,
+	erc20TokenAddress string,
+	rewardCalculatorAddress string,
+	rewardBasisPoints uint64,
 ) (bool, error) {
 	ux.Logger.PrintToUser("%s", logging.Yellow.Wrap("Validator Manager Protocol: V2"))
 
@@ -204,21 +210,63 @@ func InitializeValidatorManager(
 	}
 
 	if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
-		// we assume it is fully CLI managed
+		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainName: blockchainName,
+			},
+		)
+		if err != nil {
+			return tracked, err
+		}
+
+		genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+		if err != nil {
+			return tracked, err
+		}
+
+		if validatormanagertypes.IsPoSERC20(validatorManagementType) {
+			erc20TokenAddress, err = DeployERC20StakingToken(
+				genesisSigner,
+				validatorManagerRPCEndpoint,
+				specializedValidatorManagerAddressStr,
+				constants.DefaultERC20StakingTokenName,
+				constants.DefaultERC20StakingTokenSupply,
+			)
+			if err != nil {
+				return tracked, err
+			}
+		}
+		if validatormanagertypes.IsPoS(validatorManagementType) && rewardCalculatorAddress == "" {
+			ux.Logger.PrintToUser("Deploying Reward Calculator into %s", validatorManagerRPCEndpoint)
+			rewardCalculatorAddr, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+				validatorManagerRPCEndpoint,
+				genesisSigner,
+				rewardBasisPoints,
+			)
+			if err != nil {
+				return tracked, err
+			}
+			rewardCalculatorAddress = rewardCalculatorAddr.Hex()
+			ux.Logger.PrintToUser("  Reward Calculator Address: %s", rewardCalculatorAddress)
+			ux.Logger.PrintToUser("")
+		}
 		if err := CompleteValidatorManagerL1Deploy(
 			duallogger.NewDualLogger(true, app),
 			network,
 			blockchainName,
 			validatorManagerRPCEndpoint,
 			proxyOwnerAddressStr,
-			pos,
+			validatorManagementType,
+			genesisSigner,
 		); err != nil {
 			return tracked, err
 		}
 	}
 
 	if specializedValidatorManagerAddressStr == "" {
-		if pos {
+		if validatormanagertypes.IsPoS(validatorManagementType) {
 			specializedValidatorManagerAddress, err := app.Prompt.CaptureAddress("What is the address of the Specialized Validator Manager?")
 			if err != nil {
 				return tracked, err
@@ -334,7 +382,30 @@ func InitializeValidatorManager(
 		signatureAggregatorEndpoint = signatureAggregatorFlags.SignatureAggregatorEndpoint
 	}
 
-	if pos {
+	switch {
+	case validatormanagertypes.IsPoSERC20(validatorManagementType):
+		ux.Logger.PrintToUser("Initializing ERC20 Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		if err := subnetSDK.InitializeProofOfStakeERC20(
+			app.Log,
+			signer,
+			aggregatorLogger,
+			validatormanagerSDK.PoSParams{
+				MinimumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MinimumStakeAmount)),
+				MaximumStakeAmount:      big.NewInt(int64(proofOfStakeFlags.MaximumStakeAmount)),
+				MinimumStakeDuration:    proofOfStakeFlags.MinimumStakeDuration,
+				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
+				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
+				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
+				RewardCalculatorAddress: rewardCalculatorAddress,
+				UptimeBlockchainID:      blockchainID,
+			},
+			common.HexToAddress(erc20TokenAddress),
+			signatureAggregatorEndpoint,
+		); err != nil {
+			return tracked, err
+		}
+		ux.Logger.GreenCheckmarkToUser("ERC20 Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	case validatormanagertypes.IsPoSNative(validatorManagementType):
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
 			app,
@@ -353,7 +424,7 @@ func InitializeValidatorManager(
 				return tracked, err
 			}
 		}
-		if err := subnetSDK.InitializeProofOfStake(
+		if err := subnetSDK.InitializeProofOfStakeNative(
 			app.Log,
 			signer,
 			aggregatorLogger,
@@ -364,7 +435,7 @@ func InitializeValidatorManager(
 				MinimumDelegationFee:    proofOfStakeFlags.MinimumDelegationFee,
 				MaximumStakeMultiplier:  proofOfStakeFlags.MaximumStakeMultiplier,
 				WeightToValueFactor:     big.NewInt(int64(proofOfStakeFlags.WeightToValueFactor)),
-				RewardCalculatorAddress: validatormanagerSDK.RewardCalculatorAddress,
+				RewardCalculatorAddress: rewardCalculatorAddress,
 				UptimeBlockchainID:      blockchainID,
 			},
 			signatureAggregatorEndpoint,
@@ -372,8 +443,8 @@ func InitializeValidatorManager(
 		); err != nil {
 			return tracked, err
 		}
-		ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	} else {
+		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	default:
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			app.Log,
@@ -739,13 +810,33 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if !convertFlags.ConvertOnly && !convertFlags.BootstrapValidatorFlags.GenerateNodeID {
+		var erc20TokenAddress string
+		var rewardCalculatorAddress string
+		isExternalValidatorManager := blockchainID != validatorManagerBlockchainID
+		if validatormanagertypes.IsPoSERC20(sidecar.ValidatorManagement) && isExternalValidatorManager {
+			// External validator manager - need token address
+			address, err := app.Prompt.CaptureAddress("Enter the ERC20 token address for staking")
+			if err != nil {
+				return err
+			}
+			erc20TokenAddress = address.Hex()
+		}
+		if validatormanagertypes.IsPoS(sidecar.ValidatorManagement) && isExternalValidatorManager {
+			// External PoS validator manager - need reward calculator address
+			address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
+			if err != nil {
+				return err
+			}
+			rewardCalculatorAddress = address.Hex()
+		}
+
 		if _, err = InitializeValidatorManager(
 			blockchainName,
 			subnetID,
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
-			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
+			sidecar.ValidatorManagement,
 			"",
 			validatorManagerRPCEndpoint,
 			validatorManagerBlockchainID,
@@ -756,6 +847,9 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			convertFlags.LocalMachineFlags.UseLocalMachine,
 			convertFlags.SigAggFlags,
 			convertFlags.ProofOfStakeFlags,
+			erc20TokenAddress,
+			rewardCalculatorAddress,
+			100,
 		); err != nil {
 			return err
 		}

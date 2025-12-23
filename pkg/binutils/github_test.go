@@ -47,6 +47,14 @@ func TestGetDownloadURL_AvalancheGo(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			version:     "v1.18.5",
+			goarch:      "x86_64",
+			goos:        "darwin",
+			expectedURL: "",
+			expectedExt: "",
+			expectedErr: errors.New("no pre-built avalanchego package for MacOS x86_64, you may need to build it yourself"),
+		},
+		{
 			version:     "v2.1.4",
 			goarch:      "amd64",
 			goos:        "windows",

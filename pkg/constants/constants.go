@@ -70,6 +70,7 @@ const (
 	FujiBootstrapTimeout    = 15 * time.Minute
 	MainnetBootstrapTimeout = 24 * time.Hour
 	EVMEventLookupTimeout   = 2 * time.Minute
+	ProposerVMEpochDuration = 30 * time.Second
 
 	DownloadCacheExpiration = 3 * time.Hour
 
@@ -361,4 +362,8 @@ const (
 	// Aggregator
 	DefaultAggregatorLogLevel = "Debug"
 	SignatureAggregator       = "signature-aggregator"
+
+	// ERC20 Staking Token Defaults
+	DefaultERC20StakingTokenName   = "STAKE"
+	DefaultERC20StakingTokenSupply = 1_000_000_000
 )

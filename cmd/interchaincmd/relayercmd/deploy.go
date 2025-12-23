@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
@@ -162,7 +163,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 
 	networkUP := true
-	_, err = utils.GetChainID(network.Endpoint, "C")
+	_, err = sdkutils.GetChainID(network.Endpoint, "C")
 	if err != nil {
 		if !strings.Contains(err.Error(), "connection refused") {
 			return err

@@ -179,8 +179,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 		icmInfo                 *icm.ICMInfo
 		addICMRegistryToGenesis bool
 		proxyOwner              string
-		rewardBasisPoints       uint64
-		useV2_0_0               bool
 		expectedError           string
 		validateGenesis         func(t *testing.T, genesisBytes []byte)
 	}
@@ -192,8 +190,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -223,8 +219,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "genesis params allocation cannot be empty",
 		},
 		{
@@ -244,8 +238,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "none of the addresses in the transaction allow list precompile have any tokens allocated to them",
 		},
 		{
@@ -268,8 +260,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 		},
 		{
@@ -283,8 +273,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but warp precompile is disabled",
 		},
 		{
@@ -298,8 +286,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but warp precompile is disabled",
 		},
 		{
@@ -312,8 +298,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but no ICM info was provided",
 		},
 		{
@@ -326,8 +310,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "a ICM enabled blockchain was requested but no ICM info was provided",
 		},
 		{
@@ -341,8 +323,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "blockchain can not be both PoA and PoS",
 		},
 		{
@@ -355,8 +335,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -389,8 +367,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -423,8 +399,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x2222222222222222222222222222222222222222",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -448,8 +422,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x3333333333333333333333333333333333333333",
-			rewardBasisPoints:       100,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -473,8 +445,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x4444444444444444444444444444444444444444",
-			rewardBasisPoints:       0,
-			useV2_0_0:               true,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -495,8 +465,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "0x5555555555555555555555555555555555555555",
-			rewardBasisPoints:       200,
-			useV2_0_0:               true,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -521,8 +489,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 createICMInfo(),
 			addICMRegistryToGenesis: true,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -572,8 +538,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 			icmInfo:                 nil,
 			addICMRegistryToGenesis: false,
 			proxyOwner:              "",
-			rewardBasisPoints:       0,
-			useV2_0_0:               false,
 			expectedError:           "",
 			validateGenesis: func(t *testing.T, genesisBytes []byte) {
 				require.NotEmpty(t, genesisBytes)
@@ -604,7 +568,6 @@ func TestCreateEVMGenesis(t *testing.T) {
 				tt.icmInfo,
 				tt.addICMRegistryToGenesis,
 				tt.proxyOwner,
-				tt.rewardBasisPoints,
 			)
 
 			if tt.expectedError != "" {
@@ -745,7 +708,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 		tokenSymbol              string
 		getRPCVersionFromBinary  bool
 		sovereign                bool
-		useV2_0_0                bool
 		setupSubnetEVMMock       func() func(*application.Avalanche, string) (string, string, error)
 		setupVMBinaryVersionMock func() func(string) (int, error)
 		setupRPCVersionMock      func() func(*application.Avalanche, models.VMType, string) (int, error)
@@ -762,7 +724,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "TEST",
 			getRPCVersionFromBinary: true,
 			sovereign:               true,
-			useV2_0_0:               false,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "subnet-evm-v0.6.8", "/path/to/subnet-evm", nil
@@ -802,7 +763,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "NEW",
 			getRPCVersionFromBinary: false,
 			sovereign:               false,
-			useV2_0_0:               true,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "", "", nil // Not used in this test
@@ -841,7 +801,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "TEST",
 			getRPCVersionFromBinary: true,
 			sovereign:               true,
-			useV2_0_0:               false,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "", "", fmt.Errorf("failed to download subnet-evm binary")
@@ -867,7 +826,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "TEST",
 			getRPCVersionFromBinary: true,
 			sovereign:               false,
-			useV2_0_0:               true,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "subnet-evm-v0.6.8", "/path/to/subnet-evm", nil
@@ -893,7 +851,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "TEST",
 			getRPCVersionFromBinary: false,
 			sovereign:               true,
-			useV2_0_0:               false,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "", "", nil // Not used in this test
@@ -919,7 +876,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "SOV",
 			getRPCVersionFromBinary: false,
 			sovereign:               true,
-			useV2_0_0:               true,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "", "", nil // Not used in this test
@@ -956,7 +912,6 @@ func TestCreateEvmSidecar(t *testing.T) {
 			tokenSymbol:             "",
 			getRPCVersionFromBinary: false,
 			sovereign:               false,
-			useV2_0_0:               false,
 			setupSubnetEVMMock: func() func(*application.Avalanche, string) (string, string, error) {
 				return func(_ *application.Avalanche, _ string) (string, string, error) {
 					return "", "", nil // Not used in this test

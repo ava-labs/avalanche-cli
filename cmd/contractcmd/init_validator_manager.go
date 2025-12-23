@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-tooling-sdk-go/blockchain"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	contractSDK "github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	validatormanagerSDK "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -30,6 +31,7 @@ import (
 
 type POSManagerSpecFlags struct {
 	rewardCalculatorAddress string
+	rewardBasisPoints       uint64
 	minimumStakeAmount      uint64 // big.Int
 	maximumStakeAmount      uint64 // big.Int
 	minimumStakeDuration    uint64
@@ -39,10 +41,12 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	initPOSManagerFlags       POSManagerSpecFlags
-	network                   networkoptions.NetworkFlags
-	privateKeyFlags           contract.PrivateKeyFlags
-	initValidatorManagerFlags ContractInitValidatorManagerFlags
+	initPOSManagerFlags            POSManagerSpecFlags
+	network                        networkoptions.NetworkFlags
+	privateKeyFlags                contract.PrivateKeyFlags
+	initValidatorManagerFlags      ContractInitValidatorManagerFlags
+	erc20TokenAddress              string
+	erc20TokenOwnerPrivateKeyFlags contract.PrivateKeyFlags
 )
 
 type ContractInitValidatorManagerFlags struct {
@@ -65,12 +69,16 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	sigAggGroup := flags.AddSignatureAggregatorFlagsToCmd(cmd, &initValidatorManagerFlags.SigAggFlags)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.rewardBasisPoints, "pos-reward-basis-points", 100, "(PoS only) reward basis points (100 = 1%)")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "(PoS only) maximum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "(PoS only) minimum stake duration (in seconds)")
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only) maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
+	cmd.Flags().StringVar(&erc20TokenAddress, "erc20-token-address", "", "ERC20 token address for staking (required for external PoS ERC20 validator managers)")
+	erc20TokenOwnerPrivateKeyFlags.SetFlagNames("erc20-token-owner-private-key", "erc20-token-owner-key", "erc20-token-owner-genesis-key")
+	erc20TokenOwnerPrivateKeyFlags.AddToCmd(cmd, "to transfer ERC20 token ownership")
 	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{sigAggGroup}))
 	return cmd
 }
@@ -261,8 +269,158 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if sc.PoS() {
+		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
+			_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			genesisSigner, err := evm.NewSignerFromPrivateKey(genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+
+			if sc.PoSERC20() {
+				erc20TokenAddress, err = blockchaincmd.DeployERC20StakingToken(
+					genesisSigner,
+					validatorManagerRPCEndpoint,
+					specializedValidatorManagerAddressStr,
+					constants.DefaultERC20StakingTokenName,
+					constants.DefaultERC20StakingTokenSupply,
+				)
+				if err != nil {
+					return err
+				}
+			}
+			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
+				duallogger.NewDualLogger(true, app),
+				network,
+				blockchainName,
+				validatorManagerRPCEndpoint,
+				sc.ProxyContractOwner,
+				sc.ValidatorManagement,
+				genesisSigner,
+			); err != nil {
+				return err
+			}
+
+			if initPOSManagerFlags.rewardCalculatorAddress == "" {
+				ux.Logger.PrintToUser("Deploying Reward Calculator into %s", validatorManagerRPCEndpoint)
+				rewardCalculatorAddr, _, _, err := validatormanager.DeployRewardCalculatorV2_0_0Contract(
+					validatorManagerRPCEndpoint,
+					genesisSigner,
+					initPOSManagerFlags.rewardBasisPoints,
+				)
+				if err != nil {
+					return err
+				}
+				initPOSManagerFlags.rewardCalculatorAddress = rewardCalculatorAddr.Hex()
+				ux.Logger.PrintToUser("  Reward Calculator Address: %s", initPOSManagerFlags.rewardCalculatorAddress)
+				ux.Logger.PrintToUser("")
+			}
+		} else if sc.PoSERC20() {
+			// External validator manager - need token address
+			if erc20TokenAddress == "" {
+				address, err := app.Prompt.CaptureAddress("Enter the ERC20 token address for staking")
+				if err != nil {
+					return err
+				}
+				erc20TokenAddress = address.Hex()
+			}
+
+			// Check if the validator manager is already the owner
+			currentOwner, err := contractSDK.GetContractOwner(
+				validatorManagerRPCEndpoint,
+				common.HexToAddress(erc20TokenAddress),
+			)
+			if err != nil {
+				return err
+			}
+
+			if currentOwner == common.HexToAddress(specializedValidatorManagerAddressStr) {
+				ux.Logger.PrintToUser("ERC20 token is already owned by the validator manager")
+			} else {
+				// Handle ownership transfer for external tokens
+				tokenOwnerPrivateKey, err := erc20TokenOwnerPrivateKeyFlags.GetPrivateKey(app, "")
+				if err != nil {
+					return err
+				}
+
+				if tokenOwnerPrivateKey == "" {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("The ERC20 token ownership must be transferred to the validator manager")
+					ux.Logger.PrintToUser("   so it can mint staking rewards.")
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("   Token Address: %s", erc20TokenAddress)
+					ux.Logger.PrintToUser("   Validator Manager: %s", specializedValidatorManagerAddressStr)
+					ux.Logger.PrintToUser("")
+
+					transferNow, err := app.Prompt.CaptureNoYes("Do you want the CLI to transfer ownership now? (requires token owner private key)")
+					if err != nil {
+						return err
+					}
+
+					if transferNow {
+						tokenOwnerPrivateKey, err = prompts.PromptPrivateKey(
+							app.Prompt,
+							"to transfer token ownership",
+							app.GetKeyDir(),
+							app.GetKey,
+							"",
+							"",
+						)
+						if err != nil {
+							return err
+						}
+					} else {
+						ux.Logger.PrintToUser("")
+						ux.Logger.PrintToUser("You must manually transfer token ownership later.")
+						ux.Logger.PrintToUser("   The validator manager will not be functional until ownership is transferred.")
+						ux.Logger.PrintToUser("")
+					}
+				}
+
+				if tokenOwnerPrivateKey != "" {
+					// Transfer ownership
+					tokenOwnerSigner, err := evm.NewSignerFromPrivateKey(tokenOwnerPrivateKey)
+					if err != nil {
+						return err
+					}
+
+					ux.Logger.PrintToUser("Transferring ERC20 token ownership to validator manager...")
+					err = contractSDK.TransferOwnership(
+						app.Log,
+						validatorManagerRPCEndpoint,
+						common.HexToAddress(erc20TokenAddress),
+						tokenOwnerSigner,
+						common.HexToAddress(specializedValidatorManagerAddressStr),
+					)
+					if err != nil {
+						return err
+					}
+					ux.Logger.GreenCheckmarkToUser("ERC20 token ownership transferred to validator manager")
+				}
+			}
+		}
+
+		if initPOSManagerFlags.rewardCalculatorAddress == "" {
+			address, err := app.Prompt.CaptureAddress("Enter the reward calculator address")
+			if err != nil {
+				return err
+			}
+			initPOSManagerFlags.rewardCalculatorAddress = address.Hex()
+		}
+	}
+
 	switch {
-	case sc.PoA(): // PoA
+	case sc.PoA():
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			app.Log,
@@ -274,25 +432,31 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	case sc.PoS(): // PoS
-		if blockchainID == validatorManagerBlockchainID && validatorManagerAddressStr == validatormanagerSDK.ValidatorProxyContractAddress {
-			// we assume it is fully CLI managed
-			if err := blockchaincmd.CompleteValidatorManagerL1Deploy(
-				duallogger.NewDualLogger(true, app),
-				network,
-				blockchainName,
-				validatorManagerRPCEndpoint,
-				sc.ProxyContractOwner,
-				sc.PoS(),
-			); err != nil {
-				return err
-			}
+	case sc.PoSERC20():
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing ERC20 Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
+		if err := validatormanager.SetupPoSERC20(
+			app.Log,
+			subnetSDK,
+			signer,
+			aggregatorLogger,
+			validatormanagerSDK.PoSParams{
+				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
+				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
+				MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
+				MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,
+				WeightToValueFactor:     big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
+				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
+				UptimeBlockchainID:      blockchainID,
+			},
+			common.HexToAddress(erc20TokenAddress),
+			signatureAggregatorEndpoint,
+		); err != nil {
+			return err
 		}
-
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
-		if initPOSManagerFlags.rewardCalculatorAddress == "" {
-			initPOSManagerFlags.rewardCalculatorAddress = validatormanagerSDK.RewardCalculatorAddress
-		}
+		ux.Logger.GreenCheckmarkToUser("ERC20 Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	case sc.PoSNative():
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
 		_, _, _, _, nativeMinterPrecompileAdminPrivateKey, err := contract.GetEVMSubnetGenesisNativeMinterAdminOrManager(
 			app,
 			network,
@@ -310,7 +474,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err := validatormanager.SetupPoS(
+		if err := validatormanager.SetupPoSNative(
 			app.Log,
 			subnetSDK,
 			signer,
@@ -331,7 +495,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	default: // unsupported
+	default:
 		return fmt.Errorf("only PoA and PoS supported")
 	}
 

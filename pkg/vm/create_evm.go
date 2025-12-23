@@ -89,7 +89,6 @@ func CreateEVMGenesis(
 	icmInfo *icm.ICMInfo,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
-	rewardBasisPoints uint64,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -142,7 +141,6 @@ func CreateEVMGenesis(
 		validatormanager.AddValidatorTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		// valid for both v2.0.0 and v1.0.0
 		validatormanager.AddValidatorMessagesV2_0_0ContractToAllocations(params.initialTokenAllocation)
-		validatormanager.AddRewardCalculatorV2_0_0ToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		validatormanager.AddSpecializationTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 	}
 

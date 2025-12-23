@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -63,7 +64,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		icmMessengerAddress string
 		icmRegistryAddress  string
 	)
-	blockchainID, err := utils.GetChainID(network.Endpoint, "C")
+	blockchainID, err := sdkutils.GetChainID(network.Endpoint, "C")
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			networkUpMsg := ""

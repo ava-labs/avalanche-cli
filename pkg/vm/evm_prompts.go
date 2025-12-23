@@ -187,11 +187,14 @@ func PromptSubnetEVMGenesisParams(
 
 	if sc.PoS() {
 		params.UsePoSValidatorManager = true
-		params.enableNativeMinterPrecompile = true
-		params.nativeMinterPrecompileAllowList.EnabledAddresses = append(
-			params.nativeMinterPrecompileAllowList.EnabledAddresses,
-			common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
-		)
+		// Only enable NativeMinterPrecompile for PoS Native, not for PoS ERC20
+		if sc.PoSNative() {
+			params.enableNativeMinterPrecompile = true
+			params.nativeMinterPrecompileAllowList.EnabledAddresses = append(
+				params.nativeMinterPrecompileAllowList.EnabledAddresses,
+				common.HexToAddress(validatorManagerSDK.SpecializationProxyContractAddress),
+			)
+		}
 		params.enableRewardManagerPrecompile = true
 	}
 

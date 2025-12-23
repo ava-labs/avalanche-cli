@@ -7,7 +7,8 @@ cd $base_dir/pkg/contract/contracts/
 touch foundry.toml
 echo @openzeppelin/contracts@4.8.1/=lib/openzeppelin-contracts/contracts/ > remappings.txt
 [ ! -d lib/openzeppelin-contracts ] && git clone https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts -b v4.8.1
-# build 
+# build
 forge build --extra-output-files bin
 mkdir -p bin
 cp out/Token.sol/Token.bin bin
+cp out/MintableERC20.sol/MintableERC20.bin bin

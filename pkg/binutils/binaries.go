@@ -111,7 +111,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		return fmt.Errorf("failed to create app binary directory: %w", err)
 	}
 
-	// Closure to address file descriptors issue, uses Close to to not leave open descriptors
+	// Closure to address file descriptors issue, uses Close to not leave open descriptors
 	extractAndWriteFile := func(f *zip.File) error {
 		rc, err := f.Open()
 		if err != nil {

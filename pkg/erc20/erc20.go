@@ -34,6 +34,7 @@ func GetTokenDecimals(
 ) (uint8, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"decimals()->(uint8)",
 		nil,
@@ -50,6 +51,7 @@ func GetTokenName(
 ) (string, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"name()->(string)",
 		nil,
@@ -66,6 +68,7 @@ func GetTokenSymbol(
 ) (string, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		address,
 		"symbol()->(string)",
 		nil,
@@ -83,6 +86,7 @@ func GetBalance(
 ) (*big.Int, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		contractAddress,
 		"balanceOf(address)->(uint256)",
 		nil,

@@ -19,12 +19,14 @@ type SubnetManagementType uint
 const (
 	Unknown SubnetManagementType = iota
 	PoA
-	PoS
+	PoSNative
+	PoSERC20
 )
 
 const (
-	PoSString = "proof-of-stake"
-	PoAString = "proof-of-authority"
+	PoAString       = "proof-of-authority"
+	PoSNativeString = "proof-of-stake-native"
+	PoSERC20String  = "proof-of-stake-erc20"
 )
 
 func CreateEtnaSubnetEvmConfig(
@@ -37,11 +39,11 @@ func CreateEtnaSubnetEvmConfig(
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
-	rewardBasisPoints := ""
 	subnetManagementStr := PoAString
-	if subnetManagementType == PoS {
-		rewardBasisPoints = "--reward-basis-points=1000000000"
-		subnetManagementStr = PoSString
+	if subnetManagementType == PoSNative {
+		subnetManagementStr = PoSNativeString
+	} else if subnetManagementType == PoSERC20 {
+		subnetManagementStr = PoSERC20String
 	}
 	// Create config
 	cmd := exec.Command(
@@ -61,9 +63,6 @@ func CreateEtnaSubnetEvmConfig(
 		"--icm=false",
 		"--"+constants.SkipUpdateFlag,
 	)
-	if rewardBasisPoints != "" {
-		cmd.Args = append(cmd.Args, rewardBasisPoints)
-	}
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
@@ -143,6 +142,8 @@ func DeployEtnaBlockchain(
 	ewoqPChainAddress string,
 	convertOnly bool,
 	externalManager bool,
+	erc20TokenAddress string,
+	rewardBasisPoints uint64,
 ) (string, error) {
 	convertOnlyFlag := ""
 	if convertOnly {
@@ -181,6 +182,15 @@ func DeployEtnaBlockchain(
 	if externalManager {
 		args = append(args, "--vmc-c-chain", "--vmc-genesis-key")
 	}
+	if erc20TokenAddress != "" {
+		args = append(args, "--erc20-token-address", erc20TokenAddress)
+		// If we're providing an ERC20 token address, we need to transfer ownership
+		// Since we deployed with genesis key (ewoq), use ewoq key for ownership transfer
+		args = append(args, "--erc20-token-owner-key", "ewoq")
+	}
+	if rewardBasisPoints > 0 {
+		args = append(args, "--reward-basis-points", fmt.Sprintf("%d", rewardBasisPoints))
+	}
 	cmd := exec.Command(CLIBinary, args...)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
@@ -217,11 +227,94 @@ func TrackLocalEtnaSubnet(
 	return string(output), err
 }
 
+func DeployValidatorManagerToCChain(
+	subnetManagementType SubnetManagementType,
+	rewardBasisPoints uint64,
+) (string, error) {
+	args := []string{
+		"contract",
+		"deploy",
+		"validatorManager",
+		"--local",
+		"--c-chain",
+		"--genesis-key",
+		"--deploy-proxy",
+		"--proxy-owner-genesis-key",
+		"--" + constants.SkipUpdateFlag,
+	}
+
+	// Add subnet management type flag
+	switch subnetManagementType {
+	case PoA:
+		args = append(args, "--poa")
+	case PoSNative:
+		args = append(args, "--pos-native")
+	case PoSERC20:
+		args = append(args, "--pos-erc20")
+	}
+
+	if rewardBasisPoints > 0 {
+		args = append(
+			args,
+			"--reward-basis-points",
+			fmt.Sprintf("%d", rewardBasisPoints),
+		)
+	}
+
+	cmd := exec.Command(CLIBinary, args...)
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
+func DeployERC20TokenAtCChain(
+	tokenSymbol string,
+	tokenSupply uint64,
+	fundedAddress string,
+) (string, error) {
+	args := []string{
+		"contract",
+		"deploy",
+		"erc20",
+		"--local",
+		"--c-chain",
+		"--genesis-key",
+		"--symbol",
+		tokenSymbol,
+		"--supply",
+		fmt.Sprintf("%d", tokenSupply),
+		"--funded",
+		fundedAddress,
+		"--mintable",
+		"--" + constants.SkipUpdateFlag,
+	}
+
+	cmd := exec.Command(CLIBinary, args...)
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
 func InitValidatorManager(
 	subnetName string,
 	clusterName string,
 	endpoint string,
 	blockchainID string,
+	rewardBasisPoints uint64,
+	erc20TokenAddress string,
+	rewardCalculatorAddress string,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -240,6 +333,29 @@ func InitValidatorManager(
 			endpoint,
 			"--rpc",
 			fmt.Sprintf("%s/ext/bc/%s/rpc", endpoint, blockchainID),
+		)
+	}
+	if rewardBasisPoints > 0 {
+		cmd.Args = append(
+			cmd.Args,
+			"--pos-reward-basis-points",
+			fmt.Sprintf("%d", rewardBasisPoints),
+		)
+	}
+	if erc20TokenAddress != "" {
+		cmd.Args = append(
+			cmd.Args,
+			"--erc20-token-address",
+			erc20TokenAddress,
+			"--erc20-token-owner-key",
+			"ewoq",
+		)
+	}
+	if rewardCalculatorAddress != "" {
+		cmd.Args = append(
+			cmd.Args,
+			"--pos-reward-calculator-address",
+			rewardCalculatorAddress,
 		)
 	}
 	fmt.Println(cmd)
@@ -312,6 +428,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	nodeEndpoint string,
 	keyName string,
 	uptimeSec uint64,
+	force bool,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -327,9 +444,11 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		"--uptime",
 		strconv.Itoa(int(uptimeSec)),
 		"--staker-genesis-key",
-		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if force {
+		cmd.Args = append(cmd.Args, "--force")
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())

@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
+	validatormanagersdk "github.com/ava-labs/avalanche-tooling-sdk-go/validatormanager"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -655,7 +656,7 @@ func addAsValidator(
 		return err
 	}
 	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
-	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err := sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -676,6 +677,17 @@ func addAsValidator(
 	if err != nil {
 		return err
 	}
+
+	// Try to get ERC20 token address if this is PoS ERC20
+	var erc20TokenAddress string
+	tokenAddr, err := validatormanagersdk.GetERC20StakingTokenAddress(
+		localValidateFlags.RPC,
+		common.HexToAddress(validatorManagerAddress),
+	)
+	if err == nil {
+		erc20TokenAddress = tokenAddr.Hex()
+	}
+	// If error, it's likely PoS Native or PoA, so erc20TokenAddress stays empty
 
 	validatorManagerParams := validatormanager.ValidatorManagerParams{
 		RPCURL:            localValidateFlags.RPC,
@@ -705,13 +717,14 @@ func addAsValidator(
 		SignedMessageParams: getRegisterValidatorSignedMessageParams,
 	}
 	posParams := validatormanager.ProofOfStakeParams{
-		DelegationFee:   delegationFee,
-		StakeDuration:   time.Duration(minimumStakeDuration) * time.Second,
-		RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
+		DelegationFee:     delegationFee,
+		StakeDuration:     time.Duration(minimumStakeDuration) * time.Second,
+		RewardRecipient:   common.HexToAddress(rewardsRecipientAddr),
+		ERC20TokenAddress: erc20TokenAddress,
 	}
 	initValidatorRegistrationParams.PoS = &posParams
 	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
-		// Execution behavior (don’t broadcast; return unsigned init tx)
+		// Execution behavior (don't broadcast; return unsigned init tx)
 		BuildOnly: false,
 		Logger:    duallogger.NewDualLogger(true, app),
 	}
@@ -743,7 +756,7 @@ func addAsValidator(
 	}
 
 	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
-	l1Epoch, err := utils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
+	l1Epoch, err := sdkutils.GetCurrentL1Epoch(localValidateFlags.RPC, chainSpec.BlockchainID)
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}

@@ -58,6 +58,7 @@ func SetupProxyImplementation(
 	useUpgradeAndCall := false
 	if out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		proxyAdminContractAddress,
 		"UPGRADE_INTERFACE_VERSION()->(string)",
 		nil,
@@ -102,6 +103,7 @@ func GetProxyImplementation(
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
+		common.Address{},
 		proxyAdminContractAddress,
 		"getProxyImplementation(address)->(address)",
 		nil,

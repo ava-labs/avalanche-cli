@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"os/user"
@@ -26,10 +27,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/evm/contract"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/keychain/ledger"
 	sdkutils "github.com/ava-labs/avalanche-tooling-sdk-go/utils"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -42,6 +46,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/subnet-evm/ethclient"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -1339,4 +1344,85 @@ func ParseValidatorManagerAddressesFromOutput(output string) (string, string, st
 	}
 
 	return validatorManagerAddress, proxyAddress, proxyAdminAddress, nil
+}
+
+// GetNativeBalance returns the native token balance for the given address on the specified RPC endpoint
+func GetNativeBalance(rpcEndpoint string, address string) (*big.Int, error) {
+	evmClient, err := evm.GetClient(rpcEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create EVM client for %s: %w", rpcEndpoint, err)
+	}
+	balance, err := evmClient.GetAddressBalance(address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get balance for address %s: %w", address, err)
+	}
+	return balance, nil
+}
+
+// GetERC20Balance returns the ERC20 token balance for the given address on the specified RPC endpoint
+func GetERC20Balance(rpcEndpoint string, tokenAddress string, address string) (*big.Int, error) {
+	tokenAddr := common.HexToAddress(tokenAddress)
+	addr := common.HexToAddress(address)
+	balance, err := erc20.GetBalance(rpcEndpoint, tokenAddr, addr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ERC20 balance for address %s from token %s: %w", address, tokenAddress, err)
+	}
+	return balance, nil
+}
+
+// GetERC20TokenAddressFromStakingManager returns the ERC20 token address from the ERC20TokenStakingManager contract
+func GetERC20TokenAddressFromStakingManager(rpcEndpoint string, stakingManagerAddress string) (string, error) {
+	managerAddr := common.HexToAddress(stakingManagerAddress)
+	out, err := contract.CallToMethod(
+		rpcEndpoint,
+		common.Address{},
+		managerAddr,
+		"erc20()->(address)",
+		nil,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to get ERC20 token address from staking manager %s: %w", stakingManagerAddress, err)
+	}
+	tokenAddr, err := contract.GetSmartContractCallResult[common.Address]("erc20", out)
+	if err != nil {
+		return "", err
+	}
+	return tokenAddr.Hex(), nil
+}
+
+// UpdateSidecarValidatorManagerAddresses updates the sidecar with validator manager addresses for external manager flow
+func UpdateSidecarValidatorManagerAddresses(
+	blockchainName string,
+	validatorManagerAddress string,
+	specializedValidatorManagerAddress string,
+	rpcEndpoint string,
+	validatorManagerBlockchainID string,
+) error {
+	app := GetApp()
+	sidecar, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
+	network := models.NewLocalNetwork()
+	networkData := sidecar.Networks[network.Name()]
+
+	// Update validator manager addresses
+	networkData.ValidatorManagerAddress = validatorManagerAddress
+	networkData.SpecializedValidatorManagerAddress = specializedValidatorManagerAddress
+	networkData.ValidatorManagerRPCEndpoint = rpcEndpoint
+
+	vmBlockchainID, err := ids.FromString(validatorManagerBlockchainID)
+	if err != nil {
+		return fmt.Errorf("failed to parse validator manager blockchain ID: %w", err)
+	}
+	networkData.ValidatorManagerBlockchainID = vmBlockchainID
+
+	sidecar.Networks[network.Name()] = networkData
+
+	if err := app.UpdateSidecar(&sidecar); err != nil {
+		return fmt.Errorf("failed to update sidecar: %w", err)
+	}
+
+	return nil
 }

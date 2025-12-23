@@ -457,17 +457,17 @@ func (c *GcpCloud) AddFirewall(publicIP, networkName, projectName, firewallName 
 }
 
 // ListRegions returns a list of regions for the GcpCloud instance.
-func (c *GcpCloud) ListRegions() []string {
+func (c *GcpCloud) ListRegions() ([]string, error) {
 	regionListCall := c.gcpClient.Regions.List(c.projectID)
 	regionList, err := regionListCall.Do()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	regions := []string{}
 	for _, region := range regionList.Items {
 		regions = append(regions, region.Name)
 	}
-	return regions
+	return regions, nil
 }
 
 // ListZonesInRegion returns a list of zones in a specific region for a given project ID.

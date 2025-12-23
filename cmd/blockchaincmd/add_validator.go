@@ -628,23 +628,21 @@ func CallAddValidator(
 		}
 	}
 
-	epochDuration := 30 * time.Second
-
 	// Get P-Chain's current epoch for RegisterL1ValidatorMessage (signed by L1, verified by P-Chain)
-	pChainEpoch, err := utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err := sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
 	epochTime := time.Unix(pChainEpoch.StartTime, 0)
 	elapsed := time.Since(epochTime)
-	if elapsed < epochDuration {
-		time.Sleep(epochDuration - elapsed)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
 	}
 	_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
 	if err != nil {
 		return fmt.Errorf("could not sent dummy transfer on p-chain: %w", err)
 	}
-	pChainEpoch, err = utils.GetCurrentEpoch(network.Endpoint, "P")
+	pChainEpoch, err = sdkutils.GetCurrentEpoch(network.Endpoint, "P")
 	if err != nil {
 		return fmt.Errorf("failure getting p-chain current epoch: %w", err)
 	}
@@ -670,6 +668,19 @@ func CallAddValidator(
 	)
 	if err != nil {
 		return err
+	}
+
+	// Get ERC20 token address if this is PoS ERC20
+	var erc20TokenAddress string
+	if sc.PoSERC20() {
+		tokenAddr, err := validatormanagersdk.GetERC20StakingTokenAddress(
+			validatorManagerRPCEndpoint,
+			common.HexToAddress(validatorManagerAddress),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to get ERC20 token address from validator manager: %w", err)
+		}
+		erc20TokenAddress = tokenAddr.Hex()
 	}
 
 	validatorManagerParams := validatormanager.ValidatorManagerParams{
@@ -703,19 +714,19 @@ func CallAddValidator(
 	}
 	if pos {
 		posParams := validatormanager.ProofOfStakeParams{
-			DelegationFee:   delegationFee,
-			StakeDuration:   duration,
-			RewardRecipient: common.HexToAddress(rewardsRecipientAddr),
+			DelegationFee:     delegationFee,
+			StakeDuration:     duration,
+			RewardRecipient:   common.HexToAddress(rewardsRecipientAddr),
+			ERC20TokenAddress: erc20TokenAddress,
 		}
 		initValidatorRegistrationParams.PoS = &posParams
 	}
 	initValidatorRegistrationOpts := validatormanager.InitValidatorRegistrationOptions{
-		// Execution behavior (don’t broadcast; return unsigned init tx)
+		// Execution behavior (don't broadcast; return unsigned init tx)
 		BuildOnly: externalValidatorManagerOwner,
 		Logger:    duallogger.NewDualLogger(true, app),
 	}
 
-	// Example of using the HybridLogger with SDK functions
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		ctx,
 		initValidatorRegistrationParams,
@@ -741,13 +752,21 @@ func CallAddValidator(
 		ux.Logger.PrintToUser("%s", logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
-		if err := blockchain.UpdatePChainHeight(
-			"Waiting for P-Chain to update validator information ...",
-		); err != nil {
+		if err := blockchain.UpdatePChainHeight("Waiting for P-Chain to update validator information ..."); err != nil {
 			return err
 		}
 	}
 
+	// Get L1's current epoch for L1ValidatorRegistrationMessage (signed by P-Chain, verified by L1)
+	l1Epoch, err := sdkutils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	if err != nil {
+		return fmt.Errorf("failure getting l1 current epoch: %w", err)
+	}
+	epochTime = time.Unix(l1Epoch.StartTime, 0)
+	elapsed = time.Since(epochTime)
+	if elapsed < constants.ProposerVMEpochDuration {
+		time.Sleep(constants.ProposerVMEpochDuration - elapsed)
+	}
 	client, err := evm.GetClient(validatorManagerRPCEndpoint)
 	if err != nil {
 		return fmt.Errorf("failure connecting to validator manager L1: %w", err)
@@ -755,7 +774,7 @@ func CallAddValidator(
 	if err := client.SetupProposerVM(signer); err != nil {
 		return fmt.Errorf("failure setting proposer VM on L1: %w", err)
 	}
-	l1Epoch, err := utils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
+	l1Epoch, err = sdkutils.GetCurrentL1Epoch(validatorManagerRPCEndpoint, validatorManagerBlockchainID.String())
 	if err != nil {
 		return fmt.Errorf("failure getting l1 current epoch: %w", err)
 	}
