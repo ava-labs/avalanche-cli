@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -283,12 +284,6 @@ func HasRemoteComposeService(host *models.Host, composeFile string, service stri
 	if err != nil {
 		return false, err
 	}
-	found := false
-	for _, s := range services {
-		if s == service {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(services, service)
 	return found, nil
 }
