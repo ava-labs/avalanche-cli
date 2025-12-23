@@ -195,7 +195,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exclude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {
