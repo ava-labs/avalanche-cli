@@ -21,20 +21,20 @@ EOF
 RUN_COMPLETIONS=true
 
 parse_args() {
-  #BINDIR is ./bin unless set be ENV
-  # over-ridden by flag below
-
+  # BINDIR is ~/bin unless overridden by ENV or -b flag
   BINDIR=${BINDIR:-~/bin}
   while getopts "b:ndh?x" arg; do
     case "$arg" in
       b) BINDIR="$OPTARG" ;;
       d) log_set_priority 10 ;;
       h | \?) usage "$0" ;;
-      n) RUN_COMPLETIONS=false;; 
+      n) RUN_COMPLETIONS=false;;
       x) set -x ;;
     esac
   done
   shift $((OPTIND - 1))
+  # Remove trailing slash to prevent paths like /usr/local/bin//avalanche
+  BINDIR=${BINDIR%/}
   TAG=$1
 }
 # this function wraps all the destructive operations
