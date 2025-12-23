@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -28,10 +29,8 @@ func DockerLocalImageExists(host *models.Host, image string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	for _, localImage := range parseDockerImageListOutput(output) {
-		if localImage == image {
-			return true, nil
-		}
+	if slices.Contains(parseDockerImageListOutput(output), image) {
+		return true, nil
 	}
 	return false, nil
 }
