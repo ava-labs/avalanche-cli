@@ -513,7 +513,7 @@ func isIPLimitExceededError(err error) bool {
 	return strings.Contains(err.Error(), "IP address quota exceeded") || strings.Contains(err.Error(), "Insufficient IP addresses")
 }
 
-// ListAttachedVolumes returns a list of attached volumes to the instance excluding the boot volume
+// GetRootVolumeID returns the root volume ID of the instance
 func (c *GcpCloud) GetRootVolumeID(instanceID string, zone string) (string, error) {
 	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
 	if err != nil {
