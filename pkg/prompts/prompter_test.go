@@ -932,9 +932,9 @@ func TestCaptureDateWithMonkeyPatch(t *testing.T) {
 		},
 		{
 			name:         "valid time with exact format",
-			mockReturn:   "2025-12-25 15:30:45",
+			mockReturn:   "2027-12-25 15:30:45",
 			mockError:    nil,
-			expectedTime: time.Date(2025, 12, 25, 15, 30, 45, 0, time.UTC),
+			expectedTime: time.Date(2027, 12, 25, 15, 30, 45, 0, time.UTC),
 			expectError:  false,
 		},
 		{
