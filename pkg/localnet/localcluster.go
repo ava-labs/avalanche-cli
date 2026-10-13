@@ -36,7 +36,6 @@ type ConnectionSettings struct {
 // If [setPublicIP] is set, configures nodes with the user's public IP address
 func CreateLocalCluster(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 	avalancheGoBinPath string,
 	cChainConfig []byte,

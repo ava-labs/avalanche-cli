@@ -278,7 +278,6 @@ func migrateCluster(
 	defaultFlags[avagoconfig.IndexAllowIncompleteKey] = true
 	network, err := CreateLocalCluster(
 		app,
-		printFunc,
 		clusterName,
 		binPath,
 		nil,

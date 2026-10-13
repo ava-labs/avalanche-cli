@@ -118,7 +118,6 @@ func StartLocalNode(
 
 		_, err = localnet.CreateLocalCluster(
 			app,
-			ux.Logger.PrintToUser,
 			clusterName,
 			avalancheGoBinaryPath,
 			cChainConfig,
