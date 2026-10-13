@@ -129,7 +129,6 @@ func StartLocalNode(
 			nodeSettings,
 			[]ids.ID{},
 			network,
-			true,        // Download DB
 			true,        // Bootstrap
 			setPublicIP, // Set Public IP
 		)

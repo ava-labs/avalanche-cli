@@ -290,7 +290,6 @@ func migrateCluster(
 		trackedSubnets,
 		networkModel,
 		false,
-		false,
 		false, // Set Public IP
 	)
 	if err != nil {

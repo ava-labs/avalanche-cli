@@ -17,8 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
-
-	"go.uber.org/zap"
 )
 
 // A connection setting is either the network ID for a public network,
@@ -34,8 +32,6 @@ type ConnectionSettings struct {
 // Create a local cluster [clusterName] connected to another network,
 // based on [connectionSettings].
 // Set up [numNodes] nodes, either with fresh keys and ports, or based on settings given by [nodeSettings]
-// If [downloadDB] is set, and network is fuji, downloads the current avalanchego DB -note: db download is not desired
-// if migrating from a network runner cluster-
 // If [bootstrap] is set, starts the nodes
 // If [setPublicIP] is set, configures nodes with the user's public IP address
 func CreateLocalCluster(
@@ -51,7 +47,6 @@ func CreateLocalCluster(
 	nodeSettings []NodeSetting,
 	trackedSubnets []ids.ID,
 	networkModel models.Network,
-	downloadDB bool,
 	bootstrap bool,
 	setPublicIP bool,
 ) (*tmpnet.Network, error) {
@@ -105,16 +100,6 @@ func CreateLocalCluster(
 	if err := TmpNetEnableSybilProtection(networkDir); err != nil {
 		return nil, err
 	}
-	if downloadDB {
-		// preseed nodes db from public archive. ignore errors
-		nodeIDs := []string{}
-		for _, node := range network.Nodes {
-			nodeIDs = append(nodeIDs, node.NodeID.String())
-		}
-		if err := DownloadAvalancheGoDB(app, networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
-			app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
-		}
-	}
 	if bootstrap {
 		if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {
 			return nil, err
@@ -150,15 +135,11 @@ func AddNodeToLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-	nodeIDs := []string{newNode.NodeID.String()}
 	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
-	if err := DownloadAvalancheGoDB(app, networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
-		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
-	}
 	printFunc("Waiting for node: %s to be bootstrapping P-Chain", newNode.NodeID)
 	ctx, cancel := networkModel.BootstrappingContext()
 	defer cancel()
