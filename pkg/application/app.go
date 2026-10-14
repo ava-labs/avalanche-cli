@@ -109,10 +109,6 @@ func (app *Avalanche) GetLocalClustersDir() string {
 	return filepath.Join(app.baseDir, constants.LocalClustersDir)
 }
 
-func (app *Avalanche) GetDBCacheDir() string {
-	return filepath.Join(app.baseDir, constants.DBDirName)
-}
-
 func (app *Avalanche) GetLocalClusterDir(clusterName string) string {
 	return filepath.Join(app.GetLocalClustersDir(), clusterName)
 }

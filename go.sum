@@ -47,8 +47,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c h1:uIriOOpMqG+oF7JbYKGJwYem/sXoRxLAjUoe7x3EpWU=
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c/go.mod h1:NS2385T7YN9VVdIRbM+5NpskLTF2I6ArTdts4qUFwoI=
-github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251219040137-6c7ceb2c9cf8 h1:QX25zq91wsCm1mwL5QepGmTIykGPXaXebqbhC5lqi8w=
-github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251219040137-6c7ceb2c9cf8/go.mod h1:CBQrORCol0SIWNEtL+niqUX5dqcVk2v8aJ7cADpGyg0=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.5.0 h1:h5bhFev9lG9+O6FyPyGzaojH0gUV4YVLhtOynVegZVQ=
+github.com/ava-labs/avalanche-tooling-sdk-go v0.5.0/go.mod h1:NaUsTa3NIRU5kXZ+1Wc11DZ9/T1ySrjWc++oi+l2TcE=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1 h1:/eQUKFGzK+CY2rHOypox87Cqpc9DEIOIjYgEtuRar9g=
 github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1/go.mod h1:wEiDa5Lc3oKm9l2AxJOXmLz00Wg7b3hUttgkfzgRoDA=
 github.com/ava-labs/coreth v0.15.4-rc.4 h1:ze7/IwDptWG1u2d32uUZz9Ix9ycVUtlB8JufuSKSSS4=
@@ -125,8 +125,6 @@ github.com/btcsuite/snappy-go v0.0.0-20151229074030-0bdef8d06723/go.mod h1:8woku
 github.com/btcsuite/snappy-go v1.0.0/go.mod h1:8woku9dyThutzjeg+3xrA5iCpBRH8XEEg3lh6TiUghc=
 github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792/go.mod h1:ghJtEyQwv5/p4Mg4C0fgbePVuGr935/5ddU9Z3TmDRY=
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
-github.com/cavaliergopher/grab/v3 v3.0.1 h1:4z7TkBfmPjmLAAmkkAZNX/6QJ1nNFdv3SdIHXju0Fr4=
-github.com/cavaliergopher/grab/v3 v3.0.1/go.mod h1:1U/KNnD+Ft6JJiYoYBAimKH2XrYptb8Kl3DFGmsjpq4=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cenkalti/backoff/v5 v5.0.2 h1:rIfFVxEf1QsI7E1ZHfp/B4DF/6QBAUhmgkxc0H7Zss8=

@@ -118,7 +118,6 @@ func StartLocalNode(
 
 		_, err = localnet.CreateLocalCluster(
 			app,
-			ux.Logger.PrintToUser,
 			clusterName,
 			avalancheGoBinaryPath,
 			cChainConfig,
@@ -129,7 +128,6 @@ func StartLocalNode(
 			nodeSettings,
 			[]ids.ID{},
 			network,
-			true,        // Download DB
 			true,        // Bootstrap
 			setPublicIP, // Set Public IP
 		)
