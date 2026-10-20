@@ -1,6 +1,7 @@
 module github.com/ava-labs/avalanche-cli
 
 go 1.24.9
+
 toolchain go1.26.10
 
 require (
