@@ -131,7 +131,7 @@ build {
             "docker pull grafana/grafana:10.4.1",
             "docker pull prom/prometheus:v2.51.2",
             "docker pull avaplatform/icm-relayer:v2.0.0-fuji",
-            "docker pull golang:1.22.8-bullseye"
+            "docker pull golang:1.26.10-bookworm"
         ]
    }
 

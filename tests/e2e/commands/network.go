@@ -51,7 +51,7 @@ func StartNetworkWithVersion(version string) string {
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) //nolint:gosec // e2e test runs the CLI binary with test arguments
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())

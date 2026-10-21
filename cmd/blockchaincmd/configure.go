@@ -156,7 +156,7 @@ func SetBlockchainConf(
 	}
 	fileName := filepath.Join(blockchainDir, configFilename)
 	_ = os.RemoveAll(fileName)
-	if err := os.WriteFile(fileName, fileBytes, constants.WriteReadReadPerms); err != nil {
+	if err := os.WriteFile(fileName, fileBytes, constants.WriteReadReadPerms); err != nil { //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 		return err
 	}
 	ux.Logger.PrintToUser("File %s successfully written", fileName)

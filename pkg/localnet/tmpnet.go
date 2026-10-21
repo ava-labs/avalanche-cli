@@ -612,7 +612,7 @@ func TmpNetSetSubnetConfig(
 	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create subnets config directory %s: %w", configDir, err)
 	}
-	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
+	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 }
 
 // Restart given [nodes] of [network]

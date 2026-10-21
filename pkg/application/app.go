@@ -485,7 +485,7 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, blockchainName strin
 		return err
 	}
 
-	return os.WriteFile(genesisPath, genesisBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(genesisPath, genesisBytes, constants.WriteReadReadPerms) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 }
 
 func (app *Avalanche) CopyVMBinary(inputFilename string, blockchainName string) error {
@@ -494,7 +494,7 @@ func (app *Avalanche) CopyVMBinary(inputFilename string, blockchainName string) 
 		return err
 	}
 	vmPath := app.GetCustomVMPath(blockchainName)
-	return os.WriteFile(vmPath, vmBytes, constants.DefaultPerms755)
+	return os.WriteFile(vmPath, vmBytes, constants.DefaultPerms755) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 }
 
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
@@ -506,7 +506,7 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	keyStr = strings.TrimSpace(keyStr)
 	keyStr = strings.TrimPrefix(keyStr, "0x")
 	keyPath := app.GetKeyPath(keyName)
-	return os.WriteFile(keyPath, []byte(keyStr), constants.WriteReadReadPerms)
+	return os.WriteFile(keyPath, []byte(keyStr), constants.WriteReadReadPerms) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 }
 
 func (app *Avalanche) HasSubnetEVMGenesis(blockchainName string) (bool, error, error) {

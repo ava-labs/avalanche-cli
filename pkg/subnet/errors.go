@@ -55,7 +55,7 @@ func FindErrorLogs(rootDirs ...string) {
 				if !strings.HasSuffix(d.Name(), "log") {
 					return nil
 				}
-				content, err := os.ReadFile(path)
+				content, err := os.ReadFile(path) //nolint:gosec // walks a directory the CLI owns; no other writer
 				if err != nil {
 					return err
 				}

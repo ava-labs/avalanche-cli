@@ -2,6 +2,8 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.24.9
 
+toolchain go1.26.10
+
 require (
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c
 	github.com/ava-labs/avalanche-tooling-sdk-go v0.5.0

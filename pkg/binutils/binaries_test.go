@@ -111,3 +111,27 @@ func TestExistsWithVersion_Longer(t *testing.T) {
 	require.NoError(err)
 	require.False(exists)
 }
+
+func TestSanitizeArchivePath(t *testing.T) {
+	dir := filepath.Join("tmp", "bin")
+	tests := []struct {
+		name    string
+		entry   string
+		wantErr bool
+	}{
+		{name: "file inside the directory", entry: "avalanchego"},
+		{name: "archive root entry", entry: "./"},
+		{name: "parent directory escape", entry: "../evil", wantErr: true},
+		{name: "sibling with a shared prefix", entry: "../bin-evil/payload", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := SanitizeArchivePath(dir, tt.entry)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
