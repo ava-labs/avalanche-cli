@@ -353,7 +353,7 @@ func DeploySubnetLocallyWithArgsNonSOV(subnetName string, version string, confPa
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) //nolint:gosec // e2e test runs the CLI binary with test arguments
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -392,7 +392,7 @@ func DeploySubnetLocallyWithArgsSOV(subnetName string, version string, confPath 
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) //nolint:gosec // e2e test runs the CLI binary with test arguments
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -431,7 +431,7 @@ func DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName string, version strin
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) //nolint:gosec // e2e test runs the CLI binary with test arguments
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -460,7 +460,7 @@ func DeploySubnetLocallyWithArgsAndOutputSOV(subnetName string, version string, 
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) //nolint:gosec // e2e test runs the CLI binary with test arguments
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())

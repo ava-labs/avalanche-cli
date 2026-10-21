@@ -245,7 +245,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 	for _, r := range replacements {
 		content = []byte(strings.ReplaceAll(string(content), r.old, r.new))
 	}
-	err = os.WriteFile(customGrafanaDashboardFileName, content, constants.WriteReadUserOnlyPerms)
+	err = os.WriteFile(customGrafanaDashboardFileName, content, constants.WriteReadUserOnlyPerms) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 	if err != nil {
 		return err
 	}

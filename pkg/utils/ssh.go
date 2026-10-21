@@ -91,7 +91,7 @@ func getSSHAgent() (agent.ExtendedAgent, error) {
 		return nil, fmt.Errorf("SSH agent is not available")
 	}
 	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
-	conn, err := net.Dial("unix", sshAuthSock)
+	conn, err := net.Dial("unix", sshAuthSock) //nolint:gosec // SSH_AUTH_SOCK is the user's own agent socket
 	if err != nil {
 		return nil, fmt.Errorf("SSH agent is not accepting connections: %w", err)
 	}

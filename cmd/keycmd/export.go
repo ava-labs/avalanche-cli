@@ -50,5 +50,5 @@ func exportKey(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	return os.WriteFile(filename, keyBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(filename, keyBytes, constants.WriteReadReadPerms) //nolint:gosec // path is in the CLI's own data directory or chosen by the user
 }

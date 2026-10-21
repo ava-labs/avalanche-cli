@@ -54,7 +54,10 @@ func NewPluginBinaryDownloader(app *application.Avalanche) PluginBinaryDownloade
 // SanitizeArchivePath sanitizes archive file pathing from "G305: Zip Slip vulnerability"
 func SanitizeArchivePath(d, t string) (v string, err error) {
 	v = filepath.Join(d, t)
-	if strings.HasPrefix(v, filepath.Clean(d)) {
+	// Compare against the directory plus a separator, so "../bin-evil" cannot
+	// pass as a child of "bin".
+	clean := filepath.Clean(d)
+	if v == clean || strings.HasPrefix(v, clean+string(os.PathSeparator)) {
 		return v, nil
 	}
 
@@ -125,14 +128,14 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(path, f.Mode()); err != nil {
+			if err := os.MkdirAll(path, f.Mode()); err != nil { //nolint:gosec // path is validated by SanitizeArchivePath
 				return fmt.Errorf("failed creating directory from zip entry: %w", err)
 			}
 		} else {
-			if err := os.MkdirAll(filepath.Dir(path), f.Mode()); err != nil {
+			if err := os.MkdirAll(filepath.Dir(path), f.Mode()); err != nil { //nolint:gosec // path is validated by SanitizeArchivePath
 				return fmt.Errorf("failed creating file from zip entry: %w", err)
 			}
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode()) //nolint:gosec // path is validated by SanitizeArchivePath
 			if err != nil {
 				return fmt.Errorf("failed opening file from zip entry: %w", err)
 			}
@@ -211,7 +214,7 @@ func extractTarReader(gzipReader io.Reader, targetDir string) error {
 			if err := os.MkdirAll(containingDir, constants.DefaultPerms755); err != nil {
 				return fmt.Errorf("failed creating directory from tar entry %w", err)
 			}
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode)) //nolint:gosec // path is validated by SanitizeArchivePath
 			if err != nil {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)
 			}

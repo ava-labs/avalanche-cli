@@ -60,7 +60,7 @@ func CreateZip(require *require.Assertions, src string, dest string) {
 			return nil
 		}
 
-		f, err := os.Open(path)
+		f, err := os.Open(path) //nolint:gosec // walks a directory the CLI owns; no other writer
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func CreateTarGz(require *require.Assertions, src string, dest string, includeTo
 				return nil
 			}
 
-			file, err := os.Open(path)
+			file, err := os.Open(path) //nolint:gosec // walks a directory the CLI owns; no other writer
 			if err != nil {
 				return err
 			}
