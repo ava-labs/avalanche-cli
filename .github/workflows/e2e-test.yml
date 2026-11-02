@@ -48,17 +48,17 @@ jobs:
             "\\[Signature Aggregator\\]",
             "\\[Validator Manager Deploy\\]",
           ]
-        os: [ubuntu-24.04, macos-14]
+        os: [ubuntu-24.04, macos-15]
         exclude:
-          - os: macos-14
+          - os: macos-15
             suite: "\\[Node create\\]"
-          - os: macos-14
+          - os: macos-15
             suite: "\\[Node devnet\\]"
-          - os: macos-14
+          - os: macos-15
             suite: "\\[Docker\\]"
-          - os: macos-14
+          - os: macos-15
             suite: "\\[Public Subnet non SOV\\]"
-          - os: macos-14
+          - os: macos-15
             suite: "\\[Key\\]"
     steps:
       - name: Checkout repository
@@ -70,7 +70,7 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Install MacOSX dependencies
-        if: ${{ matrix.os == 'macos-14' }}
+        if: ${{ matrix.os == 'macos-15' }}
         run: brew install python-setuptools
 
       - name: Use Node.js
