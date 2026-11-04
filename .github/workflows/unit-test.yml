@@ -7,8 +7,12 @@ on:
   pull_request:
   workflow_call:
 
+permissions: {}
+
 jobs:
   unit_test:
+    permissions:
+      contents: read
     name: Golang Unit Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -17,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
         
       - name: Set up Go
         uses: actions/setup-go@v5

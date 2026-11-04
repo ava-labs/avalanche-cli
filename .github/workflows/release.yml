@@ -5,20 +5,30 @@ on:
     tags:
       - "*"
 
+permissions: {}
+
 jobs:
   # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
   lint:
+    permissions:
+      contents: read
     uses: ./.github/workflows/lint.yml
 
   unit_test:
+    permissions:
+      contents: read
     uses: ./.github/workflows/unit-test.yml
 
   release:
+    permissions:
+      contents: write
     needs: [lint, unit_test]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Free Disk Space
         run: |
@@ -50,6 +60,7 @@ jobs:
         with:
           repository: tpoechtrager/osxcross
           path: osxcross
+          persist-credentials: false
 
       - name: Build osxcross
         run: |
