@@ -6,8 +6,12 @@ on:
       - main
   pull_request:
 
+permissions: {}
+
 jobs:
   e2e_test:
+    permissions:
+      contents: read
     name: e2e tests
     runs-on: ${{ matrix.os }}
     continue-on-error: true
@@ -63,6 +67,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v5

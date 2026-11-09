@@ -4,8 +4,12 @@ on:
   pull_request:
     types: [opened, ready_for_review]
 
+permissions: {}
+
 jobs:
   assign:
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-24.04
     steps:
       - name: PR Auto Assignee

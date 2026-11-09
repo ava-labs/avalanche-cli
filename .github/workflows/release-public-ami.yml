@@ -7,15 +7,16 @@ on:
     tags:
       - "*"
 
-permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: read # This is required for actions/checkout
+permissions: {}
 
 env:
   PACKER_VERSION: "1.11.2"
 
 jobs:
   build-public-ami-and-upload:
+    permissions:
+      contents: read
+      id-token: write
     name: Build Public AMIs for AWS and GCP
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -23,6 +24,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v5
