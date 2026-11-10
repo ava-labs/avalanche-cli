@@ -4,7 +4,7 @@ go 1.24.9
 
 require (
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20251014185609-6911ff015e4c
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.3.1-0.20251219040137-6c7ceb2c9cf8
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.5.0
 	github.com/ava-labs/avalanchego v1.14.0-fuji-rc.1
 	github.com/ava-labs/coreth v0.15.4-rc.4
 	github.com/ava-labs/icm-services v1.4.1-0.20251021221544-ae1d7d5a81f3
@@ -83,7 +83,6 @@ require (
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
-	github.com/cavaliergopher/grab/v3 v3.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

@@ -320,7 +320,6 @@ const (
 
 	PluginDir        = "plugins"
 	LocalClustersDir = "local"
-	DBDirName        = "db"
 
 	DefaultNumberOfLocalMachineNodes = 1
 	MetricsNetwork                   = "network"

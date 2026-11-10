@@ -128,7 +128,7 @@ func MigrateANRToTmpNet(
 	}
 	for _, clusterName := range toMigrate {
 		printFunc("Migrating %s", clusterName)
-		if err := migrateCluster(app, printFunc, clusterName); err != nil {
+		if err := migrateCluster(app, clusterName); err != nil {
 			printFunc("Failure migrating %s at %s: %s", clusterName, GetLocalClusterDir(app, clusterName), err)
 		}
 	}
@@ -182,7 +182,6 @@ func MigrateANRToTmpNet(
 // a new tmpnet one based on it, then finally removing it on success
 func migrateCluster(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 ) error {
 	networkDir := GetLocalClusterDir(app, clusterName)
@@ -278,7 +277,6 @@ func migrateCluster(
 	defaultFlags[avagoconfig.IndexAllowIncompleteKey] = true
 	network, err := CreateLocalCluster(
 		app,
-		printFunc,
 		clusterName,
 		binPath,
 		nil,
@@ -289,7 +287,6 @@ func migrateCluster(
 		nodeSettings,
 		trackedSubnets,
 		networkModel,
-		false,
 		false,
 		false, // Set Public IP
 	)
