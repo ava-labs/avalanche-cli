@@ -11,6 +11,7 @@ import (
 	"net/mail"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -327,10 +328,24 @@ func validateID(input string) error {
 }
 
 func validateNewFilepath(input string) error {
-	if _, err := os.Stat(input); err != nil && os.IsNotExist(err) {
-		return nil
+	if input == "" {
+		return errors.New("file path cannot be empty")
 	}
-	return errors.New("file already exists")
+	path := utils.ExpandHome(input)
+	if _, err := os.Stat(path); err == nil {
+		return errors.New("file already exists")
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("cannot check file path: %w", err)
+	}
+	parent := filepath.Dir(path)
+	info, err := os.Stat(parent)
+	if err != nil {
+		return fmt.Errorf("cannot use parent directory %q: %w", parent, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("parent path %q is not a directory", parent)
+	}
+	return nil
 }
 
 func validateNonEmpty(input string) error {

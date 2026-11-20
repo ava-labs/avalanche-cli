@@ -498,7 +498,7 @@ func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
 		return "", err
 	}
 
-	return pathStr, nil
+	return utils.ExpandHome(pathStr), nil
 }
 
 func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
