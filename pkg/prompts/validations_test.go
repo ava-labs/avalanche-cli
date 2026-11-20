@@ -1453,6 +1453,7 @@ func TestValidateID(t *testing.T) {
 }
 
 func TestValidateNewFilepath(t *testing.T) {
+	tempDir := t.TempDir()
 	// Create a temporary file that exists
 	tmpFile, err := os.CreateTemp("", "existing_file_*.txt")
 	require.NoError(t, err)
@@ -1477,8 +1478,23 @@ func TestValidateNewFilepath(t *testing.T) {
 		},
 		{
 			name:    "new file in temp directory",
-			input:   filepath.Join(os.TempDir(), "new_test_file.txt"),
+			input:   filepath.Join(tempDir, "new_test_file.txt"),
 			wantErr: false,
+		},
+		{
+			name:    "missing parent directory",
+			input:   filepath.Join(tempDir, "missing", "transaction.txt"),
+			wantErr: true,
+		},
+		{
+			name:    "parent is a file",
+			input:   filepath.Join(tmpFile.Name(), "transaction.txt"),
+			wantErr: true,
+		},
+		{
+			name:    "empty path",
+			input:   "",
+			wantErr: true,
 		},
 	}
 
