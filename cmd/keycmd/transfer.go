@@ -4,7 +4,9 @@ package keycmd
 
 import (
 	"fmt"
+	"math"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/duallogger"
@@ -12,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/erc20"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -594,16 +597,23 @@ func interEvmSend(
 	default:
 		return fmt.Errorf("you should set the destination address or destination key")
 	}
+	originAddress := libevmcommon.HexToAddress(originTransferrerAddress)
+	decimals, err := transferTokenDecimals(senderURL, originAddress)
+	if err != nil {
+		return fmt.Errorf("could not determine the source token decimals: %w", err)
+	}
 	if amountFlt == 0 {
-		amountFlt, err = captureAmount("TOKEN units")
+		amountFlt, err = captureAmount(fmt.Sprintf("token units, %d decimals", decimals))
 		if err != nil {
 			return err
 		}
 	}
-	amount := new(big.Float).SetFloat64(amountFlt)
-	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-	amountInt, _ := amount.Int(nil)
+	amountInt, err := transferAmountInBaseUnits(amountFlt, decimals)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Sending %s token units (%s base units, %d decimals)",
+		strconv.FormatFloat(amountFlt, 'f', -1, 64), amountInt.String(), decimals)
 	signer, err := evm.NewSignerFromPrivateKey(privateKey)
 	if err != nil {
 		return err
@@ -611,7 +621,7 @@ func interEvmSend(
 	receipt, receipt2, err := ictt.Send(
 		duallogger.NewDualLogger(true, app),
 		senderURL,
-		libevmcommon.HexToAddress(originTransferrerAddress),
+		originAddress,
 		signer,
 		receiverBlockchainID,
 		libevmcommon.HexToAddress(destinationTransferrerAddress),
@@ -641,6 +651,40 @@ func interEvmSend(
 	}
 
 	return nil
+}
+
+func transferTokenDecimals(rpcURL string, transferrer libevmcommon.Address) (uint8, error) {
+	kind, err := ictt.GetEndpointKind(rpcURL, transferrer)
+	if err != nil {
+		return 0, err
+	}
+	switch kind {
+	case ictt.ERC20TokenHome, ictt.NativeTokenHome:
+		return ictt.TokenHomeGetDecimals(rpcURL, transferrer)
+	case ictt.ERC20TokenRemote:
+		return erc20.GetTokenDecimals(rpcURL, transferrer)
+	case ictt.NativeTokenRemote:
+		return 18, nil
+	default:
+		return 0, fmt.Errorf("unknown token transferrer endpoint")
+	}
+}
+
+func transferAmountInBaseUnits(amount float64, decimals uint8) (*big.Int, error) {
+	if amount <= 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+		return nil, fmt.Errorf("amount must be finite and greater than zero")
+	}
+	// Use the decimal representation of the CLI input to avoid rounding it during scaling.
+	decimalAmount, _ := new(big.Rat).SetString(strconv.FormatFloat(amount, 'f', -1, 64))
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	amountInBaseUnits := decimalAmount.Mul(decimalAmount, new(big.Rat).SetInt(scale))
+	if !amountInBaseUnits.IsInt() {
+		return nil, fmt.Errorf("amount cannot be represented with %d decimals", decimals)
+	}
+	if amountInBaseUnits.Num().BitLen() > 256 {
+		return nil, fmt.Errorf("amount exceeds the uint256 limit")
+	}
+	return amountInBaseUnits.Num(), nil
 }
 
 func pToPSend(
